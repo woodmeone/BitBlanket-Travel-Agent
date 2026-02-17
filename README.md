@@ -2,20 +2,29 @@
 
 ## 项目概述
 
-基于自定义 ReAct Agent 架构的智能旅游助手系统，提供城市推荐、景点查询、路线规划等功能。采用 **Agent + Web + Frontend** 三层模块化架构，通过 gRPC 实现模块间通信。
+基于 **五层架构** (Application → Algorithm → Middleware → Framework → Infrastructure) 设计的智能旅游助手系统，提供城市推荐、景点查询、路线规划等功能。核心采用自定义 **ReAct Agent** 架构，通过节点化工作流实现智能推理。
 
 ### 核心特性
 
-- **自定义 ReAct Agent 架构** - 无第三方 AI 框架依赖
+- **五层架构设计** - 清晰的层次划分，职责分离
+- **节点化工作流** - 6 种节点类型，支持复杂业务流程
 - **深度思考展示** - 可折叠的思考过程框，实时展示 AI 推理过程
 - **SSE 流式响应** - Token 级别实时输出，用户体验大幅提升
-- **MiniMax M2.1 支持** - Anthropic 兼容 API，强大的推理能力
+- **MiniMax M2.5 支持** - Anthropic 兼容 API，强大的推理能力
 - **多协议 LLM 支持** - OpenAI、Claude、Gemini、Ollama 等
+- **RAG 检索增强** - 混合检索策略，上下文理解
 - **多会话管理** - 独立对话历史，会话隔离
-- **模块化架构** - Agent/Web/Frontend 三层分离
-- **动态风格系统** - 5 种回复风格（热情活泼/温暖亲切/专业正式/俏皮可爱/简洁明了）
-- **LLM 意图识别** - 17+ 种细粒度意图类型，智能实体提取
-- **语义工具匹配** - 混合匹配策略，自动学习用户偏好
+- **Snowflake ID** - 分布式唯一 ID 生成
+- **Prompt 模板管理** - 模板版本控制，动态生成
+
+### Memory v2.2 智能记忆系统
+
+- **AttentionWindow** - 注意力窗口，基于位置/重要性/相关性动态选择关键消息
+- **ReflectionMechanism** - 反思机制，从对话中提取关键洞察和用户意图
+- **SmartEvictionPolicy** - 智能淘汰，基于多维度决策自动管理记忆容量
+- **ConversationVectorizer** - 对话向量化，支持多粒度语义检索
+- **MemoryRecirculation** - 记忆回流，阈值/频率/时间触发自动归档
+- **ContextAwareRetrieval** - 上下文感知检索，RRF 重排序优化结果
 
 ### 技术栈
 
@@ -24,50 +33,65 @@
 | 前端 | Next.js 16 + React 19 + TypeScript + Zustand + antd 6 |
 | 后端 Web | FastAPI + Python 3.10+ |
 | Agent | 自定义 ReAct 引擎 + gRPC |
-| 部署 | 前后端分离 |
+| 部署 | Docker Compose 全栈编排 |
 
 ---
 
 ## 系统架构
 
+### 五层架构图
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         前端 (Frontend)                          │
-│  Next.js 16 + React 19 + TypeScript + Zustand + antd 6          │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │ ChatArea    │  │ MessageList │  │ TaskSteps (思考展示)    │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼ HTTP SSE
-┌─────────────────────────────────────────────────────────────────┐
-│                       Web API (端口 48081)                       │
-│  FastAPI + Python                                                │
-│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌─────────────────┐  │
-│  │ /chat/    │ │ /session/ │ │ /model/   │ │ /city/          │  │
-│  │ stream    │ │           │ │           │ │                 │  │
-│  └───────────┘ └───────────┘ └───────────┘ └─────────────────┘  │
-│                              │                                  │
-│                              ▼ gRPC                             │
+│                     1. Application Layer (应用层)                  │
+│  TravelApplication - 旅游应用入口，节点化工作流编排                │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Agent Service (端口 50051)                    │
-│  gRPC + 自定义 ReAct 引擎                                        │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │ ReAct Agent                                                 │ │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐  │ │
-│  │  │ Thought  │ │ Action   │ │ Observe  │ │ Memory       │  │ │
-│  │  │ Engine   │ │ Executor │ │ Evaluator│ │ Manager      │  │ │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────────┘  │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │ LLM Client (多协议支持)                                     │ │
-│  │  MiniMax M2.1 / OpenAI / Anthropic / Google / Ollama       │ │
-│  └────────────────────────────────────────────────────────────┘ │
+│                     2. Algorithm Layer (算法层)                   │
+│  StateManager - 状态管理、快照、撤销、追踪                        │
+│  NodeExecutor  - 节点执行器，支持 6 种节点类型                    │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     3. Middleware Layer (中间件层)                 │
+│  RAGRetriever - 检索增强生成，混合搜索、文档分块                  │
+│  MemorySystem - 记忆系统，短期/长期/工作记忆                      │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     4. Framework Layer (框架层)                    │
+│  ReAct Engine  - 自定义 ReAct 推理引擎                           │
+│  Node Types    - 节点类型定义                                    │
+│  SSE Streamer  - Server-Sent Events 流式输出                     │
+│  Prompt Manager - Prompt 模板管理                                │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   5. Infrastructure Layer (基础设施层)            │
+│  LLM Client    - 多协议 LLM 客户端                               │
+│  HTTP Client   - HTTP 客户端，支持同步/异步、重试                 │
+│  Snowflake ID  - 分布式唯一 ID 生成器                            │
+│  Redis Queue   - Redis 消息队列                                 │
+│  Milvus Vector - Milvus 向量数据库                              │
+│  Nacos Config  - Nacos 配置中心                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+### 节点类型
+
+| 节点类型 | 说明 | 使用场景 |
+|----------|------|----------|
+| `ActionNode` | 动作节点 | 执行具体操作，如工具调用 |
+| `AgentNode` | Agent 节点 | 复杂推理，子 Agent 委托 |
+| `LoopNode` | 循环节点 | 重复执行直到满足条件 |
+| `DecisionNode` | 决策节点 | 条件分支判断 |
+| `PreparationNode` | 准备节点 | 数据准备、上下文构建 |
+| `PersistenceNode` | 持久化节点 | 数据保存、状态持久化 |
 
 ---
 
@@ -77,22 +101,55 @@
 ShuaiTravelAgent/
 ├── agent/                      # AI Agent 模块 (gRPC 服务, 端口 50051)
 │   ├── src/
-│   │   ├── core/               # ReAct 引擎核心
-│   │   │   ├── react_agent.py  # ReAct Agent 实现
-│   │   │   ├── travel_agent.py # 旅游助手 Agent
-│   │   │   ├── style_config.py      # 动态风格配置
-│   │   │   ├── intent_recognizer.py # LLM 意图识别
-│   │   │   └── decision_engine.py   # 上下文决策引擎
-│   │   ├── llm/                # 多协议 LLM 客户端
-│   │   │   └── client.py       # LLM 客户端工厂
-│   │   ├── tools/              # 工具模块
-│   │   │   └── semantic_matcher.py  # 语义工具匹配
-│   │   ├── environment/        # 环境数据
+│   │   ├── application/        # 5. 应用层 - 入口和工作流编排
+│   │   │   ├── travel_app.py  # 旅游应用入口
+│   │   │   └── __init__.py
+│   │   ├── framework/         # 4. 框架层 - ReAct 引擎和节点类型
+│   │   │   ├── node_types.py  # 节点类型定义
+│   │   │   ├── state_manager.py # 状态管理
+│   │   │   └── __init__.py
+│   │   ├── middleware/         # 3. 中间件层 - RAG 和记忆
+│   │   │   ├── rag.py         # RAG 检索增强
+│   │   │   └── __init__.py
+│   │   ├── core/              # 核心模块
+│   │   │   ├── travel_agent.py # ReAct Agent 实现
+│   │   │   ├── react_agent.py  # ReAct 引擎核心
+│   │   │   ├── travel_tools.py  # 工具工厂
+│   │   │   ├── response_generator.py # 响应生成
+│   │   │   ├── exceptions.py   # 异常处理
+│   │   │   └── __init__.py
+│   │   ├── memory/             # 记忆系统
+│   │   │   ├── short_term.py  # 短期记忆
+│   │   │   ├── long_term.py   # 长期记忆
+│   │   │   ├── working.py     # 工作记忆
+│   │   │   └── __init__.py
+│   │   ├── infrastructure/     # 5. 基础设施层
+│   │   │   ├── http_client.py  # HTTP 客户端
+│   │   │   ├── snowflake.py   # Snowflake ID
+│   │   │   ├── streaming.py   # SSE 流式输出
+│   │   │   ├── prompt_manager.py # Prompt 模板
+│   │   │   ├── redis_queue.py # Redis 消息队列
+│   │   │   ├── milvus_vector.py # Milvus 向量数据库
+│   │   │   ├── nacos_client.py # Nacos 配置中心
+│   │   │   ├── config_hot_reload.py # 配置热更新
+│   │   │   ├── infra_config.py # 基础设施配置
+│   │   │   # v0.0.1 新增模块
+│   │   │   ├── llm_cache.py # LLM 响应缓存
+│   │   │   ├── rate_limiter.py # API 限流器
+│   │   │   ├── user_preference_store.py # 用户偏好存储
+│   │   │   ├── realtime_pusher.py # 实时消息推送
+│   │   │   ├── monitor.py # 基础设施监控
+│   │   │   ├── conversation_store.py # 对话历史存储
+│   │   │   ├── config_version_manager.py # 配置版本管理
+│   │   │   └── __init__.py
+│   │   ├── config/             # 配置层
+│   │   │   ├── config_manager.py
+│   │   │   └── __init__.py
 │   │   └── server.py           # gRPC 服务器
-│   └── proto/
-│       ├── agent.proto         # gRPC 服务定义
-│       ├── agent_pb2.py        # 生成的消息类型
-│       └── agent_pb2_grpc.py   # 生成的 gRPC 存根
+│   ├── proto/
+│   │   ├── agent.proto         # gRPC 服务定义
+│   │   ├── agent_pb2.py        # 生成的消息类型
+│   │   └── agent_pb2_grpc.py   # 生成的 gRPC 存根
 │
 ├── web/                        # Web API 模块 (FastAPI, 端口 8000)
 │   └── src/
@@ -125,17 +182,23 @@ ShuaiTravelAgent/
 │   ├── llm_config.yaml         # 实际配置 (被 git 忽略)
 │   └── llm_config.yaml.example # 配置模板
 │
-├── tests/                      # 测试用例
+├── tests/                      # 测试用例 (项目根目录)
 │   ├── test_sse_streaming.py   # SSE 流式传输测试
 │   ├── test_e2e_streaming.py   # 端到端集成测试
 │   ├── conftest.py             # pytest 配置
 │   └── README.md               # 测试说明文档
 │
+├── agent/tests/                # Agent 模块测试
+│   └── test_infrastructure_modules.py  # 基础设施模块测试 (12/12 PASS)
+│
 ├── docs/                       # 文档
 │   ├── ARCHITECTURE.md         # 系统架构设计
-│   ├── API.md                  # API 接口文档
-│   ├── DEVELOP.md              # 开发指南
-│   └── DEPLOY.md               # 部署指南
+│   ├── api.md                  # API 接口文档
+│   ├── prd.md                  # 产品需求文档 (PRD)
+│   ├── db.md                   # 数据库设计文档
+│   ├── INFRASTRUCTURE.md       # 基础设施服务文档 (v0.0.1)
+│   ├── INTEGRATION_TESTS.md    # 集成测试设计文档 (v0.0.1)
+│   └── DEVELOP.md              # 开发指南
 │
 ├── run_api.py                  # Web API 启动脚本
 ├── run_agent.py                # Agent 启动脚本
@@ -200,6 +263,215 @@ vim config/llm_config.yaml
 
 ---
 
+## 组件说明
+
+### Agent 模块 (agent/)
+
+| 组件 | 文件路径 | 作用 |
+|------|----------|------|
+| **ReAct 引擎** | `agent/src/core/react_agent.py` | 自定义 ReAct 推理引擎，实现思考-行动-观察-评估循环 |
+| **旅游 Agent** | `agent/src/core/travel_agent.py` | 旅游领域专用 Agent，集成意图识别和工具匹配 |
+| **LLM 客户端** | `agent/src/llm/client.py` | 多协议 LLM 客户端，支持 OpenAI/Claude/Gemini/Ollama |
+| **模型管理器** | `agent/src/llm/manager.py` | 统一管理模型配置，支持动态切换 |
+| **工具系统** | `agent/src/core/travel_tools.py` | 旅游工具注册和调用（城市、景点、天气等） |
+| **RAG 检索器** | `agent/src/middleware/milvus_rag.py` | 向量检索增强，支持混合检索和内存降级 |
+| **记忆系统** | `agent/src/memory/` | 短期/长期/工作记忆管理 |
+| **配置管理** | `agent/src/config/config_manager.py` | 多配置文件分层加载和验证 |
+| **依赖注入** | `agent/src/di/__init__.py` | 依赖注入容器，支持单例/瞬态服务 |
+| **HTTP 连接池** | `agent/src/infrastructure/http_pool.py` | HTTP 连接复用和请求缓存 |
+| **LLM 缓存** | `agent/src/infrastructure/llm_cache.py` | LLM 响应缓存（Redis） |
+| **gRPC 服务器** | `agent/src/server.py` | gRPC 服务端，提供 ProcessMessage/StreamMessage 接口 |
+
+### Web 模块 (web/)
+
+| 组件 | 文件路径 | 作用 |
+|------|----------|------|
+| **FastAPI 应用** | `web/src/main.py` | FastAPI 应用入口，路由注册 |
+| **聊天路由** | `web/src/routes/chat.py` | SSE 流式聊天接口 `/api/chat/stream` |
+| **会话路由** | `web/src/routes/session.py` | 会话管理接口（创建/删除/列表） |
+| **模型路由** | `web/src/routes/model.py` | 模型列表和配置接口 |
+| **gRPC 客户端** | `web/src/grpc_client/` | 连接 Agent gRPC 服务的客户端 |
+| **业务服务** | `web/src/services/` | 聊天服务和会话服务的业务逻辑 |
+
+### Frontend 模块 (frontend/)
+
+| 组件 | 文件路径 | 作用 |
+|------|----------|------|
+| **App 状态** | `frontend/src/context/AppContext.tsx` | 全局状态管理（会话、模型、消息） |
+| **API 服务** | `frontend/src/services/api.ts` | HTTP 和 SSE 客户端封装 |
+| **聊天区域** | `frontend/src/components/ChatArea.tsx` | 聊天主界面，消息展示和输入 |
+| **消息列表** | `frontend/src/components/MessageList.tsx` | 消息气泡，思考过程展示 |
+| **侧边栏** | `frontend/src/components/Sidebar.tsx` | 会话列表管理 |
+| **思考步骤** | `frontend/src/components/TaskSteps.tsx` | AI 推理过程展示组件 |
+
+---
+
+## Docker 全栈部署
+
+### 前置条件
+
+- Docker 24+
+- Docker Compose V2
+- 8GB+ 可用内存
+
+### 一键启动
+
+```bash
+# 构建并启动全部服务 (应用 + 基础设施)
+docker-compose up -d --build
+
+# 查看服务状态
+docker-compose ps
+
+# 查看应用日志
+docker-compose logs -f agent web frontend
+
+# 停止所有服务
+docker-compose down
+```
+
+### Docker 服务架构
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│                     docker-compose.yml                         │
+│                                                                │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐           │
+│  │  Frontend   │→│   Web API   │→│   Agent     │           │
+│  │  :43001     │  │  :48081     │  │  :50051     │           │
+│  │  Next.js    │  │  FastAPI    │  │  gRPC       │           │
+│  └─────────────┘  └─────────────┘  └──────┬──────┘           │
+│                                            │                   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐   ┌──────────┐    │
+│  │  Redis   │  │  Milvus  │  │  Nacos   │   │  MySQL   │    │
+│  │  :6379   │  │  :19530  │  │  :38848  │   │  :3306   │    │
+│  └──────────┘  └──────────┘  └──────────┘   └──────────┘    │
+└───────────────────────────────────────────────────────────────┘
+```
+
+### 多阶段 Dockerfile
+
+| 服务 | Dockerfile | 基础镜像 | 构建策略 |
+|------|-----------|----------|----------|
+| Agent | `agent/Dockerfile` | python:3.10-slim | 二阶段 (builder + runner) |
+| Web | `web/Dockerfile` | python:3.10-slim | 二阶段 (builder + runner) |
+| Frontend | `frontend/Dockerfile` | node:20-alpine | 三阶段 (deps + builder + runner, standalone) |
+
+### 仅启动基础设施
+
+```bash
+docker-compose up -d redis milvus-etcd milvus-minio milvus nacos mysql
+```
+
+---
+
+## Docker 快速开始
+
+### 前置条件
+
+- Docker 24+
+- Docker Compose V2
+- 8GB+ 可用内存
+
+### 一键启动所有服务
+
+```bash
+# 1. 启动基础设施 (Redis, Milvus, Nacos, MinIO, MySQL)
+docker-compose up -d
+
+# 2. 验证服务状态
+docker-compose ps
+
+# 3. 启动 Agent gRPC 服务
+python run_agent.py
+
+# 4. 启动 Web API 服务 (新终端)
+python run_api.py
+
+# 5. 启动前端开发服务器
+cd frontend && npm run dev
+```
+
+### 单独启动基础设施服务
+
+```bash
+# Redis (消息队列/缓存)
+docker run -d --name redis \
+  -p 6379:6379 \
+  -v redis_data:/data \
+  redis:7-alpine redis-server --appendonly yes --maxmemory 256mb
+
+# Milvus (向量数据库)
+docker run -d --name milvus-etcd \
+  -p 2379:2379 \
+  quay.io/coreos/etcd:v3.5.16
+
+docker run -d --name milvus-minio \
+  -p 9000:9000 -p 9001:9001 \
+  -e MINIO_ROOT_USER=minioadmin \
+  -e MINIO_ROOT_PASSWORD=minioadmin \
+  minio/minio server /minio_data --console-address ":9001"
+
+docker run -d --name milvus \
+  -p 19530:19530 -p 9091:9091 \
+  -v milvus_data:/var/lib/milvus \
+  milvusdb/milvus:v2.5.10
+
+# Nacos (配置中心)
+docker run -d --name nacos \
+  -p 38848:8848 -p 39848:9848 \
+  -v nacos_data:/home/nacos/data \
+  nacos/nacos-server:v2.3.2
+```
+
+### 验证服务状态
+
+```bash
+# Redis
+redis-cli -h localhost -p 6379 ping
+# 期望: PONG
+
+# Milvus
+curl -s http://localhost:9091/healthz
+# 期望: OK
+
+# Nacos
+curl -s http://localhost:38848/nacos/v1/ns/service/list
+# 期望: success
+
+# MinIO
+curl -s http://localhost:9000/minio/health/live
+# 期望: ok
+```
+
+### 服务端口汇总
+
+| 服务 | 端口 | Docker 端口 | 作用 |
+|------|------|------------|------|
+| Frontend | 43001 | - | Next.js 前端 |
+| Web API | 48081 | - | FastAPI 后端 |
+| Agent gRPC | 50051 | - | Agent gRPC 服务 |
+| Redis | 6379 | 6379 | 消息队列/缓存 |
+| Milvus | 19530 | 19530 | 向量数据库 |
+| Milvus HTTP | 9091 | 9091 | 健康检查 |
+| Nacos HTTP | 38848 | 38848 | 配置中心 |
+| Nacos gRPC | 39848 | 39848 | 服务通信 |
+| MinIO API | 9000 | 9000 | 对象存储 |
+| MinIO Console | 9001 | 9001 | 控制台 |
+| MySQL | 3306 | 3306 | Nacos 数据库 |
+
+### 停止服务
+
+```bash
+# 停止基础设施
+docker-compose down
+
+# 停止并删除数据卷 (慎用！)
+docker-compose down -v
+```
+
+---
+
 ## API 接口文档
 
 ### 健康检查
@@ -215,7 +487,7 @@ vim config/llm_config.yaml
 ```json
 {
   "status": "healthy",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "agent": "connected",
   "services": {
     "api": "healthy",
@@ -455,9 +727,16 @@ message StreamChunk {
 
 ```
 config/
-├── llm_config.yaml         # 实际使用的配置文件
-└── llm_config.yaml.example # 配置模板
+├── llm_config.yaml              # LLM 模型配置
+├── llm_config.yaml.example     # 配置模板
+├── agent_config.yaml            # Agent 行为配置
+└── infrastructure_config.yaml   # 基础设施配置
 ```
+
+**配置文件分层说明**:
+- `llm_config.yaml` - LLM 模型配置（必选）
+- `agent_config.yaml` - Agent 行为配置（可选）
+- `infrastructure_config.yaml` - 基础设施配置（可选）
 
 ### 支持的 Provider
 
@@ -473,17 +752,16 @@ config/
 
 ```yaml
 # 默认使用的模型ID
-default_model: minimax-m2-1
+default_model: minimax-m2-5
 
 # 模型配置列表
 models:
-  minimax-m2-1:
-    name: "MiniMax M2.1"
+  minimax-m2-5:
+    name: "MiniMax M2.5"
     provider: anthropic
-    model: "MiniMax-M2.1"
-    api_base: "https://api.minimax.chat/v1/chat/completions"
+    model: "MiniMax-M2.5"
+    api_base: "https://api.minimaxi.com/anthropic"
     api_key: "sk-xxx"
-    api_version: "2024-05-01"
     temperature: 0.7
     max_tokens: 4096
     timeout: 60
@@ -545,39 +823,6 @@ grpc:
 
 ---
 
-## v3.0.0 功能特性
-
-### SSE 流式响应
-
-- **真正的流式传输**，非批量处理
-- **Token 级别实时输出**，平均间隔 80-90ms
-- **流畅的逐字显示效果**
-- **支持停止控制**，用户可随时中断生成
-
-### v3.0.0 流式性能测试结果
-
-| 指标 | 测试值 | 说明 |
-|------|--------|------|
-| 总 Chunk 数 | 482 | 单次请求输出的 Token 块数 |
-| 传输时长 | 17.087s | 从首 Token 到完成的总耗时 |
-| 平均间隔 | 80-90ms | 相邻 Token 之间的等待时间 |
-| 传输效率 | 约 28 tokens/s | 稳定的数据流输出 |
-
-### 深度思考展示
-
-- 可折叠的思考过程框
-- 实时展示 AI 推理过程
-- 透明化的决策流程
-
-### 自定义 ReAct Agent
-
-- 无第三方 AI 框架依赖
-- 完整的状态机实现
-- 灵活的工具注册机制
-- 思考/行动/观察/评估循环
-
----
-
 ## 测试
 
 ### 运行测试
@@ -615,6 +860,17 @@ pytest tests/ --html=report.html
 | `tests/test_e2e_streaming.py` | 端到端集成测试和性能测试 |
 | `tests/conftest.py` | Pytest 配置和共享 fixtures |
 | `tests/README.md` | 测试详细说明文档 |
+| `agent/tests/test_infrastructure_modules.py` | 基础设施模块测试 (12/12 PASS) |
+
+### 运行基础设施模块测试
+
+```bash
+# 切换到虚拟环境
+source venv/bin/activate
+
+# 运行基础设施测试
+PYTHONPATH=agent/src python3 agent/tests/test_infrastructure_modules.py
+```
 
 ---
 
@@ -624,27 +880,30 @@ pytest tests/ --html=report.html
 
 ### 设计文档 (docs/)
 
-详细的技术设计文档，包含产品需求、API 接口和数据库设计。
+详细的技术设计文档，包含产品需求、API 接口、数据库设计、架构设计和基础设施服务。
 
-| 文档 | 说明 |
-|------|------|
-| [prd.md](docs/prd.md) | 产品需求文档 (PRD) |
-| [api.md](docs/api.md) | API 接口文档 |
-| [db.md](docs/db.md) | 数据库设计文档 |
+| 文档 | 说明 | 重点内容 |
+|------|------|----------|
+| [prd.md](docs/prd.md) | 产品需求文档 | 功能需求、用户场景、版本规划 |
+| [api.md](docs/api.md) | API 接口文档 | REST API 定义、SSE 事件、请求响应格式 |
+| [db.md](docs/db.md) | 数据库设计文档 | 数据模型、会话存储方案 |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | 系统架构设计 | 五层架构、组件关系、Docker 部署 |
+| [INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) | 基础设施服务 | Docker Compose、Redis/Milvus/Nacos、配置管理 |
+| [INTEGRATION_TESTS.md](docs/INTEGRATION_TESTS.md) | 集成测试设计 | 测试策略、用例设计、CI/CD |
 
 ### 学习文档 (learn_docs/)
 
 面向开发者的学习资料，按顺序阅读可快速掌握系统核心机制。
 
-| 顺序 | 文档 | 重点内容 | 预计时间 |
-|------|------|----------|----------|
-| 1 | [01_系统架构.md](learn_docs/01_ARCHITECTURE.md) | 整体架构、技术选型、三层微服务结构 | 10 分钟 |
-| 2 | [02_ReAct代理.md](learn_docs/02_REACT_AGENT.md) | ReAct 推理循环、状态机、工具系统 | 15 分钟 |
-| 3 | [03_多模式对话.md](learn_docs/03_MULTI_MODE_CHAT.md) | Direct/ReAct/Plan 三种模式对比和实现 | 10 分钟 |
-| 4 | [04_接口文档.md](learn_docs/04_API.md) | HTTP API 接口定义 | 10 分钟 |
-| 5 | [05_开发指南.md](learn_docs/05_DEVELOP.md) | 开发环境配置、本地调试 | 10 分钟 |
-| 6 | [06_部署指南.md](learn_docs/06_DEPLOY.md) | 部署配置、生产环境 | 10 分钟 |
-| 7 | [07_API文档配置.md](learn_docs/07_RapiDoc_ReDoc.md) | API 文档配置、SSE 测试面板 | 5 分钟 |
+| 顺序 | 文档 | 重点内容 |
+|------|------|----------|
+| 1 | [01_系统架构](learn_docs/01_ARCHITECTURE.md) | 三层微服务架构、技术选型、Docker 容器化 |
+| 2 | [02_ReAct代理](learn_docs/02_REACT_AGENT.md) | ReAct 推理循环、状态机、工具系统 |
+| 3 | [03_多模式对话](learn_docs/03_MULTI_MODE_CHAT.md) | Direct/ReAct/Plan 三种模式 |
+| 4 | [04_接口文档](learn_docs/04_API.md) | HTTP API 接口定义 |
+| 5 | [05_开发指南](learn_docs/05_DEVELOP.md) | 开发环境、调试技巧、基础设施使用 |
+| 6 | [06_部署指南](learn_docs/06_DEPLOY.md) | Docker 部署、Nginx 配置、云服务部署 |
+| 7 | [07_API文档配置](learn_docs/07_RapiDoc_ReDoc.md) | RapiDoc + ReDoc 文档方案 |
 
 ### 推荐阅读路径
 
@@ -676,62 +935,122 @@ pytest tests/ --html=report.html
 
 ## 更新日志
 
-### v3.2.0
+### v0.0.3 (2026-02-16)
 
-- **ReAct Agent 步骤分层优化**
-  - 新增 `ThoughtPhase` 枚举，支持四阶段分层展示
-  - 阶段一：理解任务 - 解析用户意图和提取实体
-  - 阶段二：制定计划 - 制定执行计划
-  - 阶段三：执行工具 - 工具调用和结果观察
-  - 阶段四：生成回答 - 生成最终回答
-  - 思考内容使用分隔符 `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━` 分层展示
+**Memory v2.2 增强版本**
 
-- **Plan 模式阶段优化**
-  - 阶段标记：`阶段一：制定计划` → `阶段二：分解任务` → `阶段三：执行工具` → `阶段四：生成回答`
-  - 步骤执行支持显示进度 `[1/4]`
-  - JSON 计划增加 `phase` 和 `goal` 字段
+#### 新增组件
 
-- **文档重构**
-  - 新增 `docs/` 目录存放设计文档 (prd.md, api.md, db.md)
-  - `learn_docs/` 目录添加数字前缀排序 (01-07)，规范阅读顺序
-  - 新增 [02_ReAct代理.md](learn_docs/02_REACT_AGENT.md) - ReAct Agent 核心机制详解
-  - 新增 [03_多模式对话.md](learn_docs/03_MULTI_MODE_CHAT.md) - 三种对话模式详解
-  - 更新配置说明为实际 YAML 格式
+**注意力窗口**:
+- [memory/attention.py](agent/src/memory/attention.py) - AttentionWindow
+- 基于位置/重要性/相关性三维度计算注意力分数
+- Softmax 归一化，支持关键词匹配
 
-- **依赖更新**
-  - 添加 `sse-starlette>=2.0.0` 依赖
-  - 更新 `requirements.txt` 版本约束为松散格式
+**反思机制**:
+- [memory/reflection.py](agent/src/memory/reflection.py) - ReflectionMechanism
+- 从对话中提取关键洞察和用户意图
+- 支持 LLM 反思和规则反思两种模式
 
-### v3.1.0
+**智能淘汰策略**:
+- [memory/eviction_policy.py](agent/src/memory/eviction_policy.py) - SmartEvictionPolicy
+- 基于重要性/时间衰减/访问频率的多维度决策
+- AdaptiveEvictionPolicy 支持自适应权重调整
 
-- **动态风格系统** - 5 种回复风格可切换
-  - 热情活泼、温暖亲切、专业正式、俏皮可爱、简洁明了
-  - 根据用户情感自适应调整语气
-  - 智能 Emoji 匹配和插入
-- **LLM 意图识别** - 更智能的任务理解
-  - 支持 17+ 种细粒度意图类型
-  - 自动提取城市、预算、天数、季节等实体
-  - 用户情感分析（兴奋/急迫/犹豫等）
-- **语义工具匹配** - 精准的工具选择
-  - 混合匹配策略（直接映射 + 关键词 + 语义）
-  - 自动学习用户工具使用偏好
-  - 智能补全缺失信息
-- **上下文决策引擎** - 智能多轮对话
-  - 上下文感知的决策生成
-  - 自动识别需要补充的信息
-  - 流畅的对话体验
+**对话向量化**:
+- [memory/vectorizer.py](agent/src/memory/vectorizer.py) - ConversationVectorizer
+- 多粒度向量化（摘要/关键事实/用户偏好）
+- 支持 TF-IDF 回退和 LLM 嵌入
 
-### v3.0.0
+**记忆回流**:
+- [memory/recirculation.py](agent/src/memory/recirculation.py) - MemoryRecirculation
+- 阈值/频率/时间/手动四种触发条件
+- 自动更新用户画像和长期存储
 
-- **SSE 流式响应** - Token 级别实时输出，用户体验大幅提升
-  - 真正的流式传输，非批量处理
-  - 平均 Token 间隔 80-90ms，流畅的逐字显示效果
-  - 支持停止控制，用户可随时中断生成
-- **深度思考展示** - 可折叠的思考过程框
-- 自定义 ReAct Agent 架构 - 无第三方 AI 框架依赖
-- **Agent/Web/Frontend 三层分离** - gRPC 模块间通信
-- 多协议 LLM 支持 - OpenAI、Claude、Gemini、Ollama 等
-- 多会话管理 - 独立对话历史，会话隔离
+**上下文感知检索**:
+- [memory/retrieval.py](agent/src/memory/retrieval.py) - ContextAwareRetrieval
+- 多路检索（语义/画像/时间）
+- RRF 重排序优化结果
+
+#### MemoryOrchestrator 增强
+
+- 集成所有 6 个新组件
+- 新增 14 个配置选项
+- 与 TravelAgent 深度集成
+
+#### 测试覆盖
+
+- 76 个单元测试 + 集成测试全部通过
+- 覆盖所有 Memory v2.2 组件
+
+### v0.0.2 (2026-02-16)
+
+**Docker 全栈容器化版本**
+
+- Docker Compose 全栈编排 (Agent + Web + Frontend + 基础设施)
+- 多阶段 Dockerfile 构建优化 (Agent, Web, Frontend)
+- Next.js standalone 模式部署
+- 五层架构重构完成
+- MiniMax M2.5 模型集成
+- 长短期记忆优化模块
+- 全量集成测试验证
+
+### v0.0.1 (2026-02-04)
+
+**基础设施功能增强版本**
+
+#### 新增基础设施模块
+
+**LLM 响应缓存**:
+- [infrastructure/llm_cache.py](agent/src/infrastructure/llm_cache.py) - LLM 响应语义缓存
+- 基于 Redis 的智能缓存，减少重复 LLM 调用
+- 支持 TTL 过期、缓存命中统计
+
+**API 限流**:
+- [infrastructure/rate_limiter.py](agent/src/infrastructure/rate_limiter.py) - 分布式限流
+- 滑动窗口、令牌桶、固定窗口多种算法
+- 精细化的端点限流配置
+
+**用户偏好向量存储**:
+- [infrastructure/user_preference_store.py](agent/src/infrastructure/user_preference_store.py) - 个性化推荐
+- 基于 Milvus 的用户偏好向量化
+- 相似用户查找、个性化目的地推荐
+
+**实时消息推送**:
+- [infrastructure/realtime_pusher.py](agent/src/infrastructure/realtime_pusher.py) - WebSocket 推送
+- Redis Pub/Sub 实时通知
+- 价格提醒、天气预警、旅行更新推送
+
+**基础设施监控**:
+- [infrastructure/monitor.py](agent/src/infrastructure/monitor.py) - 健康监控
+- Redis/Milvus/Nacos/MinIO/MySQL 统一监控
+- 响应时间、QPS、内存使用统计
+
+**对话历史向量化**:
+- [infrastructure/conversation_store.py](agent/src/infrastructure/conversation_store.py) - 对话检索
+- 对话历史语义存储和检索
+- 相似对话搜索、上下文增强
+
+**配置版本管理**:
+- [infrastructure/config_version_manager.py](agent/src/infrastructure/config_version_manager.py) - 配置回滚
+- 配置变更历史记录
+- 版本对比、一键回滚
+
+#### 测试脚本
+
+```bash
+# 运行基础设施模块测试
+PYTHONPATH=agent/src python3 agent/tests/test_infrastructure_modules.py
+```
+
+#### 相关文档
+
+| 主题 | 文档链接 |
+|------|----------|
+| 基础设施 | [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) |
+| 架构设计 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| 集成测试 | [docs/INTEGRATION_TESTS.md](docs/INTEGRATION_TESTS.md) |
+| 开发指南 | [learn_docs/05_DEVELOP.md](learn_docs/05_DEVELOP.md) |
+| 部署指南 | [learn_docs/06_DEPLOY.md](learn_docs/06_DEPLOY.md) |
 
 ---
 

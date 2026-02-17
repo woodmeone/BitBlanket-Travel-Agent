@@ -226,9 +226,9 @@ GET  /api/cities              # 城市列表
 
 | 领域 | 技术 | 理由 |
 |------|------|------|
-| 框架 | Next.js 15 | SSR/SSG支持、App Router |
+| 框架 | Next.js 16 | SSR/SSG支持、App Router |
 | 状态管理 | Zustand | 简洁、TypeScript友好 |
-| UI库 | Ant Design 5 | 组件丰富、设计统一 |
+| UI库 | Ant Design 6 | 组件丰富、设计统一 |
 | HTTP客户端 | axios | 拦截器、SSE支持 |
 | 测试 | Vitest | 快速、ESM兼容 |
 
@@ -237,7 +237,7 @@ GET  /api/cities              # 城市列表
 ```
 OpenAI Compatible API
     │
-    ├── MiniMax M2.1 (Anthropic 兼容 API) ✨ 默认
+    ├── MiniMax M2.5 (Anthropic 兼容 API) ✨ 默认
     ├── OpenAI (gpt-4, gpt-4o, gpt-4o-mini)
     ├── Anthropic Claude (claude-3-sonnet, claude-3-opus)
     ├── Google Gemini (gemini-1.5-pro, gemini-1.5-flash)
@@ -264,8 +264,21 @@ agent/
 │   ├── tools/                # 工具
 │   │   ├── base.py           # 工具基类
 │   │   └── travel_tools.py   # 旅游工具实现
-│   ├── memory/               # 记忆
-│   │   └── manager.py        # 记忆管理器
+│   ├── memory/               # 记忆系统 (v2.2)
+│   │   ├── manager.py        # 基础记忆管理
+│   │   ├── orchestrator.py   # 统一协调器
+│   │   ├── importance_scorer.py  # 重要性评分
+│   │   ├── eviction_manager.py  # 淘汰管理
+│   │   ├── summarizer.py     # 对话摘要
+│   │   ├── user_profile.py   # 用户画像
+│   │   ├── hierarchical_store.py # 分层存储
+│   │   ├── consolidation.py  # 记忆整合
+│   │   ├── attention.py      # 注意力窗口
+│   │   ├── reflection.py     # 反思机制
+│   │   ├── eviction_policy.py # 智能淘汰策略
+│   │   ├── vectorizer.py     # 对话向量化
+│   │   ├── recirculation.py  # 记忆回流
+│   │   └── retrieval.py      # 上下文检索
 │   ├── environment/          # 环境
 │   │   └── travel_data.py    # 旅游数据环境
 │   ├── reasoner/             # 推理
@@ -327,23 +340,32 @@ shared/
 
 ## 6. 配置说明
 
-配置文件位于 `config/llm_config.yaml`，实际使用时需要复制 `llm_config.yaml.example` 为 `llm_config.yaml` 并填入 API Key。
+### 6.1 配置文件分层
 
-### 6.1 配置文件 (config/llm_config.yaml)
+项目支持多配置文件分层管理：
+
+| 配置文件 | 说明 |
+|---------|------|
+| `config/llm_config.yaml` | LLM 模型配置（必选） |
+| `config/agent_config.yaml` | Agent 行为配置（可选） |
+| `config/infrastructure_config.yaml` | 基础设施配置（可选） |
+
+实际使用时需要复制 `llm_config.yaml.example` 为 `llm_config.yaml` 并填入 API Key。
+
+### 6.2 LLM 模型配置 (config/llm_config.yaml)
 
 ```yaml
 # 默认使用的模型ID
-default_model: minimax-m2-1
+default_model: minimax-m2-5
 
 # 模型配置列表
 models:
-  minimax-m2-1:
-    name: "MiniMax M2.1"
+  minimax-m2-5:
+    name: "MiniMax M2.5"
     provider: anthropic
-    model: "MiniMax-M2.1"
-    api_base: "https://api.minimax.chat/v1/chat/completions"
+    model: "MiniMax-M2.5"
+    api_base: "https://api.minimaxi.com/anthropic"
     api_key: "sk-YOUR_MINIMAX_API_KEY"
-    api_version: "2024-05-01"
     temperature: 0.7
     max_tokens: 4096
     timeout: 60
@@ -462,4 +484,152 @@ NEXT_PUBLIC_API_BASE=http://localhost:48081
 
 - gRPC 连接池
 - HTTP keep-alive
+- HTTP 连接池复用
 - 前端请求取消
+
+---
+
+## 9. 依赖注入
+
+项目提供简单的依赖注入容器，位于 `agent/src/di/__init__.py`。
+
+### 9.1 核心概念
+
+| 概念 | 说明 |
+|------|------|
+| Container | 依赖注入容器 |
+| Singleton | 单例服务，全局共享实例 |
+| Transient | 瞬态服务，每次请求创建新实例 |
+
+### 9.2 使用示例
+
+```python
+from di import Container, get_container
+
+# 获取全局容器
+container = get_container()
+
+# 注册单例服务
+container.register_singleton(ILLMClient, AnthropicAdapter)
+
+# 注册瞬态服务
+container.register_transient(ICache, RedisCache)
+
+# 解析服务
+client = container.resolve(ILLMClient)
+
+# ReActTravelAgent 支持依赖注入
+from core.travel_agent import ReActTravelAgent
+
+agent = ReActTravelAgent(
+    config_manager=config_manager,
+    memory_manager=memory_manager,
+    llm_client=llm_client
+)
+```
+
+---
+
+## 10. HTTP 连接池
+
+项目提供 HTTP 连接池用于请求复用，位于 `agent/src/infrastructure/http_pool.py`。
+
+### 10.1 功能特点
+
+- HTTP 连接复用，减少连接建立开销
+- 内存 LRU 缓存，支持 GET 请求缓存
+- 线程安全
+
+### 10.2 使用示例
+
+```python
+from infrastructure.http_pool import get_http_pool
+
+# 获取全局连接池
+pool = get_http_pool()
+
+# GET 请求（带缓存）
+response = pool.get(url, use_cache=True)
+
+# POST 请求
+response = pool.post(url, json_data={"key": "value"})
+
+# 清空缓存
+pool.clear_cache()
+```
+
+---
+
+## 11. 单元测试
+
+### 11.1 运行测试
+
+```bash
+# 运行 ConfigManager 测试
+cd agent
+PYTHONPATH=src python -m pytest tests/test_config_manager.py -v
+
+# 运行 LLM Client 测试
+PYTHONPATH=src python -m pytest tests/test_llm_client.py -v
+```
+
+### 11.2 测试文件
+
+| 测试文件 | 测试内容 |
+|---------|---------|
+| `tests/test_config_manager.py` | 配置管理器功能测试 |
+| `tests/test_llm_client.py` | LLM 客户端测试 |
+| `tests/test_infrastructure_modules.py` | 基础设施模块测试 |
+
+---
+
+## 12. Docker 全栈容器化
+
+### 12.1 Docker Compose 编排
+
+项目通过 `docker-compose.yml` 实现全栈一键部署，包含所有应用服务和基础设施。
+
+```bash
+# 一键启动全部服务
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+
+# 查看应用日志
+docker-compose logs -f agent web frontend
+```
+
+### 12.2 服务架构
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│                     Docker Compose                             │
+│                                                                │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐           │
+│  │  Frontend   │→│   Web API   │→│   Agent     │           │
+│  │  :43001     │  │  :48081     │  │  :50051     │           │
+│  │  Next.js    │  │  FastAPI    │  │  gRPC       │           │
+│  └─────────────┘  └─────────────┘  └──────┬──────┘           │
+│                                            │                   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐ │ ┌──────────┐    │
+│  │  Redis   │  │  Milvus  │  │  Nacos   │ │ │  MySQL   │    │
+│  │  :6379   │  │  :19530  │  │  :38848  │ │ │  :3306   │    │
+│  └──────────┘  └──────────┘  └──────────┘   └──────────┘    │
+└───────────────────────────────────────────────────────────────┘
+```
+
+### 12.3 多阶段 Dockerfile
+
+每个应用服务使用多阶段构建优化镜像大小：
+
+| 服务 | Dockerfile 路径 | 构建阶段 |
+|------|----------------|----------|
+| Agent | `agent/Dockerfile` | builder (安装依赖) → runner (运行) |
+| Web | `web/Dockerfile` | builder (安装依赖) → runner (运行) |
+| Frontend | `frontend/Dockerfile` | deps (安装) → builder (构建) → runner (standalone) |
+
+### 12.4 相关文档
+
+- 基础设施详解: [docs/INFRASTRUCTURE.md](../docs/INFRASTRUCTURE.md)
+- 部署指南: [06_DEPLOY.md](06_DEPLOY.md)

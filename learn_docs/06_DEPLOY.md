@@ -97,6 +97,12 @@ NEXT_PUBLIC_API_BASE=https://api.your-domain.com
 # 构建并启动所有服务
 docker-compose up -d --build
 
+# 仅启动基础设施
+docker-compose up -d redis milvus-etcd milvus-minio milvus nacos mysql
+
+# 仅启动应用服务
+docker-compose up -d --build agent web frontend
+
 # 查看服务状态
 docker-compose ps
 
@@ -109,125 +115,52 @@ docker-compose down
 
 ### 2.3 Docker 服务配置
 
-**docker-compose.yml:**
+当前 `docker-compose.yml` 包含完整的全栈服务编排：
 
-```yaml
-version: '3.8'
+**应用服务：**
 
-services:
-  agent:
-    build:
-      context: ./agent
-      dockerfile: Dockerfile.agent
-    ports:
-      - "50051:50051"
-    environment:
-      - LLM_API_KEY=${LLM_API_KEY}
-      - LLM_PROVIDER_TYPE=${LLM_PROVIDER_TYPE}
-      - LLM_MODEL=${LLM_MODEL}
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:50051/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+| 服务 | 容器名 | 端口 | Dockerfile |
+|------|--------|------|-----------|
+| Agent | agent | 50051 | `agent/Dockerfile` |
+| Web | web | 48081 | `web/Dockerfile` |
+| Frontend | frontend | 43001 | `frontend/Dockerfile` |
 
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile.web
-    ports:
-      - "48081:48081"
-    environment:
-      - AGENT_GRPC_HOST=agent
-      - AGENT_GRPC_PORT=50051
-      - WEB_HOST=${WEB_HOST}
-      - WEB_PORT=${WEB_PORT}
-    depends_on:
-      - agent
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:48081/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+**基础设施服务：**
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.frontend
-    ports:
-      - "43001:3000"
-    environment:
-      - NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE}
-    depends_on:
-      - web
-    restart: unless-stopped
+| 服务 | 容器名 | 端口 | 镜像 |
+|------|--------|------|------|
+| Redis | redis | 6379 | redis:7-alpine |
+| Milvus | milvus | 19530 | milvusdb/milvus:v2.5.10 |
+| Milvus etcd | milvus-etcd | 2379 | quay.io/coreos/etcd:v3.5.16 |
+| Milvus MinIO | milvus-minio | 9001 | minio/minio |
+| Nacos | nacos | 38848 | nacos/nacos-server:v2.3.2 |
+| MySQL | mysql | 3306 | mysql:8.0-debian |
 
-networks:
-  default:
-    driver: bridge
-```
+所有端口绑定 `127.0.0.1`，仅本地可访问。所有服务运行在 `shuai-network` bridge 网络中。
 
-### 2.4 Dockerfile 示例
+### 2.4 Dockerfile 说明
 
-**agent/Dockerfile.agent:**
+所有 Dockerfile 使用多阶段构建优化镜像大小。
 
-```dockerfile
-FROM python:3.11-slim
+**agent/Dockerfile** (多阶段构建):
 
-WORKDIR /app
+- 阶段 1 (builder): 使用 `python:3.10-slim`，安装 gcc 编译依赖，创建虚拟环境，安装 pip 依赖
+- 阶段 2 (runner): 仅复制虚拟环境和代码，安装运行时工具 (curl)，以非 root 用户运行
+- 构建上下文: 项目根目录 (`context: .`)
+- 入口: `python run_agent.py`
 
-# 安装依赖
-COPY pyproject.toml ./
-COPY requirements-agent.txt ./
-RUN pip install --no-cache-dir -r requirements-agent.txt
+**web/Dockerfile** (多阶段构建):
 
-# 复制代码
-COPY src/ ./src/
+- 阶段 1 (builder): 使用 `python:3.10-slim`，安装依赖到虚拟环境
+- 阶段 2 (runner): 复制虚拟环境和代码，设置 `PYTHONPATH=/app`
+- 入口: `python -m uvicorn src.main:app --host 0.0.0.0 --port 48081`
 
-# 暴露端口
-EXPOSE 50051
+**frontend/Dockerfile** (三阶段构建):
 
-# 启动命令
-CMD ["python", "-m", "src.server", "--port", "50051"]
-```
-
-**web/Dockerfile.web:**
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-COPY pyproject.toml ./
-COPY requirements-web.txt ./
-RUN pip install --no-cache-dir -r requirements-web.txt
-
-COPY src/ ./src/
-
-EXPOSE 48081
-
-CMD ["python", "-m", "src.main", "--port", "8000"]
-```
-
-**frontend/Dockerfile.frontend:**
-
-```dockerfile
-FROM node:20-alpine
-
-WORKDIR /app
-
-COPY package.json ./
-RUN npm ci --only=production
-
-COPY . .
-RUN npm run build
-
-EXPOSE 3000
-
-CMD ["npm", "start"]
-```
+- 阶段 1 (deps): `node:20-alpine`，仅安装 npm 依赖
+- 阶段 2 (builder): 复制依赖和源码，执行 `npm run build`
+- 阶段 3 (runner): 仅复制 `.next/standalone` 产物，以非 root 用户运行
+- 入口: `node server.js` (standalone 模式，端口 43001)
 
 ---
 
