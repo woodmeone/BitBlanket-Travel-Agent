@@ -1000,3 +1000,130 @@ PYTHONPATH=src python -m pytest tests/test_llm_client.py -v
 1. **启用 LLM 缓存**: 配置 Redis 后自动启用响应缓存
 2. **使用连接池**: HTTP 请求自动复用连接
 3. **配置分层**: 将不常变化的配置分离，便于热更新
+
+---
+
+## 14. v2.8+ 新模块 (工具生态)
+
+### 14.1 工具注册中心 (ToolRegistry)
+
+```python
+# 注册新工具
+from tools.registry import tool_registry, ToolCategory
+
+def my_tool(query):
+    return {"result": "处理结果"}
+
+tool_registry.register(
+    tool_id="my_tool",
+    name="我的工具",
+    description="工具描述",
+    handler=my_tool,
+    category=ToolCategory.CUSTOM
+)
+
+# 发现工具
+tools = tool_registry.discover("关键词")
+```
+
+### 14.2 工具学习 (ToolLearning)
+
+```python
+from tools.learning import tool_learning
+
+# 记录工具使用
+tool_learning.record_usage(
+    tool_id="search",
+    success=True,
+    context={"query": "北京天气"},
+    user_id="user123"
+)
+
+# 获取推荐
+recommendations = tool_learning.recommend_tools(
+    context={"query": "酒店"},
+    user_id="user123"
+)
+```
+
+### 14.3 插件系统 (PluginSystem)
+
+```python
+from tools.plugin import plugin_manager
+
+# 加载插件
+plugin = plugin_manager.load_plugin("plugins/weather.py")
+
+# 注册钩子
+plugin_manager.register_hook("before_tool_call", my_hook)
+```
+
+详见: [工具生态设计](../docs/TOOL_ECOSYSTEM_v2.8.md)
+
+---
+
+## 15. v2.9+ 新模块 (对话增强)
+
+### 15.1 对话策略 (DialoguePolicy)
+
+```python
+from core.dialogue_policy import dialogue_policy, DialogueAction
+
+# 获取对话上下文
+context = dialogue_policy.get_context("session_123")
+
+# 选择动作
+action = dialogue_policy.select_action(
+    context,
+    intent="plan_trip",
+    entities={"city": "北京"}
+)
+
+if action == DialogueAction.CLARIFY:
+    # 需要澄清
+    pass
+```
+
+### 15.2 上下文追踪 (ContextTracker)
+
+```python
+from memory.context_tracker import context_tracker
+
+# 追踪实体
+context_tracker.track_entity(
+    session_id="session_123",
+    entity_type="city",
+    value="北京"
+)
+
+# 获取活跃实体
+active = context_tracker.get_active_entities("session_123")
+```
+
+### 15.3 实体链接 (EntityLinker)
+
+```python
+from reasoner.entity_linker import entity_linker
+
+# 添加实体
+entity_linker.add_entity(
+    entity_id="beijing_001",
+    name="北京",
+    entity_type="city",
+    aliases=["京城"]
+)
+
+# 链接实体
+results = entity_linker.link("去北京")
+```
+
+详见: [对话增强设计](../docs/DIALOGUE_ENHANCEMENT_v2.9.md)
+
+---
+
+## 16. 学习资源
+
+### 16.1 新模块学习指南
+
+- [新模块学习指南](08_NEW_MODULES.md) - 快速入门
+- [演进路线图](../docs/ROADMAP.md) - 了解未来规划
