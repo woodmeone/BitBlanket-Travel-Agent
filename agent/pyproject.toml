@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shuai-travel-agent"
-version = "2.0.0"
-description = "AI Travel Agent Module - v2.0.0 with Infrastructure Support"
+version = "2.7.4"
+description = "AI Travel Agent Module - v2.7.4 with Multi-Agent & Production Support"
 requires-python = ">=3.10"
 dependencies = [
     "grpcio>=1.59.0",

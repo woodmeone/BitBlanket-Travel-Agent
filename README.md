@@ -1054,6 +1054,23 @@ PYTHONPATH=agent/src python3 agent/tests/test_infrastructure_modules.py
 
 ---
 
+## 版本历史
+
+| 版本 | 日期 | 主要更新 |
+|------|------|----------|
+| **2.7.4** | 2026-02-17 | 测试覆盖完善，新增316个测试用例 |
+| **2.7.0** | 2026-02-17 | 测试增强，文档完善 |
+| **2.6.0** | 2026-02-04 | 生产级增强：Sandbox、CircuitBreaker、Monitor |
+| **2.5.0** | 2026-02-04 | 智能编排：AdaptiveWorkflow、Evaluator、FeedbackLoop |
+| **2.4.0** | 2026-02-04 | 多Agent框架：Orchestrator、MessageBus、AgentFactory |
+| **2.3.0** | 2026-02-04 | 工作流引擎、扩展工具、状态管理 |
+| **2.2.0** | 2026-02-04 | 智能记忆系统：Attention、Reflection、Eviction |
+| **2.0.0** | 2025-02-04 | 基础设施集成：Redis、Milvus、Nacos |
+
+详细更新日志请查看 [CHANGELOG.md](CHANGELOG.md)
+
+---
+
 ## 许可证
 
 MIT License

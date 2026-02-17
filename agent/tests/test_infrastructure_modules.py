@@ -39,7 +39,7 @@ TEST_CONFIG = {
 }
 
 
-class TestResult:
+class InfrastructureTestResult:
     """测试结果"""
 
     def __init__(self, name: str):
@@ -60,7 +60,7 @@ def print_header(title: str):
     print("=" * 60)
 
 
-def print_result(result: TestResult):
+def print_result(result: InfrastructureTestResult):
     """打印测试结果"""
     if result.passed:
         print(f"  [PASS] {result.name}")
@@ -81,7 +81,7 @@ async def test_llm_cache():
 
     from infrastructure.llm_cache import LLMResponseCache, CacheConfig
 
-    result = TestResult("LLMResponseCache 基础测试")
+    result = InfrastructureTestResult("LLMResponseCache 基础测试")
 
     try:
         cache = LLMResponseCache(
@@ -145,7 +145,7 @@ async def test_rate_limiter():
     results = []
 
     # 测试滑动窗口限流
-    result = TestResult("SlidingWindowLimiter")
+    result = InfrastructureTestResult("SlidingWindowLimiter")
     try:
         config = RateLimitConfig(
             rate=10,
@@ -167,7 +167,7 @@ async def test_rate_limiter():
     print_result(result)
 
     # 测试令牌桶限流
-    result = TestResult("TokenBucketLimiter")
+    result = InfrastructureTestResult("TokenBucketLimiter")
     try:
         config = RateLimitConfig(
             rate=5,
@@ -206,7 +206,7 @@ async def test_user_preference_store():
         VectorStoreConfig
     )
 
-    result = TestResult("UserPreferenceStore")
+    result = InfrastructureTestResult("UserPreferenceStore")
 
     try:
         store = UserPreferenceStore(
@@ -273,7 +273,7 @@ async def test_realtime_pusher():
         RealtimeConfig
     )
 
-    result = TestResult("RealtimePusher")
+    result = InfrastructureTestResult("RealtimePusher")
 
     try:
         pusher = RealtimePusher(
@@ -337,7 +337,7 @@ async def test_infrastructure_monitor():
         ServiceType
     )
 
-    result = TestResult("InfrastructureMonitor")
+    result = InfrastructureTestResult("InfrastructureMonitor")
 
     try:
         monitor = InfrastructureMonitor(
@@ -384,7 +384,7 @@ async def test_conversation_store():
         VectorStoreConfig
     )
 
-    result = TestResult("ConversationVectorStore")
+    result = InfrastructureTestResult("ConversationVectorStore")
 
     try:
         store = ConversationVectorStore(
@@ -461,7 +461,7 @@ async def test_config_version_manager():
         VersionManagerConfig
     )
 
-    result = TestResult("ConfigVersionManager")
+    result = InfrastructureTestResult("ConfigVersionManager")
 
     try:
         manager = ConfigVersionManager(
@@ -534,7 +534,7 @@ async def test_convenience_functions():
     results = []
 
     # LLM Cache
-    result = TestResult("check_cache_health()")
+    result = InfrastructureTestResult("check_cache_health()")
     try:
         from infrastructure.llm_cache import check_cache_health
         health = await check_cache_health()
@@ -546,7 +546,7 @@ async def test_convenience_functions():
     print_result(result)
 
     # Rate Limiter
-    result = TestResult("check_rate_limit_health()")
+    result = InfrastructureTestResult("check_rate_limit_health()")
     try:
         from infrastructure.rate_limiter import check_rate_limit_health
         health = await check_rate_limit_health()
@@ -558,7 +558,7 @@ async def test_convenience_functions():
     print_result(result)
 
     # User Preference Store
-    result = TestResult("check_preference_store_health()")
+    result = InfrastructureTestResult("check_preference_store_health()")
     try:
         from infrastructure.user_preference_store import check_preference_store_health
         health = await check_preference_store_health()
@@ -570,7 +570,7 @@ async def test_convenience_functions():
     print_result(result)
 
     # Realtime Pusher
-    result = TestResult("check_realtime_health()")
+    result = InfrastructureTestResult("check_realtime_health()")
     try:
         from infrastructure.realtime_pusher import check_realtime_health
         health = await check_realtime_health()
