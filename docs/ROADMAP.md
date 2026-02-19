@@ -1,6 +1,6 @@
-# 项目演进路线图 (v2.8.0 - v3.0+)
+# 项目演进路线图 (v2.8.0 - v3.2+)
 
-## 当前状态 (v2.7.4)
+## 当前状态 (v3.2.0)
 
 ### 已完成功能
 
@@ -113,25 +113,91 @@
 
 ---
 
+### v3.1.0 - 多模态支持
+
+**目标**: 支持图像、语音等多种输入输出模式
+
+#### 新增模块
+
+| 模块 | 功能 | 文件位置 |
+|------|------|----------|
+| **VisionProcessor** | 图像理解、景点识别 | `vision/processor.py` |
+| **ImageComparison** | 图像相似度比较 | `vision/processor.py` |
+| **ImageSearchEngine** | 图像搜索引擎 | `vision/processor.py` |
+| **SceneRecognizer** | 场景识别 | `vision/processor.py` |
+| **MapVisualizer** | 地图可视化 | `visualization/map.py` |
+| **RouteOptimizer** | 路线优化 | `visualization/map.py` |
+| **MapRenderer** | 地图渲染 | `visualization/map.py` |
+| **HeatmapGenerator** | 热力图生成 | `visualization/map.py` |
+| **SpeechRecognizer** | 语音识别 | `speech/__init__.py` |
+| **SpeechSynthesizer** | 语音合成 | `speech/__init__.py` |
+| **VoiceInteractionHandler** | 语音交互 | `speech/__init__.py` |
+
+#### 多模态功能
+
+```
+核心功能:
+- 图像理解：景点识别、图像描述、场景分类
+- 地图可视化：路线绘制、热力图分析
+- 语音交互：语音输入、语音输出
+- LLM 增强：所有模块支持 LLM 增强
+```
+
+---
+
+### v3.2.0 - 自主决策
+
+**目标**: 支持自动规划和自我反思能力
+
+#### 新增模块
+
+| 模块 | 功能 | 文件位置 |
+|------|------|----------|
+| **AutoPlanner** | 自动任务规划 | `planning/auto_planner.py` |
+| **SelfReflector** | 自我反思 | `reflection/__init__.py` |
+| **ExperienceLearner** | 经验学习 | `reflection/__init__.py` |
+| **ReflectionScheduler** | 反思调度 | `reflection/__init__.py` |
+
+#### 自主决策功能
+
+```
+核心功能:
+- 自动规划：目标分解、任务排序、执行管理
+- 自我反思：对话总结、经验提取
+- 经验学习：从交互中学习模式
+- LLM 增强：智能规划和反思
+```
+
+---
+
 ## 演进路线图
 
 ```
-v2.7.4 (当前)
+v3.2.0 (当前)
     │
-    ├─→ v2.8.0 (工具生态)
+    ├─→ v2.8.0 (工具生态) ✓
     │       ├─ ToolRegistry
     │       ├─ ToolLearning
     │       └─ PluginSystem
     │
-    ├─→ v2.9.0 (对话增强)
+    ├─→ v2.9.0 (对话增强) ✓
     │       ├─ DialoguePolicy
     │       ├─ ContextTracker
     │       └─ EntityLinker
     │
-    └─→ v3.0.0 (Agent 生态)
-            ├─ AgentHub
-            ├─ SkillStore
-            └─ AgentTemplate
+    ├─→ v3.0.0 (Agent 生态) ✓
+    │       ├─ AgentHub
+    │       ├─ SkillStore
+    │       └─ AgentTemplate
+    │
+    ├─→ v3.1.0 (多模态) ✓
+    │       ├─ VisionProcessor
+    │       ├─ MapVisualizer
+    │       └─ Speech
+    │
+    └─→ v3.2.0 (自主决策) ✓
+            ├─ AutoPlanner
+            └─ SelfReflector
 ```
 
 ---

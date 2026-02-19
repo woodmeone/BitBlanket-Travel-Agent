@@ -57,6 +57,9 @@ from .recirculation import MemoryRecirculation, RecirculationRule, MemoryContent
 # 上下文感知检索 (v2.2)
 from .retrieval import ContextAwareRetrieval
 
+# 上下文追踪 (v2.9)
+from .context_tracker import ContextTracker, TrackedEntity, EntityReference, context_tracker
+
 __all__ = [
     # 核心
     'MemoryManager',
@@ -124,5 +127,11 @@ __all__ = [
     'MemoryContent',
 
     # 上下文感知检索 (v2.2)
-    'ContextAwareRetrieval'
+    'ContextAwareRetrieval',
+
+    # 上下文追踪 (v2.9)
+    'ContextTracker',
+    'TrackedEntity',
+    'EntityReference',
+    'context_tracker'
 ]

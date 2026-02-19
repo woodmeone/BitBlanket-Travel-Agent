@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shuai-travel-agent"
-version = "2.7.4"
-description = "AI Travel Agent Module - v2.7.4 with Multi-Agent & Production Support"
+version = "3.1.0"
+description = "AI Travel Agent Module - v3.1.0 with Multimodal Support"
 requires-python = ">=3.10"
 dependencies = [
     "grpcio>=1.59.0",
@@ -34,6 +34,9 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "integration: marks tests as integration tests that require API keys",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

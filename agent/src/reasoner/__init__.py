@@ -1,5 +1,4 @@
 # Reasoner Module
-from .reasoner import Reasoner
-from .intent import IntentRecognizer
+from .entity_linker import EntityLinker, LinkedEntity, entity_linker
 
-__all__ = ['Reasoner', 'IntentRecognizer']
+__all__ = ['EntityLinker', 'LinkedEntity', 'entity_linker']

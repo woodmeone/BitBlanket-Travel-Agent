@@ -13,6 +13,14 @@ from .workflow_engine import (
     TaskPriority,
     ExecutionPlan
 )
+from .dialogue_policy import (
+    DialoguePolicy,
+    DialogueAction,
+    DialogueState,
+    DialogueContext,
+    ClarificationRequest,
+    dialogue_policy
+)
 from .exceptions import (
     TravelAgentError,
     ConfigurationError,
@@ -41,6 +49,13 @@ __all__ = [
     'TaskStatus',
     'TaskPriority',
     'ExecutionPlan',
+    # Dialogue Policy
+    'DialoguePolicy',
+    'DialogueAction',
+    'DialogueState',
+    'DialogueContext',
+    'ClarificationRequest',
+    'dialogue_policy',
     # Exceptions
     'TravelAgentError',
     'ConfigurationError',

@@ -18,6 +18,7 @@
 """
 
 import re
+import json
 import asyncio
 import logging
 from typing import Dict, Any, List, Optional
@@ -308,28 +309,81 @@ class ImportanceScorer:
         message: str,
         context: Optional[Dict] = None
     ) -> Optional[float]:
-        """使用 LLM 进行高级分析（可选）"""
+        """使用 LLM 进行高级分析（可选）
+
+        增强版：使用更详细的 prompt 进行多维度评估
+        """
         try:
-            prompt = f"""分析以下用户消息的重要性分数（0-1）：
+            context_info = ""
+            if context:
+                context_info = f"\n对话上下文：{json.dumps(context, ensure_ascii=False, indent=2)}"
 
-消息：{message}
+            prompt = f"""你是一个专业的旅游对话分析专家，擅长评估用户消息的重要程度。
 
-请判断这条消息对理解用户旅行偏好和需求的帮助程度。
-只返回分数，不要其他内容。"""
+## 需要分析的消息
+{message}
+{context_info}
+
+## 评估维度
+
+请从以下维度分析这条消息的重要程度（0-1）：
+
+1. **信息价值**：这条消息是否包含对理解用户旅行偏好和需求有价值的信息？
+   - 包含具体目的地、时间、预算 → 高价值
+   - 包含偏好、兴趣描述 → 中高价值
+   - 一般性聊天 → 低价值
+
+2. **决策影响**：这条消息是否会影响后续的旅行决策？
+   - 明确的需求表达、偏好确认 → 高影响
+   - 犹豫、询问 → 中影响
+   - 闲聊、无关 → 无影响
+
+3. **记忆价值**：这条消息是否值得长期记住？
+   - 用户明确偏好、过往经验 → 值得记住
+   - 临时需求、一次性问题 → 不必记住
+
+## 输出要求
+
+请以 JSON 格式返回分析结果：
+{{
+    "information_value": 0.0-1.0,
+    "decision_impact": 0.0-1.0,
+    "memory_value": 0.0-1.0,
+    "reasoning": "简要说明你的判断理由",
+    "final_score": "综合分数（0-1）"
+}}
+
+只输出 JSON，不要其他内容。"""
 
             if self.llm_client:
                 result = await self.llm_client.chat([
-                    {"role": "system", "content": "你是消息重要性分析助手"},
+                    {"role": "system", "content": "你是专业的旅游对话分析助手，擅长评估消息的重要程度。"},
                     {"role": "user", "content": prompt}
                 ])
 
                 if result.get('success'):
                     content = result.get('content', '')
-                    # 尝试提取数字
-                    match = re.search(r'0?\.?\d+', content)
-                    if match:
-                        score = float(match.group())
+                    # 尝试解析 JSON
+                    try:
+                        data = json.loads(content)
+                        # 优先使用 final_score
+                        if 'final_score' in data:
+                            score = float(data['final_score'])
+                        else:
+                            # 计算平均分
+                            scores = [
+                                data.get('information_value', 0.5),
+                                data.get('decision_impact', 0.5),
+                                data.get('memory_value', 0.5)
+                            ]
+                            score = sum(scores) / len(scores)
                         return max(min(score, 1.0), 0.0)
+                    except json.JSONDecodeError:
+                        # 回退到简单提取
+                        match = re.search(r'0?\.?\d+\.?\d*', content)
+                        if match:
+                            score = float(match.group())
+                            return max(min(score, 1.0), 0.0)
 
             return None
         except Exception as e:

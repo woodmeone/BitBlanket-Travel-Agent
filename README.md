@@ -4,7 +4,7 @@
 
 基于 **五层架构** (Application → Algorithm → Middleware → Framework → Infrastructure) 设计的智能旅游助手系统，提供城市推荐、景点查询、路线规划等功能。核心采用自定义 **ReAct Agent** 架构，通过节点化工作流实现智能推理。
 
-### 核心特性
+### 核心特性 (v3.2.0)
 
 - **五层架构设计** - 清晰的层次划分，职责分离
 - **节点化工作流** - 6 种节点类型，支持复杂业务流程
@@ -16,15 +16,31 @@
 - **多会话管理** - 独立对话历史，会话隔离
 - **Snowflake ID** - 分布式唯一 ID 生成
 - **Prompt 模板管理** - 模板版本控制，动态生成
+- **多模态支持** - 图像理解、地图可视化、语音交互
+- **自主决策** - 自动规划、自我反思、经验学习
 
-### Memory v2.2 智能记忆系统
+### v3.2.0 智能系统
 
+#### Memory v2.2 智能记忆系统
 - **AttentionWindow** - 注意力窗口，基于位置/重要性/相关性动态选择关键消息
 - **ReflectionMechanism** - 反思机制，从对话中提取关键洞察和用户意图
 - **SmartEvictionPolicy** - 智能淘汰，基于多维度决策自动管理记忆容量
 - **ConversationVectorizer** - 对话向量化，支持多粒度语义检索
 - **MemoryRecirculation** - 记忆回流，阈值/频率/时间触发自动归档
 - **ContextAwareRetrieval** - 上下文感知检索，RRF 重排序优化结果
+
+#### v3.0 Agent 生态系统
+- **AgentHub** - Agent 市场、共享、发现
+- **SkillStore** - 技能库管理、技能链编排
+
+#### v3.1 多模态支持
+- **VisionProcessor** - 图像理解、景点识别、场景分类
+- **MapVisualizer** - 地图可视化、路线优化、热力图
+- **Speech** - 语音识别、语音合成、语音交互
+
+#### v3.2 自主决策
+- **AutoPlanner** - 自动任务规划、目标分解
+- **SelfReflector** - 自我反思、经验学习
 
 ### 技术栈
 
@@ -1058,6 +1074,11 @@ PYTHONPATH=agent/src python3 agent/tests/test_infrastructure_modules.py
 
 | 版本 | 日期 | 主要更新 |
 |------|------|----------|
+| **3.2.0** | 2026-02-19 | 自主决策：AutoPlanner、SelfReflector、ExperienceLearner |
+| **3.1.0** | 2026-02-19 | 多模态：VisionProcessor、MapVisualizer、Speech |
+| **3.0.0** | 2026-02-17 | Agent 生态：AgentHub、SkillStore |
+| **2.9.0** | 2026-02-17 | 对话增强：DialoguePolicy、ContextTracker、EntityLinker |
+| **2.8.0** | 2026-02-17 | 工具生态：ToolRegistry、ToolLearning、PluginSystem |
 | **2.7.4** | 2026-02-17 | 测试覆盖完善，新增316个测试用例 |
 | **2.7.0** | 2026-02-17 | 测试增强，文档完善 |
 | **2.6.0** | 2026-02-04 | 生产级增强：Sandbox、CircuitBreaker、Monitor |

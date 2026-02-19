@@ -50,6 +50,22 @@ from core.extended_tools import create_extended_tools  # v2.3.0 新增
 from core.workflow_engine import WorkflowEngine  # v2.3.0 新增
 from multiagent import MultiAgentOrchestrator, OrchestratorConfig  # v2.4.0 新增
 from core.response_generator import ResponseGenerator, ReasoningBuilder
+
+# v2.9.0 新增：对话增强模块
+from core.dialogue_policy import dialogue_policy as dialogue_policy_instance, DialoguePolicy
+from memory.context_tracker import context_tracker as context_tracker_instance, ContextTracker
+
+# v3.0.0 新增：Agent 生态模块
+from agent_hub import agent_hub as agent_hub_instance, AgentHub
+from skills import skill_store as skill_store_instance, SkillStore
+
+# v3.1.0 新增：多模态模块
+from vision import vision_processor as vision_instance, VisionProcessor
+from visualization import map_visualizer as map_instance, MapVisualizer
+
+# v3.2.0 新增：自主决策模块
+from planning import auto_planner as planning_instance, AutoPlanner
+from reflection import self_reflector as reflector_instance, SelfReflector
 from config.config_manager import ConfigManager
 from memory.manager import MemoryManager
 from memory.factory import create_memory_orchestrator  # v2.1 统一记忆协调器
@@ -175,6 +191,38 @@ class ReActTravelAgent:
 
         # v2.4.0 新增：初始化多 Agent 编排器（用于复杂任务的 PLAN 模式）
         self.multiagent_orchestrator = None  # 延迟初始化
+
+        # v2.9.0 新增：对话策略管理器
+        self.dialogue_policy = DialoguePolicy(llm_client=self.llm_client)
+        self.dialogue_policy.set_llm_client(self.llm_client)
+
+        # v2.9.0 新增：上下文追踪器
+        self.context_tracker = ContextTracker(llm_client=self.llm_client)
+        self.context_tracker.set_llm_client(self.llm_client)
+
+        # v3.0.0 新增：Agent Hub
+        self.agent_hub = AgentHub()
+
+        # v3.0.0 新增：技能库
+        self.skill_store = SkillStore()
+
+        # v3.1.0 新增：视觉处理器
+        self.vision_processor = VisionProcessor(llm_client=self.llm_client)
+        self.vision_processor.set_llm_client(self.llm_client)
+
+        # v3.1.0 新增：地图可视化器
+        from visualization import MapVisualizer
+        self.map_visualizer = MapVisualizer()
+
+        # v3.2.0 新增：自动规划器
+        from planning import AutoPlanner
+        self.auto_planner = AutoPlanner(llm_client=self.llm_client)
+        self.auto_planner.set_llm_client(self.llm_client)
+
+        # v3.2.0 新增：自我反思器
+        from reflection import SelfReflector
+        self.self_reflector = SelfReflector(llm_client=self.llm_client)
+        self.self_reflector.set_llm_client(self.llm_client)
 
         # 传递 llm_client 给 ReActAgent，使其能使用 LLM 进行思考
         # 这是 ReAct 模式的关键：让智能体能够自主思考和规划

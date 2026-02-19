@@ -52,7 +52,14 @@ class ToolMatch:
 
 
 class SemanticToolMatcher:
-    """语义工具匹配器"""
+    """语义工具匹配器
+
+    支持多种匹配策略：
+    - EXACT: 精确匹配
+    - SEMANTIC: LLM 语义匹配
+    - KEYWORD: 关键词匹配
+    - HYBRID: 混合匹配（关键词 + 语义）
+    """
 
     # 意图到工具的映射规则
     INTENT_TOOL_MAP = {
@@ -88,11 +95,23 @@ class SemanticToolMatcher:
         "weather_query": ["天气预报", "天气情况", "气候"],
     }
 
-    def __init__(self, strategy: MatchStrategy = MatchStrategy.HYBRID):
+    def __init__(self, strategy: MatchStrategy = MatchStrategy.HYBRID, llm_client: Any = None):
+        """
+        初始化语义匹配器
+
+        Args:
+            strategy: 匹配策略
+            llm_client: 可选的 LLM 客户端，用于语义匹配
+        """
         self.strategy = strategy
         self._tools: Dict[str, ToolInfo] = {}
         self._user_preferences: Dict[str, List[str]] = {}  # 用户对工具的使用偏好
         self._usage_stats: Dict[str, int] = {}  # 工具使用统计
+        self._llm_client = llm_client
+
+    def set_llm_client(self, llm_client):
+        """设置 LLM 客户端"""
+        self._llm_client = llm_client
 
     def register_tool(self, tool: ToolInfo) -> bool:
         """注册工具"""
@@ -150,8 +169,13 @@ class SemanticToolMatcher:
 
         # 3. 语义匹配（如果配置了）
         if self.strategy in [MatchStrategy.SEMANTIC, MatchStrategy.HYBRID]:
-            semantic_matches = self._match_by_semantic(intent, entities)
-            matches.extend(semantic_matches)
+            # 优先使用 LLM 语义匹配（如果可用）
+            if self._llm_client:
+                llm_matches = self._match_by_llm(intent, entities, context)
+                matches.extend(llm_matches)
+            else:
+                semantic_matches = self._match_by_semantic(intent, entities)
+                matches.extend(semantic_matches)
 
         # 4. 兜底匹配 - 尝试所有工具
         if len(matches) == 0:
@@ -273,6 +297,89 @@ class SemanticToolMatcher:
                     matched_keywords=matched_reasons,
                     reason=f"; ".join(matched_reasons) if matched_reasons else "语义相似"
                 ))
+
+        return matches
+
+    def _match_by_llm(self, intent: str, entities: Dict[str, List[str]],
+                      context: Dict = None) -> List[ToolMatch]:
+        """使用 LLM 进行语义匹配
+
+        Args:
+            intent: 意图类型
+            entities: 提取的实体
+            context: 上下文信息
+
+        Returns:
+            匹配结果列表
+        """
+        if not self._llm_client or not self._tools:
+            return []
+
+        matches = []
+
+        try:
+            # 构建工具描述
+            tools_description = []
+            for name, tool in self._tools.items():
+                tools_description.append({
+                    "name": tool.name,
+                    "description": tool.description,
+                    "intent_tags": tool.intent_tags,
+                    "supported_entities": tool.supported_entities
+                })
+
+            # 构建 LLM prompt
+            entities_str = json.dumps(entities, ensure_ascii=False)
+            context_str = json.dumps(context or {}, ensure_ascii=False)
+
+            system_prompt = """你是一个专业的旅游工具推荐专家。根据用户的意图和上下文，选择最合适的工具。
+
+分析每个工具的描述和功能，判断是否能满足用户需求。
+考虑工具的意图标签和支持的实体类型是否匹配。"""
+
+            user_prompt = f"""用户意图：{intent}
+提取的实体：{entities_str}
+上下文信息：{context_str}
+
+可用工具：
+{json.dumps(tools_description, ensure_ascii=False, indent=2)}
+
+请以 JSON 格式返回匹配的工具：
+{{
+    "matches": [
+        {{
+            "tool_name": "工具名称",
+            "confidence": 0.0-1.0,
+            "reason": "匹配原因"
+        }}
+    ]
+}}
+
+只返回 JSON。"""
+
+            result = self._llm_client.chat([
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ], temperature=0.3)
+
+            if result.get("success"):
+                content = result.get("content", "")
+                try:
+                    data = json.loads(content)
+                    for match in data.get("matches", []):
+                        tool_name = match.get("tool_name", "")
+                        if tool_name in self._tools:
+                            matches.append(ToolMatch(
+                                tool=self._tools[tool_name],
+                                score=match.get("confidence", 0.5),
+                                match_type="llm_semantic",
+                                reason=match.get("reason", "LLM智能匹配")
+                            ))
+                except json.JSONDecodeError:
+                    logger.warning("Failed to parse LLM match response")
+
+        except Exception as e:
+            logger.warning(f"LLM 语义匹配失败: {e}")
 
         return matches
 

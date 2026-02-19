@@ -1121,9 +1121,177 @@ results = entity_linker.link("去北京")
 
 ---
 
-## 16. 学习资源
+## 16. v3.0+ 新模块 (Agent 生态系统)
 
-### 16.1 新模块学习指南
+### 16.1 Agent 市场 (AgentHub)
+
+```python
+from agent_hub import agent_hub
+
+# 发现 Agent
+agents = agent_hub.discover_agents("城市推荐")
+
+# 发布 Agent
+agent_id = agent_hub.publish_agent(
+    name="我的Agent",
+    description="描述",
+    version="1.0.0",
+    author="作者",
+    category="旅行规划"
+)
+
+# 评价 Agent
+agent_hub.rate_agent(agent_id, 5)
+```
+
+### 16.2 技能库 (SkillStore)
+
+```python
+from skills import skill_store, SkillCategory
+
+# 注册技能
+def my_skill(query):
+    return {"result": "处理结果"}
+
+skill_store.register_skill(
+    skill_id="my_skill",
+    name="我的技能",
+    description="技能描述",
+    category=SkillCategory.TRAVEL,
+    handler=my_skill
+)
+
+# 发现技能
+skills = skill_store.discover_skills("推荐")
+
+# 执行技能
+result = skill_store.execute_skill("city_recommend", user_query)
+```
+
+### 16.3 技能链
+
+```python
+# 创建技能链
+skill_store.create_skill_chain(
+    chain_id="travel_planning",
+    skill_ids=["city_recommend", "route_plan", "budget_calc"]
+)
+
+# 执行技能链
+results = skill_store.execute_chain(
+    chain_id="travel_planning",
+    initial_input=initial_query
+)
+```
+
+详见: [演进路线图](../docs/ROADMAP.md)
+
+---
+
+## 17. v3.1+ 多模态支持
+
+### 17.1 视觉理解 (VisionProcessor)
+
+```python
+from vision import VisionProcessor, ImageType
+
+processor = VisionProcessor()
+processor.set_llm_client(llm_client)
+
+# 分析图像
+result = await processor.analyze_image(image_data, ImageType.ATTRACTION)
+print(result.description)
+print(result.tags)
+```
+
+### 17.2 地图可视化 (MapVisualizer)
+
+```python
+from visualization import MapVisualizer, RouteOptimizer, HeatmapGenerator
+
+visualizer = MapVisualizer()
+route = visualizer.create_route("route_1", "北京一日游", "北京")
+visualizer.add_marker(route, "故宫", 39.916, 116.397, "景点")
+
+# 使用 LLM 优化路线
+optimizer = RouteOptimizer(llm_client=llm_client)
+optimized_route = optimizer.optimize(route, method="llm")
+```
+
+### 17.3 语音处理 (Speech)
+
+```python
+from speech import SpeechRecognizer, SpeechSynthesizer, VoiceInteractionHandler
+
+recognizer = SpeechRecognizer()
+recognizer.set_llm_client(llm_client)
+
+# 语音识别
+text = await recognizer.recognize(audio_data, "zh-CN")
+
+# 语音合成
+audio = synthesizer.synthesize("您好，我是旅游助手")
+```
+
+详见: [多模态设计](../docs/MULTIMODAL.md)
+
+---
+
+## 17. v3.2+ 自主决策
+
+### 17.4 自动规划 (AutoPlanner)
+
+```python
+from planning import AutoPlanner
+
+planner = AutoPlanner(llm_client=llm_client)
+
+# 创建执行计划
+plan = await planner.create_plan("规划一次北京三日游", {"budget": 5000})
+
+# 获取下一个任务
+next_task = planner.get_next_task(plan)
+
+# 执行任务
+planner.execute_task(plan, next_task.task_id)
+```
+
+### 17.5 自我反思 (SelfReflector)
+
+```python
+from reflection import SelfReflector, ExperienceLearner
+
+reflector = SelfReflector(llm_client=llm_client)
+
+# 进行反思
+result = await reflector.reflect(conversation_history)
+print(result.summary)
+print(result.insights)
+
+# 经验学习
+learner = ExperienceLearner(llm_client=llm_client)
+learn_result = await learner.learn_from_interaction(interaction_data)
+```
+
+详见: [自主决策设计](../docs/AUTONOMOUS.md)
+
+---
+
+## 18. 学习资源
+
+### 18.1 新模块学习指南
 
 - [新模块学习指南](08_NEW_MODULES.md) - 快速入门
 - [演进路线图](../docs/ROADMAP.md) - 了解未来规划
+
+---
+
+## 19. 版本历史
+
+| 版本 | 特性 |
+|------|------|
+| v2.8.0 | 工具生态: ToolRegistry, ToolLearning, PluginSystem |
+| v2.9.0 | 对话增强: DialoguePolicy, ContextTracker, EntityLinker |
+| v3.0.0 | Agent 生态: AgentHub, SkillStore |
+| v3.1.0 | 多模态: VisionProcessor, MapVisualizer, Speech |
+| v3.2.0 | 自主决策: AutoPlanner, SelfReflector |
