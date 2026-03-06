@@ -69,6 +69,9 @@ session_*.json
 *.pb
 *.pb.gz
 
+# Runtime data
+data/
+
 # Frontend / Node.js
 frontend/node_modules/
 frontend/dist/
