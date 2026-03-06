@@ -11,8 +11,6 @@ LangGraph Agent 模块
 - build_travel_agent: 工厂函数
 - run_travel_agent: 便捷运行函数
 - run_travel_agent_streaming: 带流式回调的运行函数
-- 错误处理和性能优化模块
-- 记忆集成模块
 
 使用示例:
 ```python
@@ -43,12 +41,6 @@ result = await run_travel_agent_streaming(
     tools,
     on_token=on_token
 )
-
-# 方式4: 使用记忆管理器
-from graph import get_agent_memory_manager
-
-memory_mgr = get_agent_memory_manager(llm)
-state = AgentStateWithMemory.create("推荐城市", "session_123", memory_mgr)
 ```
 
 ================================================================================
@@ -63,37 +55,6 @@ from .builder import (
     run_travel_agent_streaming,
     run_travel_agent_streaming_with_memory,
     run_travel_agent_with_memory
-)
-from .error_handling import (
-    AgentError,
-    ToolExecutionError,
-    LLMAgentError,
-    RateLimitError,
-    TimeoutError,
-    ErrorRecoveryStrategy,
-    AgentErrorMiddleware,
-    retry_with_backoff,
-    get_error_recovery_strategy,
-    get_error_middleware
-)
-from .performance import (
-    LRUCache,
-    SemanticCache,
-    ConcurrencyLimiter,
-    RateLimiter,
-    PerformanceMonitor,
-    timed,
-    cached,
-    get_llm_cache,
-    get_semantic_cache,
-    get_performance_monitor
-)
-from .memory_integration import (
-    ConversationSummarizer,
-    AgentMemoryManager,
-    AgentStateWithMemory,
-    get_agent_memory_manager,
-    reset_agent_memory_manager
 )
 
 __all__ = [
@@ -113,32 +74,4 @@ __all__ = [
     "run_travel_agent_streaming",
     "run_travel_agent_streaming_with_memory",
     "run_travel_agent_with_memory",
-    # 错误处理
-    "AgentError",
-    "ToolExecutionError",
-    "LLMAgentError",
-    "RateLimitError",
-    "TimeoutError",
-    "ErrorRecoveryStrategy",
-    "AgentErrorMiddleware",
-    "retry_with_backoff",
-    "get_error_recovery_strategy",
-    "get_error_middleware",
-    # 性能优化
-    "LRUCache",
-    "SemanticCache",
-    "ConcurrencyLimiter",
-    "RateLimiter",
-    "PerformanceMonitor",
-    "timed",
-    "cached",
-    "get_llm_cache",
-    "get_semantic_cache",
-    "get_performance_monitor",
-    # 记忆集成
-    "ConversationSummarizer",
-    "AgentMemoryManager",
-    "AgentStateWithMemory",
-    "get_agent_memory_manager",
-    "reset_agent_memory_manager"
 ]
