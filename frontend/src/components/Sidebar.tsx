@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Button, Input, Space, Card, Modal, Select, Spin, App, Flex } from 'antd';
+import { Button, Input, Space, Card, Modal, Select, Spin, App, Flex, Badge, Tag } from 'antd';
 import {
   PlusOutlined,
   DeleteOutlined,
   CheckCircleOutlined,
   EditOutlined,
   RobotOutlined,
+  MessageOutlined,
+  ClearOutlined,
 } from '@ant-design/icons';
 import { useAppContext } from '../context/AppContext';
 import { apiService } from '../services/api';
@@ -38,9 +40,7 @@ const Sidebar: React.FC = () => {
     try {
       setLoading(true);
       const data = await apiService.createSession();
-      // 使用switchSession切换到新会话，保留原会话消息
       switchSession(data.session_id);
-      // 刷新会话列表
       await refreshSessions();
       message.success('新会话已创建');
     } catch (error) {
@@ -55,7 +55,6 @@ const Sidebar: React.FC = () => {
     try {
       await apiService.deleteSession(sessionId);
       if (sessionId === currentSessionId) {
-        // 如果删除的是当前会话，切换到空会话
         switchSession(null);
       }
       await refreshSessions();
@@ -67,7 +66,7 @@ const Sidebar: React.FC = () => {
 
   // 切换会话
   const handleSwitchSession = (sessionId: string) => {
-    switchSession(sessionId);  // 使用switchSession保留消息
+    switchSession(sessionId);
   };
 
   // 开始编辑会话名称
@@ -97,7 +96,6 @@ const Sidebar: React.FC = () => {
     }
   };
 
-  // 健康检查
   // 清空对话
   const handleClearChat = async () => {
     if (!currentSessionId) {
@@ -130,14 +128,62 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{
+      padding: '20px',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '16px'
+    }}>
+      {/* Logo/标题区域 */}
+      <div style={{
+        textAlign: 'center',
+        padding: '8px 0 16px',
+        borderBottom: '1px solid rgba(102, 126, 234, 0.1)'
+      }}>
+        <div style={{
+          fontSize: '16px',
+          fontWeight: 600,
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+        }}>
+          小帅旅游助手
+        </div>
+        <div style={{
+          fontSize: '12px',
+          color: '#999',
+          marginTop: '4px'
+        }}>
+          智能AI旅游推荐
+        </div>
+      </div>
+
       {/* 模型选择 */}
-      <Card title="🤖 AI模型" size="small" style={{ marginBottom: '16px' }}>
+      <Card
+        size="small"
+        style={{
+          marginBottom: 0,
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)',
+        }}
+        styles={{ body: { padding: '12px' } }}
+      >
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginBottom: '8px',
+          fontSize: '13px',
+          fontWeight: 500,
+          color: '#667eea'
+        }}>
+          <RobotOutlined />
+          <span>AI模型</span>
+        </div>
         {loadingModels ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
-            <RobotOutlined style={{ color: '#1890ff' }} />
             <Spin size="small" />
-            <span style={{ fontSize: '14px', color: '#999' }}>加载中...</span>
+            <span style={{ fontSize: '13px', color: '#999' }}>加载中...</span>
           </div>
         ) : (
           <Select
@@ -145,7 +191,7 @@ const Sidebar: React.FC = () => {
             onChange={handleModelChange}
             style={{ width: '100%' }}
             placeholder="选择模型"
-            suffixIcon={<RobotOutlined />}
+            suffixIcon={<RobotOutlined style={{ color: '#667eea' }} />}
             loading={switchingModel}
             disabled={availableModels.length === 0 || switchingModel}
           >
@@ -159,61 +205,139 @@ const Sidebar: React.FC = () => {
       </Card>
 
       {/* 会话管理 */}
-      <Card title="📝 会话管理" size="small" style={{ marginBottom: '16px' }}>
-        <Space style={{ width: '100%' }}>
+      <Card
+        size="small"
+        styles={{ body: { padding: '12px' } }}
+      >
+        <Space orientation="vertical" style={{ width: '100%' }} size="small">
           <Button
             icon={<PlusOutlined />}
             onClick={handleCreateSession}
             loading={loading}
-            style={{ flex: 1 }}
+            style={{
+              width: '100%',
+              height: '40px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: 'none',
+              borderRadius: '10px',
+              fontWeight: 500,
+            }}
+            type="primary"
           >
-            新建
+            新建会话
           </Button>
-          <Button onClick={handleClearChat} style={{ flex: 1 }}>
-            🗑️ 清空
+          <Button
+            onClick={handleClearChat}
+            icon={<ClearOutlined />}
+            style={{
+              width: '100%',
+              height: '36px',
+              borderRadius: '10px',
+              borderColor: 'rgba(255, 107, 107, 0.5)',
+              color: '#ff6b6b'
+            }}
+          >
+            清空对话
           </Button>
         </Space>
       </Card>
 
       {/* 历史会话 */}
       <Card
-        title="📊 历史会话"
         size="small"
-        style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
-        styles={{ body: { flex: 1, overflow: 'auto', padding: '8px' } }}
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          marginBottom: 0
+        }}
+        styles={{
+          body: {
+            flex: 1,
+            overflow: 'auto',
+            padding: '8px'
+          }
+        }}
       >
-        <Flex vertical gap={0}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontSize: '13px',
+          fontWeight: 500,
+          color: '#667eea',
+          marginBottom: '12px',
+          paddingBottom: '8px',
+          borderBottom: '1px solid rgba(102, 126, 234, 0.1)'
+        }}>
+          <MessageOutlined />
+          <span>历史会话</span>
+          <Tag style={{ marginLeft: 'auto', fontSize: '11px' }}>{sessions.length}</Tag>
+        </div>
+        <Flex vertical gap={4}>
           {sessions.map((session) => (
             <div
               key={session.session_id}
+              className={`session-item ${session.session_id === currentSessionId ? 'active' : ''}`}
               style={{
-                padding: '8px 0',
-                borderBottom: '1px solid #f0f0f0',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
+                gap: '8px',
               }}
             >
               <div
                 onClick={() => handleSwitchSession(session.session_id)}
-                style={{ cursor: 'pointer', flex: 1 }}
+                style={{ cursor: 'pointer', flex: 1, minWidth: 0 }}
               >
-                <div style={{ fontWeight: session.session_id === currentSessionId ? 'bold' : 'normal' }}>
-                  {session.session_id === currentSessionId && <CheckCircleOutlined style={{ marginRight: '4px', color: '#52c41a' }} />}
-                  {session.name || `会话 ${session.session_id.slice(0, 8)}`} ({session.message_count}条)
+                <div style={{
+                  fontWeight: session.session_id === currentSessionId ? '600' : 'normal',
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  color: session.session_id === currentSessionId ? '#667eea' : '#333'
+                }}>
+                  {session.session_id === currentSessionId && (
+                    <CheckCircleOutlined style={{ color: '#667eea', fontSize: '12px' }} />
+                  )}
+                  <span style={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {session.name || `会话 ${session.session_id.slice(0, 8)}`}
+                  </span>
                 </div>
-                <div style={{ fontSize: '12px', color: '#999' }}>
-                  {new Date(session.last_active).toLocaleString('zh-CN')}
+                <div style={{
+                  fontSize: '11px',
+                  color: '#999',
+                  marginTop: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <MessageOutlined style={{ fontSize: '10px' }} />
+                  <span>{session.message_count}条</span>
+                  <span>·</span>
+                  <span>{new Date(session.last_active).toLocaleDateString('zh-CN')}</span>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '4px' }}>
+              <div style={{ display: 'flex', gap: '2px', opacity: 0.6 }}>
                 <Button
                   size="small"
+                  type="text"
                   icon={<EditOutlined />}
                   onClick={() => handleStartEdit(session)}
+                  style={{ color: '#667eea' }}
                   title="重命名"
                 />
                 <Button
                   size="small"
+                  type="text"
                   danger
                   icon={<DeleteOutlined />}
                   onClick={() => handleDeleteSession(session.session_id)}
@@ -227,12 +351,28 @@ const Sidebar: React.FC = () => {
 
       {/* 编辑会话名称对话框 */}
       <Modal
-        title="重命名会话"
+        title={
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: '#667eea'
+          }}>
+            <EditOutlined />
+            重命名会话
+          </div>
+        }
         open={editingSessionId !== null}
         onOk={handleSaveEdit}
         onCancel={handleCancelEdit}
         okText="保存"
         cancelText="取消"
+        okButtonProps={{
+          style: {
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: 'none'
+          }
+        }}
       >
         <Input
           value={editingName}
@@ -243,8 +383,28 @@ const Sidebar: React.FC = () => {
         />
       </Modal>
 
-      <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '12px', color: '#999' }}>
-        Powered by tiammomo
+      <div style={{
+        marginTop: 'auto',
+        textAlign: 'center',
+        paddingTop: '12px',
+        borderTop: '1px solid rgba(102, 126, 234, 0.1)'
+      }}>
+        <div style={{
+          fontSize: '11px',
+          color: '#999',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '4px'
+        }}>
+          <span>Powered by</span>
+          <span style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            fontWeight: 600
+          }}>tiammomo</span>
+        </div>
       </div>
     </div>
   );

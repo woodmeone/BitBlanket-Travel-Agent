@@ -48,8 +48,8 @@
 |------|------|
 | 前端 | Next.js 16 + React 19 + TypeScript + Zustand + antd 6 |
 | 后端 Web | FastAPI + Python 3.10+ |
-| Agent | 自定义 ReAct 引擎 + gRPC |
-| 部署 | Docker Compose 全栈编排 |
+| Agent | LangChain 1.x + LangGraph + 自定义 ReAct 引擎 |
+| 部署 | Docker Compose (可选) |
 
 ---
 
@@ -115,7 +115,7 @@
 
 ```
 ShuaiTravelAgent/
-├── agent/                      # AI Agent 模块 (gRPC 服务, 端口 50051)
+├── agent/                      # AI Agent 模块 (LangChain + LangGraph)
 │   ├── src/
 │   │   ├── application/        # 5. 应用层 - 入口和工作流编排
 │   │   │   ├── travel_app.py  # 旅游应用入口
@@ -161,13 +161,12 @@ ShuaiTravelAgent/
 │   │   ├── config/             # 配置层
 │   │   │   ├── config_manager.py
 │   │   │   └── __init__.py
-│   │   └── server.py           # gRPC 服务器
-│   ├── proto/
-│   │   ├── agent.proto         # gRPC 服务定义
-│   │   ├── agent_pb2.py        # 生成的消息类型
-│   │   └── agent_pb2_grpc.py   # 生成的 gRPC 存根
+│   │   ├── llm/                # LangChain LLM 适配器
+│   │   ├── tools/              # LangChain @tool 工具
+│   │   ├── graph/              # LangGraph 核心
+│   │   └── memory/             # 记忆系统
 │
-├── web/                        # Web API 模块 (FastAPI, 端口 8000)
+├── web/                        # Web API 模块 (FastAPI, 端口 38000)
 │   └── src/
 │       ├── main.py             # FastAPI 应用入口
 │       ├── routes/             # API 路由
@@ -179,7 +178,7 @@ ShuaiTravelAgent/
 │       ├── services/           # 业务服务
 │       │   ├── chat_service.py
 │       │   └── session_service.py
-│       ├── grpc_client/        # gRPC 客户端
+│       ├── routes/chat_langchain.py  # LangGraph Agent 调用
 │       ├── dependencies/       # 依赖注入
 │       └── config/             # 配置管理
 │
@@ -264,18 +263,19 @@ vim config/llm_config.yaml
 
 | 服务 | 命令 | 端口 |
 |------|------|------|
-| Agent | `python run_agent.py` | 50051 |
-| Web API | `python run_api.py` | 48081 |
-| Frontend | `cd frontend && npm run dev` | 43001 |
+| Web API (含 Agent) | `python run_api.py` | 38000 |
+| Frontend | `cd frontend && npm run dev` | 33001 |
+
+> **注意**: v3.x 已移除独立的 Agent gRPC 服务，Agent 逻辑已集成到 Web API 中
 
 ### 访问应用
 
 | 服务 | 地址 | 说明 |
 |------|------|------|
-| 前端 | http://localhost:43001 | Next.js 16 主应用 |
-| Swagger API 文档 | http://localhost:48081/docs | Swagger UI (OpenAPI) |
-| RapiDoc API 文档 | http://localhost:48081/rapidoc | RapiDoc (美观 UI) |
-| ReDoc API 文档 | http://localhost:48081/redoc | ReDoc (文档风格) |
+| 前端 | http://localhost:33001 | Next.js 16 主应用 |
+| Swagger API 文档 | http://localhost:38000/docs | Swagger UI (OpenAPI) |
+| RapiDoc API 文档 | http://localhost:38000/rapidoc | RapiDoc (美观 UI) |
+| ReDoc API 文档 | http://localhost:38000/redoc | ReDoc (文档风格) |
 
 ---
 
@@ -296,7 +296,7 @@ vim config/llm_config.yaml
 | **依赖注入** | `agent/src/di/__init__.py` | 依赖注入容器，支持单例/瞬态服务 |
 | **HTTP 连接池** | `agent/src/infrastructure/http_pool.py` | HTTP 连接复用和请求缓存 |
 | **LLM 缓存** | `agent/src/infrastructure/llm_cache.py` | LLM 响应缓存（Redis） |
-| **gRPC 服务器** | `agent/src/server.py` | gRPC 服务端，提供 ProcessMessage/StreamMessage 接口 |
+| **LangGraph Agent** | `agent/src/graph/` | LangGraph 状态图，Agent 推理核心 |
 
 ### Web 模块 (web/)
 
@@ -306,7 +306,7 @@ vim config/llm_config.yaml
 | **聊天路由** | `web/src/routes/chat.py` | SSE 流式聊天接口 `/api/chat/stream` |
 | **会话路由** | `web/src/routes/session.py` | 会话管理接口（创建/删除/列表） |
 | **模型路由** | `web/src/routes/model.py` | 模型列表和配置接口 |
-| **gRPC 客户端** | `web/src/grpc_client/` | 连接 Agent gRPC 服务的客户端 |
+| **LangGraph 路由** | `web/src/routes/chat_langchain.py` | LangGraph Agent 调用 |
 | **业务服务** | `web/src/services/` | 聊天服务和会话服务的业务逻辑 |
 
 ### Frontend 模块 (frontend/)
@@ -346,23 +346,27 @@ docker-compose logs -f agent web frontend
 docker-compose down
 ```
 
-### Docker 服务架构
+### 服务架构 (v3.x)
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│                     docker-compose.yml                         │
+│                     ShuaiTravelAgent v3.x                    │
 │                                                                │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐           │
-│  │  Frontend   │→│   Web API   │→│   Agent     │           │
-│  │  :43001     │  │  :48081     │  │  :50051     │           │
-│  │  Next.js    │  │  FastAPI    │  │  gRPC       │           │
-│  └─────────────┘  └─────────────┘  └──────┬──────┘           │
-│                                            │                   │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐   ┌──────────┐    │
-│  │  Redis   │  │  Milvus  │  │  Nacos   │   │  MySQL   │    │
-│  │  :6379   │  │  :19530  │  │  :38848  │   │  :3306   │    │
-│  └──────────┘  └──────────┘  └──────────┘   └──────────┘    │
+│  ┌─────────────┐  ┌─────────────────────────────────────┐   │
+│  │  Frontend   │→│          Web API + Agent            │   │
+│  │  :33001     │  │            :38000                    │   │
+│  │  Next.js    │  │       FastAPI + LangGraph            │   │
+│  └─────────────┘  └─────────────────────────────────────┘   │
+│                              │                                │
+│                              ▼                                │
+│                 ┌─────────────────────────┐                  │
+│                 │     LangChain/LangGraph  │                  │
+│                 │   (Agent 核心逻辑)        │                  │
+│                 └─────────────────────────┘                  │
 └───────────────────────────────────────────────────────────────┘
+
+v3.x 变化: 移除独立 gRPC/Redis/Milvus/Nacos
+所有服务集成到 Web API，使用内存存储
 ```
 
 ### 多阶段 Dockerfile
@@ -389,24 +393,17 @@ docker-compose up -d redis milvus-etcd milvus-minio milvus nacos mysql
 - Docker Compose V2
 - 8GB+ 可用内存
 
-### 一键启动所有服务
+### 一键启动所有服务 (v3.x 推荐)
 
 ```bash
-# 1. 启动基础设施 (Redis, Milvus, Nacos, MinIO, MySQL)
-docker-compose up -d
-
-# 2. 验证服务状态
-docker-compose ps
-
-# 3. 启动 Agent gRPC 服务
-python run_agent.py
-
-# 4. 启动 Web API 服务 (新终端)
+# 1. 启动 Web API (含 Agent)
 python run_api.py
 
-# 5. 启动前端开发服务器
+# 2. 启动前端开发服务器 (新终端)
 cd frontend && npm run dev
 ```
+
+> **v3.x 变化**: 无需启动基础设施和独立 Agent 服务，所有功能已集成到 Web API
 
 ### 单独启动基础设施服务
 
@@ -460,21 +457,14 @@ curl -s http://localhost:9000/minio/health/live
 # 期望: ok
 ```
 
-### 服务端口汇总
+### 服务端口汇总 (v3.x)
 
-| 服务 | 端口 | Docker 端口 | 作用 |
-|------|------|------------|------|
-| Frontend | 43001 | - | Next.js 前端 |
-| Web API | 48081 | - | FastAPI 后端 |
-| Agent gRPC | 50051 | - | Agent gRPC 服务 |
-| Redis | 6379 | 6379 | 消息队列/缓存 |
-| Milvus | 19530 | 19530 | 向量数据库 |
-| Milvus HTTP | 9091 | 9091 | 健康检查 |
-| Nacos HTTP | 38848 | 38848 | 配置中心 |
-| Nacos gRPC | 39848 | 39848 | 服务通信 |
-| MinIO API | 9000 | 9000 | 对象存储 |
-| MinIO Console | 9001 | 9001 | 控制台 |
-| MySQL | 3306 | 3306 | Nacos 数据库 |
+| 服务 | 端口 | 作用 |
+|------|------|------|
+| Frontend | 33001 | Next.js 前端 |
+| Web API | 38000 | FastAPI + LangGraph Agent |
+
+> **v3.x 变化**: 移除 Agent gRPC(50051)、Redis、Milvus、Nacos、MySQL 等外部依赖，全部集成到 Web API 中
 
 ### 停止服务
 
@@ -683,57 +673,30 @@ export function useChatStream() {
 ```bash
 cd d:\projects\shuai\ShuaiTravelAgent
 
-# 一键编译到所有位置
-python -m grpc_tools.protoc -I./agent/proto --python_out=./agent/proto --grpc_python_out=./agent/proto agent/proto/*.proto
-python -m grpc_tools.protoc -I./agent/proto --python_out=./agent/src --grpc_python_out=./agent/src agent/proto/*.proto
-python -m grpc_tools.protoc -I./agent/proto --python_out=./web/src --grpc_python_out=./web/src agent/proto/*.proto
-```
-
-详细说明请参阅 [agent/proto/README.md](agent/proto/README.md)
-
 ---
 
-## gRPC 服务定义
+## LangGraph Agent (v3.x)
 
-### 服务接口
+v3.x 使用 LangChain + LangGraph 替代 gRPC 服务。
 
-```protobuf
-service AgentService {
-  // 处理用户消息
-  rpc ProcessMessage (MessageRequest) returns (MessageResponse);
+### Agent 架构
 
-  // 流式处理用户消息
-  rpc StreamMessage (MessageRequest) returns (stream StreamChunk);
+```python
+from agent.src.graph import build_travel_agent, create_initial_state
+from agent.src.llm import create_from_yaml_config
+from agent.src.tools import get_travel_tools
 
-  // 健康检查
-  rpc HealthCheck (HealthRequest) returns (HealthResponse);
-}
+# 初始化
+llm = create_from_yaml_config("config/llm_config.yaml").chat_model
+tools = get_travel_tools()
+agent = build_travel_agent(llm, tools)
+
+# 调用
+state = create_initial_state("推荐一个城市", session_id="test")
+result = await agent.ainvoke(state)
 ```
 
-### 消息类型
-
-```protobuf
-message MessageRequest {
-  string session_id = 1;
-  string user_input = 2;
-  string model_id = 3;
-  bool stream = 4;
-}
-
-message MessageResponse {
-  bool success = 1;
-  string answer = 2;
-  ReasoningInfo reasoning = 3;
-  string error = 4;
-  repeated HistoryStep history = 5;
-}
-
-message StreamChunk {
-  string chunk_type = 1;  // "thinking_start", "thinking_chunk", "thinking_end", "answer_start", "answer", "done", "error"
-  string content = 2;
-  bool is_last = 3;
-}
-```
+详细说明请参阅 [CLAUDE.md](CLAUDE.md)
 
 ---
 
@@ -828,13 +791,10 @@ agent:
 # Web 服务配置
 web:
   host: "0.0.0.0"
-  port: 48081
+  port: 38000
   debug: true
 
-# gRPC 服务配置
-grpc:
-  host: "0.0.0.0"
-  port: 50051
+# v3.x: Agent 已集成到 Web API，无需单独 gRPC 配置
 ```
 
 ---
@@ -862,8 +822,7 @@ pytest tests/ --html=report.html
 
 ### 测试要求
 
-- Web API 服务器运行在端口 48081
-- gRPC 服务器运行在端口 50051
+- Web API 服务器运行在端口 38000
 - Python 3.10+
 - pytest-asyncio
 - httpx

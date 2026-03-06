@@ -292,62 +292,6 @@ const ChatArea: React.FC = () => {
       padding: '24px',
       background: 'linear-gradient(180deg, #fafbfc 0%, #f3f4f6 100%)'
     }}>
-      {/* 现代化头部 */}
-      <div className="chat-header" style={{
-        marginBottom: '20px',
-        padding: '20px 24px',
-        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-        borderRadius: '16px',
-        boxShadow: '0 2px 12px rgba(0, 0, 0, 0.06)',
-        border: '1px solid rgba(0, 0, 0, 0.04)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '14px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)'
-          }}>
-            <span style={{ fontSize: '24px' }}>✈️</span>
-          </div>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 600, color: '#1f2937' }}>小帅旅游助手</h2>
-            <p style={{ margin: '4px 0 0 0', color: '#6b7280', fontSize: '13px' }}>为您提供个性化的旅游推荐和路线规划</p>
-          </div>
-        </div>
-        {/* 状态指示器 */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '6px 14px',
-          background: isStreaming ? 'rgba(17, 153, 142, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-          borderRadius: '20px'
-        }}>
-          <div style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            background: isStreaming ? '#11998e' : '#6b7280',
-            animation: isStreaming ? 'pulse 2s infinite' : 'none'
-          }} />
-          <span style={{
-            fontSize: '12px',
-            color: isStreaming ? '#11998e' : '#6b7280',
-            fontWeight: 500
-          }}>
-            {isStreaming ? '工作中' : '在线'}
-          </span>
-        </div>
-      </div>
-
       <div style={{ flex: 1, overflow: 'auto', marginBottom: '16px' }}>
         <MessageList
           messages={messages}

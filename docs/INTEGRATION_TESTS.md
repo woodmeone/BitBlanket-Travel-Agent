@@ -907,7 +907,7 @@ class APIUser(HttpUser):
 pip install locust
 
 # 运行测试
-locust -f tests/locustfile.py --host=http://localhost:48081
+locust -f tests/locustfile.py --host=http://localhost:38000
 
 # Web UI: http://localhost:8089
 ```

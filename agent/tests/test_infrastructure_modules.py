@@ -3,14 +3,18 @@
 ================================================================================
 基础设施模块测试脚本
 
-测试所有新增的基础设施模块：
-- LLMResponseCache (LLM 响应缓存)
-- RateLimiter (API 限流)
-- UserPreferenceStore (用户偏好向量存储)
-- RealtimePusher (实时消息推送)
-- InfrastructureMonitor (基础设施监控)
-- ConversationVectorStore (对话历史向量化存储)
-- ConfigVersionManager (配置版本管理)
+⚠️ v3.x 说明: 部分测试需要外部服务 (Redis/Milvus/Nacos)，这些服务已在 v3.x 中移除。
+
+测试模块分类:
+- LLMResponseCache (LLM 响应缓存) - ✅ 可用 (内存)
+- RateLimiter (API 限流) - ✅ 可用
+- UserPreferenceStore (用户偏好存储) - ✅ 可用 (内存)
+- RealtimePusher (实时消息推送) - ✅ 可用
+- InfrastructureMonitor (基础设施监控) - ✅ 可用
+- ConversationVectorStore (对话历史向量化) - ⚠️ 需要 Milvus (已移除)
+- ConfigVersionManager (配置版本管理) - ⚠️ 需要 Nacos (已移除)
+
+需要外部服务的测试会自动跳过。
 
 运行方式:
     PYTHONPATH=agent/src python3 agent/tests/test_infrastructure_modules.py
