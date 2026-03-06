@@ -5,6 +5,12 @@ LangGraph Agent 状态定义
 
 定义旅游 Agent 的状态结构和类型。
 
+__all__ = [
+    "AgentState",
+    "create_initial_state",
+    "TRAVEL_AGENT_SYSTEM_PROMPT",
+]
+
 State 结构:
 - messages: 聊天消息历史
 - intent: 用户意图识别结果

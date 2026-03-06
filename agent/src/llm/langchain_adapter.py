@@ -5,6 +5,12 @@ LangChain LLM 适配器
 
 将现有的 LLM 配置适配到 LangChain 框架。
 
+__all__ = [
+    "LangChainLLMAdapter",
+    "create_langchain_llm",
+    "create_from_yaml_config",
+]
+
 支持的 Provider:
 - openai: OpenAI API
 - openai-compatible: 兼容 OpenAI 的 API（如硅基流动、zhiercourse 等）

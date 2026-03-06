@@ -3,6 +3,20 @@
 LangChain 旅游工具集
 ================================================================================
 
+__all__ = [
+    "search_cities",
+    "query_attractions",
+    "query_hotels",
+    "calculate_budget",
+    "plan_itinerary",
+    "get_travel_tips",
+    "get_weather",
+    "get_travel_tools",
+    "get_tool_by_name",
+]
+
+================================================================================
+
 使用 LangChain @tool 装饰器定义的旅游相关工具。
 
 支持两种模式:

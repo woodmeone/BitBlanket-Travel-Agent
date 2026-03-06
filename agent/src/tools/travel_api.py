@@ -6,6 +6,11 @@
 提供真实旅游数据的工具适配器。
 目前使用模拟数据，可接入真实 API。
 
+__all__ = [
+    "TravelAPIClient",
+    "get_travel_api_client",
+]
+
 真实 API 来源:
 - 携程 API (ctrip.com)
 - 马蜂窝 API (mafengwo.com)
