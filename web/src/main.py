@@ -51,6 +51,7 @@ API文档端点:
 
 import os
 import sys
+import logging
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -60,6 +61,9 @@ from src.routes import session_router, model_router, city_router, health_router,
 # 使用 LangChain 版聊天路由
 from src.routes.chat_langchain import router as chat_router
 from src.routes.model import set_config_manager
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
