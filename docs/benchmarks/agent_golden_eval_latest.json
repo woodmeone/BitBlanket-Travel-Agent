@@ -1,0 +1,609 @@
+{
+  "dataset": "tests\\golden\\agent_react_golden.json",
+  "total": 50,
+  "passed": 50,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "results": [
+    {
+      "case_id": "R01",
+      "intent": "recommend",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "R02",
+      "intent": "recommend",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "R03",
+      "intent": "recommend",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "R04",
+      "intent": "recommend",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "R05",
+      "intent": "recommend",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "R06",
+      "intent": "recommend",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "R07",
+      "intent": "recommend",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "R08",
+      "intent": "recommend",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "R09",
+      "intent": "recommend",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "R10",
+      "intent": "recommend",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "A01",
+      "intent": "attractions",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "A02",
+      "intent": "attractions",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "A03",
+      "intent": "attractions",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "A04",
+      "intent": "attractions",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "A05",
+      "intent": "attractions",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "A06",
+      "intent": "attractions",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "A07",
+      "intent": "attractions",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "A08",
+      "intent": "attractions",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "A09",
+      "intent": "attractions",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "A10",
+      "intent": "attractions",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "I01",
+      "intent": "itinerary",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 3,
+        "success_steps": 3,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "I02",
+      "intent": "itinerary",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 3,
+        "success_steps": 3,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "I03",
+      "intent": "itinerary",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 3,
+        "success_steps": 3,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "I04",
+      "intent": "itinerary",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 3,
+        "success_steps": 3,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "I05",
+      "intent": "itinerary",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 3,
+        "success_steps": 3,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "I06",
+      "intent": "itinerary",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 3,
+        "success_steps": 3,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "I07",
+      "intent": "itinerary",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 3,
+        "success_steps": 3,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "I08",
+      "intent": "itinerary",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 3,
+        "success_steps": 3,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "I09",
+      "intent": "itinerary",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 3,
+        "success_steps": 3,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "I10",
+      "intent": "itinerary",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 3,
+        "success_steps": 3,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "B01",
+      "intent": "budget",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "B02",
+      "intent": "budget",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "B03",
+      "intent": "budget",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "B04",
+      "intent": "budget",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "B05",
+      "intent": "budget",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "B06",
+      "intent": "budget",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "B07",
+      "intent": "budget",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "B08",
+      "intent": "budget",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "B09",
+      "intent": "budget",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "B10",
+      "intent": "budget",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "T01",
+      "intent": "tips",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "T02",
+      "intent": "tips",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "T03",
+      "intent": "tips",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "T04",
+      "intent": "tips",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "T05",
+      "intent": "tips",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "T06",
+      "intent": "tips",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "T07",
+      "intent": "tips",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "T08",
+      "intent": "tips",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "T09",
+      "intent": "tips",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    },
+    {
+      "case_id": "T10",
+      "intent": "tips",
+      "success": true,
+      "reasons": [],
+      "execution_summary": {
+        "total_steps": 1,
+        "success_steps": 1,
+        "failed_steps": 0,
+        "blocked_steps": 0
+      }
+    }
+  ]
+}

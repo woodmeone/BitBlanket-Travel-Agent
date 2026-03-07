@@ -178,6 +178,45 @@ class AgentMemoryManager:
 
         return context
 
+    def build_context_messages_for_query(
+        self,
+        session_id: str,
+        user_message: str,
+        max_messages: int = 8,
+    ) -> List[BaseMessage]:
+        summary = self.get_summary_sync(session_id)
+        profile = self.get_profile_sync(session_id)
+        candidates = self.get_recent_messages_sync(session_id, max(self.max_history * 2, max_messages))
+        query_tokens = self._tokenize(user_message)
+
+        ranked: List[tuple[int, int, MemoryMessage]] = []
+        for idx, msg in enumerate(candidates):
+            msg_tokens = self._tokenize(msg.content)
+            overlap = len(query_tokens & msg_tokens) if query_tokens else 0
+            recency_boost = idx  # preserve latest messages under tie
+            ranked.append((overlap, recency_boost, msg))
+
+        ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        selected = [item[2] for item in ranked[: max(2, max_messages)]]
+        selected.sort(key=lambda item: item.timestamp)
+
+        context: List[BaseMessage] = []
+        if summary:
+            context.append(SystemMessage(content=f"会话摘要:\n{summary}"))
+        if profile:
+            context.append(
+                SystemMessage(
+                    content="用户长期偏好:\n" + json.dumps(profile, ensure_ascii=False, indent=2),
+                )
+            )
+
+        for msg in selected:
+            if msg.role == "assistant":
+                context.append(AIMessage(content=msg.content))
+            else:
+                context.append(HumanMessage(content=msg.content))
+        return context
+
     async def clear_session_messages(self, session_id: str) -> bool:
         async with self._lock:
             with self._sync_lock:
@@ -502,6 +541,11 @@ class AgentMemoryManager:
         migrated["updated_at"] = profile.get("updated_at", datetime.now().isoformat())
         return migrated
 
+    @staticmethod
+    def _tokenize(text: str) -> set[str]:
+        tokens = re.findall(r"[\u4e00-\u9fff]{2,}|[a-zA-Z0-9]+", text or "")
+        return {token.lower() for token in tokens if token}
+
 
 class AgentStateWithMemory:
     """Factory helper to build initial agent state with conversation memory."""
@@ -516,7 +560,7 @@ class AgentStateWithMemory:
         messages: List[BaseMessage] = [SystemMessage(content=system_prompt)]
 
         if memory_manager is not None:
-            messages.extend(memory_manager.build_context_messages(session_id))
+            messages.extend(memory_manager.build_context_messages_for_query(session_id, user_message, max_messages=8))
 
         messages.append(HumanMessage(content=user_message))
 
@@ -529,8 +573,13 @@ class AgentStateWithMemory:
             "plan_explanation": None,
             "plan": None,
             "current_step": 0,
+            "parallelism": None,
+            "max_parallelism": None,
             "execution_state": None,
             "execution_stats": None,
+            "execution_summary": None,
+            "execution_trace": [],
+            "early_stop_reason": None,
             "tools_used": [],
             "tool_results": {},
             "answer": None,

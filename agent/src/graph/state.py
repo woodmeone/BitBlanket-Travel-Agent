@@ -19,9 +19,13 @@ class AgentState(TypedDict):
     plan_explanation: Optional[str]
     plan: Optional[List[Dict[str, Any]]]
     current_step: int
+    parallelism: Optional[int]
+    max_parallelism: Optional[int]
     execution_state: Optional[Dict[str, Any]]
     execution_stats: Optional[Dict[str, Any]]
     execution_summary: Optional[Dict[str, Any]]
+    execution_trace: Optional[List[Dict[str, Any]]]
+    early_stop_reason: Optional[str]
     tools_used: List[str]
     tool_results: Dict[str, Any]
     answer: Optional[str]
@@ -52,9 +56,13 @@ def create_initial_state(
         plan_explanation=None,
         plan=None,
         current_step=0,
+        parallelism=None,
+        max_parallelism=None,
         execution_state=None,
         execution_stats=None,
         execution_summary=None,
+        execution_trace=[],
+        early_stop_reason=None,
         tools_used=[],
         tool_results={},
         answer=None,

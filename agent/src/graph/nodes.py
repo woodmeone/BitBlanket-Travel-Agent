@@ -1,9 +1,12 @@
 ﻿from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import re
 import time
 import uuid
+from collections import Counter
 from datetime import datetime
 from typing import Any, Callable, Literal, Optional
 
@@ -14,6 +17,7 @@ from langchain_core.runnables import Runnable
 from langchain_core.tools import Tool
 from langgraph.prebuilt import ToolNode
 
+from .prompt_templates import build_answer_prompt, build_direct_prompt, build_system_prompt
 from .runtime_config import get_runtime_config
 from .state import AgentState, TRAVEL_AGENT_SYSTEM_PROMPT
 
@@ -32,6 +36,32 @@ PROMPT_INJECTION_PATTERNS = (
     "忽略之前指令",
 )
 MAX_PARAM_VALUE_LENGTH = 1000
+MAX_SAME_TOOL_INVOCATIONS = 2
+DEFAULT_DAY_COUNT = 3
+DEFAULT_PEOPLE_COUNT = 1
+CITY_HINTS = [
+    "北京",
+    "上海",
+    "广州",
+    "深圳",
+    "杭州",
+    "南京",
+    "苏州",
+    "成都",
+    "重庆",
+    "西安",
+    "武汉",
+    "长沙",
+    "厦门",
+    "青岛",
+    "大连",
+    "三亚",
+    "昆明",
+    "丽江",
+    "大理",
+    "拉萨",
+    "哈尔滨",
+]
 
 
 def _resolve_parallelism_default() -> int:
@@ -88,6 +118,7 @@ class AgentNodes:
         self.tool_map = {tool.name: tool for tool in tools}
         self._planner_hooks = planner_hooks or {}
         self.runtime_config = get_runtime_config()
+        self._max_same_tool_invocations = MAX_SAME_TOOL_INVOCATIONS
 
         self.llm_with_tools = llm.bind_tools(tools)
         self.llm_with_intent = self._build_intent_structured_llm()
@@ -228,6 +259,8 @@ class AgentNodes:
             "execution_state": {"completed": [], "failed": [], "blocked": []},
             "execution_stats": {"plan_id": plan_id, "started_at": datetime.now().isoformat(), "steps": []},
             "execution_summary": {},
+            "execution_trace": [],
+            "early_stop_reason": None,
             "tools_used": [],
             "tool_results": {},
         }
@@ -244,6 +277,9 @@ class AgentNodes:
         tools_used = state.get("tools_used", [])
         execution_stats = state.get("execution_stats", {}) or {"steps": []}
         stats_steps = list(execution_stats.get("steps", []))
+        execution_trace = list(state.get("execution_trace", []) or [])
+        trace_counter = Counter(item.get("signature") for item in execution_trace if item.get("signature"))
+        early_stop_reason = state.get("early_stop_reason")
 
         if not plan:
             logger.info("[Execute Node] No plan to execute")
@@ -296,13 +332,57 @@ class AgentNodes:
             }
 
         default_parallelism = self.runtime_config.default_max_parallelism
+        requested_parallelism = self._safe_int(state.get("parallelism"), default_parallelism)
+        max_parallelism = self._safe_int(state.get("max_parallelism"), default_parallelism)
         parallelism = min(
-            int(state.get("parallelism", default_parallelism)),
-            int(state.get("max_parallelism", default_parallelism)),
+            requested_parallelism,
+            max_parallelism,
             len(runnable),
         )
-        selected = runnable[: max(1, parallelism)]
-        tasks = [self._execute_plan_step(step) for step in selected]
+        selected: list[dict[str, Any]] = []
+        for step in runnable:
+            signature = self._step_signature(step.get("tool", ""), step.get("params", {}))
+            if trace_counter.get(signature, 0) >= self._max_same_tool_invocations:
+                sid = step["step_id"]
+                blocked.add(sid)
+                key = f"{sid}:{step.get('tool')}"
+                tool_results[key] = ExecutionResult(
+                    success=False,
+                    tool_name=step.get("tool", ""),
+                    result="",
+                    error_code="LOOP_DETECTED",
+                    error=f"Repeated tool invocation detected: {signature}",
+                    started_at=datetime.now().isoformat(),
+                    ended_at=datetime.now().isoformat(),
+                ).model_dump()
+                stats_steps.append(
+                    {
+                        "step_id": sid,
+                        "tool": step.get("tool"),
+                        "status": "blocked",
+                        "error_code": "LOOP_DETECTED",
+                        "duration_ms": 0,
+                        "signature": signature,
+                    }
+                )
+                continue
+            selected.append(step)
+            if len(selected) >= max(1, parallelism):
+                break
+
+        if not selected:
+            return {
+                "current_step": len(completed) + len(failed) + len(blocked),
+                "execution_state": {"completed": sorted(completed), "failed": sorted(failed), "blocked": sorted(blocked)},
+                "execution_stats": {**execution_stats, "steps": stats_steps},
+                "execution_summary": self._build_execution_summary(stats_steps),
+                "execution_trace": execution_trace,
+                "early_stop_reason": early_stop_reason,
+                "tool_results": tool_results,
+                "tools_used": tools_used,
+            }
+
+        tasks = [self._execute_plan_step(step, state) for step in selected]
         batch_results = await asyncio.gather(*tasks)
 
         for step, result_obj, elapsed_ms in batch_results:
@@ -310,12 +390,23 @@ class AgentNodes:
             result_key = f"{step_id}:{result_obj.tool_name}"
             tool_results[result_key] = result_obj.model_dump()
             tools_used.append(result_obj.tool_name)
+            signature = self._step_signature(result_obj.tool_name, step.get("params", {}))
             if result_obj.success:
                 completed.add(step_id)
                 self._mark_tool_success(result_obj.tool_name)
             else:
                 failed.add(step_id)
                 self._mark_tool_failure(result_obj.tool_name)
+            execution_trace.append(
+                {
+                    "step_id": step_id,
+                    "tool": result_obj.tool_name,
+                    "signature": signature,
+                    "status": "success" if result_obj.success else "failed",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
+            trace_counter[signature] += 1
 
             stats_steps.append(
                 {
@@ -330,19 +421,35 @@ class AgentNodes:
                     "started_at": result_obj.started_at,
                     "ended_at": result_obj.ended_at,
                     "duration_ms": elapsed_ms,
+                    "signature": signature,
                 }
+            )
+
+        execution_summary = self._build_execution_summary(stats_steps)
+        updated_execution_state = {"completed": sorted(completed), "failed": sorted(failed), "blocked": sorted(blocked)}
+        if not early_stop_reason:
+            early_stop_reason = self._compute_early_stop_reason(
+                state=state,
+                plan=plan,
+                execution_state=updated_execution_state,
+                execution_summary=execution_summary,
+                tool_results=tool_results,
             )
 
         return {
             "current_step": len(completed) + len(failed) + len(blocked),
-            "execution_state": {"completed": sorted(completed), "failed": sorted(failed), "blocked": sorted(blocked)},
+            "execution_state": updated_execution_state,
             "execution_stats": {**execution_stats, "steps": stats_steps},
-            "execution_summary": self._build_execution_summary(stats_steps),
+            "execution_summary": execution_summary,
+            "execution_trace": execution_trace,
+            "early_stop_reason": early_stop_reason,
             "tools_used": tools_used,
             "tool_results": tool_results,
         }
 
     def should_continue(self, state: AgentState) -> Literal["execute", "answer"]:
+        if state.get("early_stop_reason"):
+            return "answer"
         plan = state.get("plan", []) or []
         execution_state = state.get("execution_state", {}) or {}
         completed = len(execution_state.get("completed", []))
@@ -356,11 +463,13 @@ class AgentNodes:
 
         messages = state["messages"]
         last_message = messages[-1] if messages else HumanMessage(content="")
+        intent = state.get("intent")
         tool_results = state.get("tool_results", {})
         tools_used = state.get("tools_used", [])
         plan_id = state.get("plan_id")
         execution_stats = state.get("execution_stats", {}) or {}
         execution_summary = state.get("execution_summary", {}) or {}
+        early_stop_reason = state.get("early_stop_reason")
 
         context = ""
         if plan_id:
@@ -384,6 +493,8 @@ class AgentNodes:
                 f"- 成功率: {execution_summary.get('success_rate', 0.0):.2f}\n"
                 f"- 延迟P95: {(execution_summary.get('latency_percentiles_ms') or {}).get('p95', 0)}ms\n"
             )
+        if early_stop_reason:
+            context += f"\n## 早停说明:\n- {early_stop_reason}\n"
         if tool_results:
             context += "\n\n## 工具执行结果:\n"
             for tool_name, result in tool_results.items():
@@ -423,20 +534,15 @@ class AgentNodes:
                     rendered = result
                 context += f"\n### {tool_name}:\n{rendered}\n"
 
-        if tools_used:
-            prompt = f"""用户问题: {last_message.content}
-
-{context}
-
-请根据以上工具执行结果，用友好的方式回答用户的问题。
-请优先引用工具结果中的 source 和 fetched_at，涉及时效信息时明确说明时间。"""
-        else:
-            prompt = f"""用户问题: {last_message.content}
-
-请直接回答用户的旅游相关问题。"""
+        prompt = build_answer_prompt(
+            user_question=str(last_message.content),
+            context=context,
+            tools_used=tools_used,
+            intent=intent,
+        )
 
         response = self.llm.invoke([
-            SystemMessage(content=self.system_prompt),
+            SystemMessage(content=build_system_prompt(self.system_prompt, intent)),
             HumanMessage(content=prompt),
         ])
 
@@ -456,10 +562,12 @@ class AgentNodes:
 
         messages = state["messages"]
         last_message = messages[-1] if messages else HumanMessage(content="")
+        intent = state.get("intent")
+        prompt = build_direct_prompt(str(last_message.content), intent)
 
         response = self.llm.invoke([
-            SystemMessage(content=self.system_prompt),
-            last_message,
+            SystemMessage(content=build_system_prompt(self.system_prompt, intent)),
+            HumanMessage(content=prompt),
         ])
 
         answer = response.content
@@ -626,13 +734,15 @@ class AgentNodes:
             ended_at=datetime.now().isoformat(),
         )
 
-    async def _execute_plan_step(self, step: dict[str, Any]) -> tuple[dict[str, Any], ExecutionResult, int]:
+    async def _execute_plan_step(self, step: dict[str, Any], state: AgentState) -> tuple[dict[str, Any], ExecutionResult, int]:
         step_id = step.get("step_id", f"step-{step.get('step', 0)}")
         tool_name = str(step.get("tool", ""))
-        params = step.get("params", {}) or {}
+        params = dict(step.get("params", {}) or {})
         timeout_seconds = self._resolve_timeout_seconds(step, tool_name)
         max_retries = int(step.get("max_retries", self.runtime_config.default_tool_max_retries))
         started = time.perf_counter()
+        corrected_params = self._auto_correct_tool_params(tool_name, params, state)
+        step_with_params = {**step, "params": corrected_params}
 
         logger.info("[Execute Node] Step %s running tool=%s timeout=%ss", step_id, tool_name, timeout_seconds)
         tool = self.tool_map.get(tool_name)
@@ -647,9 +757,9 @@ class AgentNodes:
                 ended_at=datetime.now().isoformat(),
             )
             self._attach_execution_metadata(result, tool_name)
-            return step, result, int((time.perf_counter() - started) * 1000)
+            return step_with_params, result, int((time.perf_counter() - started) * 1000)
 
-        validation_error = self._validate_tool_params(tool, params)
+        validation_error = self._validate_tool_params(tool, corrected_params)
         if validation_error is not None:
             result = ExecutionResult(
                 success=False,
@@ -661,9 +771,9 @@ class AgentNodes:
                 ended_at=datetime.now().isoformat(),
             )
             self._attach_execution_metadata(result, tool_name)
-            return step, result, int((time.perf_counter() - started) * 1000)
+            return step_with_params, result, int((time.perf_counter() - started) * 1000)
 
-        unsafe_reason = self._detect_unsafe_params(params)
+        unsafe_reason = self._detect_unsafe_params(corrected_params)
         if unsafe_reason is not None:
             result = ExecutionResult(
                 success=False,
@@ -675,20 +785,20 @@ class AgentNodes:
                 ended_at=datetime.now().isoformat(),
             )
             self._attach_execution_metadata(result, tool_name)
-            return step, result, int((time.perf_counter() - started) * 1000)
+            return step_with_params, result, int((time.perf_counter() - started) * 1000)
 
         logger.info(
             "[Execute Node] Step %s invoking %s with params=%s",
             step_id,
             tool_name,
-            self._sanitize_params_for_log(params),
+            self._sanitize_params_for_log(corrected_params),
         )
 
         try:
             result = await self._run_tool_with_retry(
                 tool=tool,
                 tool_name=tool_name,
-                params=params,
+                params=corrected_params,
                 timeout_seconds=timeout_seconds,
                 max_retries=max_retries,
             )
@@ -704,7 +814,184 @@ class AgentNodes:
             )
 
         self._attach_execution_metadata(result, tool_name)
-        return step, result, int((time.perf_counter() - started) * 1000)
+        return step_with_params, result, int((time.perf_counter() - started) * 1000)
+
+    @staticmethod
+    def _step_signature(tool_name: str, params: dict[str, Any]) -> str:
+        try:
+            rendered = json.dumps(params, ensure_ascii=False, sort_keys=True)
+        except Exception:
+            rendered = str(params)
+        return f"{tool_name}:{rendered}"
+
+    def _compute_early_stop_reason(
+        self,
+        state: AgentState,
+        plan: list[dict[str, Any]],
+        execution_state: dict[str, Any],
+        execution_summary: dict[str, Any],
+        tool_results: dict[str, Any],
+    ) -> Optional[str]:
+        finished = (
+            len(execution_state.get("completed", []))
+            + len(execution_state.get("failed", []))
+            + len(execution_state.get("blocked", []))
+        )
+        if finished >= len(plan):
+            return None
+
+        intent = str(state.get("intent", "general"))
+        terminal_tool = self._terminal_tool_for_intent(intent)
+        if not terminal_tool:
+            return None
+
+        for item in tool_results.values():
+            if not isinstance(item, dict):
+                continue
+            if item.get("success") and item.get("tool_name") == terminal_tool:
+                rate = float(execution_summary.get("success_rate", 0.0))
+                return f"核心步骤已完成（{terminal_tool}），提前结束剩余低价值步骤，当前成功率={rate:.2f}"
+
+        return None
+
+    @staticmethod
+    def _terminal_tool_for_intent(intent: str) -> Optional[str]:
+        mapping = {
+            "recommend": "search_cities",
+            "attractions": "query_attractions",
+            "itinerary": "plan_itinerary",
+            "budget": "calculate_budget",
+            "tips": "get_travel_tips",
+        }
+        return mapping.get(intent)
+
+    def _auto_correct_tool_params(self, tool_name: str, params: dict[str, Any], state: AgentState) -> dict[str, Any]:
+        corrected = dict(params or {})
+        entities = (state.get("intent_detail") or {}).get("entities", {}) or {}
+        user_text = self._last_user_text(state)
+        inferred_city = self._infer_city(corrected, entities, user_text)
+
+        if tool_name == "search_cities":
+            corrected["query"] = self._coalesce_text(
+                corrected.get("query"),
+                entities.get("query"),
+                entities.get("city"),
+                inferred_city,
+                user_text,
+                default="热门目的地",
+            )
+        elif tool_name in {"query_attractions", "query_hotels", "get_weather"}:
+            corrected["city"] = self._coalesce_text(
+                corrected.get("city"),
+                entities.get("city"),
+                entities.get("destination"),
+                inferred_city,
+                default="北京",
+            )
+            if tool_name == "get_weather":
+                corrected["days"] = self._normalize_int(
+                    corrected.get("days", entities.get("days", DEFAULT_DAY_COUNT)),
+                    minimum=1,
+                    maximum=15,
+                    default=DEFAULT_DAY_COUNT,
+                )
+        elif tool_name in {"plan_itinerary", "get_travel_tips", "calculate_budget"}:
+            corrected["destination"] = self._coalesce_text(
+                corrected.get("destination"),
+                entities.get("destination"),
+                entities.get("city"),
+                inferred_city,
+                default="北京",
+            )
+            if tool_name == "plan_itinerary":
+                corrected["days"] = self._normalize_int(
+                    corrected.get("days", entities.get("days", DEFAULT_DAY_COUNT)),
+                    minimum=1,
+                    maximum=15,
+                    default=DEFAULT_DAY_COUNT,
+                )
+                interests = corrected.get("interests") or entities.get("interests")
+                if isinstance(interests, list):
+                    corrected["interests"] = ",".join(str(x) for x in interests if str(x).strip())
+            if tool_name == "get_travel_tips":
+                season = corrected.get("season") or entities.get("season")
+                if season:
+                    corrected["season"] = str(season).strip()
+            if tool_name == "calculate_budget":
+                corrected["days"] = self._normalize_int(
+                    corrected.get("days", entities.get("days", DEFAULT_DAY_COUNT)),
+                    minimum=1,
+                    maximum=30,
+                    default=DEFAULT_DAY_COUNT,
+                )
+                corrected["people"] = self._normalize_int(
+                    corrected.get("people", entities.get("people", DEFAULT_PEOPLE_COUNT)),
+                    minimum=1,
+                    maximum=10,
+                    default=DEFAULT_PEOPLE_COUNT,
+                )
+                corrected["accommodation_level"] = self._normalize_accommodation_level(
+                    corrected.get("accommodation_level", entities.get("level", "medium"))
+                )
+
+        sanitized = {k: v for k, v in corrected.items() if v is not None}
+        return sanitized
+
+    @staticmethod
+    def _normalize_int(value: Any, minimum: int, maximum: int, default: int) -> int:
+        try:
+            parsed = int(value)
+            return min(maximum, max(minimum, parsed))
+        except Exception:
+            return default
+
+    @staticmethod
+    def _safe_int(value: Any, default: int) -> int:
+        try:
+            if value is None:
+                return default
+            return int(value)
+        except Exception:
+            return default
+
+    @staticmethod
+    def _normalize_accommodation_level(value: Any) -> str:
+        text = str(value or "").strip().lower()
+        if text in {"economy", "budget", "low"}:
+            return "economy"
+        if text in {"luxury", "high", "premium"}:
+            return "luxury"
+        return "medium"
+
+    @staticmethod
+    def _coalesce_text(*values: Any, default: str = "") -> str:
+        for value in values:
+            text = str(value or "").strip()
+            if text:
+                return text
+        return default
+
+    @staticmethod
+    def _last_user_text(state: AgentState) -> str:
+        messages = list(state.get("messages", []) or [])
+        for msg in reversed(messages):
+            if isinstance(msg, HumanMessage):
+                return str(msg.content or "").strip()
+        return ""
+
+    @staticmethod
+    def _infer_city(params: dict[str, Any], entities: dict[str, Any], user_text: str) -> str:
+        for key in ("city", "destination", "query"):
+            text = str(params.get(key) or entities.get(key) or "").strip()
+            if text in CITY_HINTS:
+                return text
+        for city in CITY_HINTS:
+            if city and city in user_text:
+                return city
+        match = re.search(r"([一-龥]{2,6})(?:市|旅游|旅行|景点|天气)", user_text)
+        if match:
+            return match.group(1)
+        return ""
 
     def _resolve_timeout_seconds(self, step: dict[str, Any], tool_name: str) -> int:
         override = step.get("timeout_seconds")

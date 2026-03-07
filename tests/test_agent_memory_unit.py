@@ -1,6 +1,8 @@
 import pytest
 from datetime import datetime, timedelta
 
+from langchain_core.messages import HumanMessage
+
 from agent.src.graph.memory_integration import AgentMemoryManager
 
 
@@ -99,3 +101,23 @@ async def test_memory_clear_and_delete_session():
     deleted = await manager.delete_session("s1")
     assert deleted is True
     assert await manager.get_recent_messages("s1") == []
+
+
+@pytest.mark.asyncio
+async def test_memory_context_clipping_prefers_relevant_messages():
+    manager = AgentMemoryManager(
+        max_history=4,
+        summary_threshold=10,
+        persist_path=None,
+        session_ttl_seconds=3600,
+        max_sessions=10,
+    )
+
+    await manager.add_message("s1", "user", "我在上海出差，住在陆家嘴")
+    await manager.add_message("s1", "assistant", "好的，记录上海行程")
+    await manager.add_message("s1", "user", "我也在关注北京景点")
+    await manager.add_message("s1", "assistant", "北京故宫和颐和园值得去")
+
+    context = manager.build_context_messages_for_query("s1", "北京三日游怎么玩", max_messages=2)
+    user_context = [m for m in context if isinstance(m, HumanMessage)]
+    assert any("北京" in m.content for m in user_context)

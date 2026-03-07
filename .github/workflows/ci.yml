@@ -24,6 +24,9 @@ jobs:
       - name: Run tests
         run: pytest tests -q
 
+      - name: Run golden quality gate
+        run: python scripts/agent_golden_eval.py --dataset tests/golden/agent_react_golden.json --min-pass-rate 0.96
+
   frontend-test:
     runs-on: ubuntu-latest
     defaults:

@@ -41,10 +41,10 @@ async def test_step_param_validation_blocks_invalid_invocation():
     calls = {"count": 0}
 
     @tool
-    async def query_attractions(city: str) -> str:
+    async def query_attractions(city: str, keyword: str) -> str:
         """Query attractions."""
         calls["count"] += 1
-        return f"attractions:{city}"
+        return f"attractions:{city}:{keyword}"
 
     def broken_plan(_entities: dict) -> list[dict]:
         return [
@@ -239,3 +239,137 @@ async def test_tool_result_meta_overrides_default_source_profile():
     assert tool_result["fallback_used"] is True
     assert tool_result["fallback_suggestion"] is not None
     assert result["execution_summary"]["fallback_steps"] == 1
+
+
+@pytest.mark.asyncio
+async def test_param_auto_correction_fills_missing_city():
+    calls = {"city": None, "count": 0}
+
+    @tool
+    async def query_attractions(city: str) -> str:
+        """Query attractions."""
+        calls["city"] = city
+        calls["count"] += 1
+        return f"attractions:{city}"
+
+    def broken_plan(_entities: dict) -> list[dict]:
+        return [
+            {
+                "step": 1,
+                "step_id": "s1",
+                "tool": "query_attractions",
+                "params": {},
+                "description": "missing city",
+                "depends_on": [],
+            }
+        ]
+
+    agent = build_travel_agent(
+        llm=FakeLLM("attractions"),
+        tools=[query_attractions],
+        system_prompt=TRAVEL_AGENT_SYSTEM_PROMPT,
+        planner_hooks={"attractions": broken_plan},
+    )
+
+    result = await agent.ainvoke(
+        create_initial_state(
+            user_message="我想看北京景点",
+            session_id="param-correct-session",
+            system_message=TRAVEL_AGENT_SYSTEM_PROMPT,
+        )
+    )
+    assert calls["count"] == 1
+    assert calls["city"] == "北京"
+    tool_result = result["tool_results"]["s1:query_attractions"]
+    assert tool_result["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_loop_detection_blocks_repeated_same_tool_invocation():
+    @tool
+    async def query_attractions(city: str) -> str:
+        """Query attractions."""
+        return f"attractions:{city}"
+
+    def loop_plan(_entities: dict) -> list[dict]:
+        return [
+            {"step": 1, "step_id": "s1", "tool": "query_attractions", "params": {"city": "北京"}, "description": "1", "depends_on": []},
+            {"step": 2, "step_id": "s2", "tool": "query_attractions", "params": {"city": "北京"}, "description": "2", "depends_on": []},
+            {"step": 3, "step_id": "s3", "tool": "query_attractions", "params": {"city": "北京"}, "description": "3", "depends_on": []},
+        ]
+
+    agent = build_travel_agent(
+        llm=FakeLLM("itinerary"),
+        tools=[query_attractions],
+        system_prompt=TRAVEL_AGENT_SYSTEM_PROMPT,
+        planner_hooks={"itinerary": loop_plan},
+    )
+
+    result = await agent.ainvoke(
+        create_initial_state(
+            user_message="做个北京行程",
+            session_id="loop-detection-session",
+            system_message=TRAVEL_AGENT_SYSTEM_PROMPT,
+        )
+    )
+
+    blocked_steps = result["execution_state"]["blocked"]
+    assert "s3" in blocked_steps
+    assert result["tool_results"]["s3:query_attractions"]["error_code"] == "LOOP_DETECTED"
+
+
+@pytest.mark.asyncio
+async def test_early_stop_after_terminal_tool_success():
+    calls = {"budget": 0, "tips": 0}
+
+    @tool
+    async def calculate_budget(destination: str, days: int, people: int = 1, accommodation_level: str = "medium") -> str:  # noqa: ARG001
+        """Calculate budget."""
+        calls["budget"] += 1
+        return "budget-ok"
+
+    @tool
+    async def get_travel_tips(destination: str, season: str | None = None) -> str:  # noqa: ARG001
+        """Get travel tips."""
+        calls["tips"] += 1
+        return "tips-ok"
+
+    def budget_plan(_entities: dict) -> list[dict]:
+        return [
+            {
+                "step": 1,
+                "step_id": "s1",
+                "tool": "calculate_budget",
+                "params": {"destination": "北京", "days": 3, "people": 2, "accommodation_level": "medium"},
+                "description": "core",
+                "depends_on": [],
+            },
+            {
+                "step": 2,
+                "step_id": "s2",
+                "tool": "get_travel_tips",
+                "params": {"destination": "北京"},
+                "description": "optional",
+                "depends_on": [],
+            },
+        ]
+
+    initial = create_initial_state(
+        user_message="预算 3 天 2 人 北京",
+        session_id="early-stop-session",
+        system_message=TRAVEL_AGENT_SYSTEM_PROMPT,
+    )
+    initial["max_parallelism"] = 1
+    initial["parallelism"] = 1
+
+    agent = build_travel_agent(
+        llm=FakeLLM("budget"),
+        tools=[calculate_budget, get_travel_tips],
+        system_prompt=TRAVEL_AGENT_SYSTEM_PROMPT,
+        planner_hooks={"budget": budget_plan},
+    )
+    result = await agent.ainvoke(initial)
+
+    assert calls["budget"] == 1
+    assert calls["tips"] == 0
+    assert result.get("early_stop_reason")

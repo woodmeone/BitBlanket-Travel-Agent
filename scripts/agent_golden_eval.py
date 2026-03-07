@@ -1,0 +1,231 @@
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from langchain_core.messages import AIMessage
+from langchain_core.tools import tool
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from agent.src.graph.builder import build_travel_agent
+from agent.src.graph.state import TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_state
+
+TOOL_INTENTS = {"recommend", "attractions", "itinerary", "budget", "tips"}
+
+
+@dataclass
+class GoldenCase:
+    case_id: str
+    intent: str
+    user_message: str
+    entities: dict[str, Any]
+
+
+class _StructuredIntentLLM:
+    def __init__(self, schema, intent: str, entities: dict[str, Any], requires_tools: bool):
+        self._schema = schema
+        self._intent = intent
+        self._entities = entities
+        self._requires_tools = requires_tools
+
+    def invoke(self, _messages):
+        return self._schema(
+            intent=self._intent,
+            confidence=1.0,
+            entities=self._entities,
+            requires_tools=self._requires_tools,
+        )
+
+
+class GoldenLLM:
+    def __init__(self, case: GoldenCase):
+        self._case = case
+
+    def bind_tools(self, _tools):
+        return self
+
+    def with_structured_output(self, schema, method=None):  # noqa: ARG002
+        return _StructuredIntentLLM(
+            schema=schema,
+            intent=self._case.intent,
+            entities=self._case.entities,
+            requires_tools=self._case.intent in TOOL_INTENTS,
+        )
+
+    def invoke(self, _messages):
+        return AIMessage(content="golden-ok")
+
+
+@tool
+async def search_cities(query: str) -> dict[str, Any]:
+    """Search city."""
+    return {"report": f"cities:{query}"}
+
+
+@tool
+async def query_attractions(city: str, category: str | None = None) -> dict[str, Any]:
+    """Query attractions."""
+    return {"report": f"attractions:{city}:{category or 'all'}"}
+
+
+@tool
+async def query_hotels(city: str, district: str | None = None) -> dict[str, Any]:
+    """Query hotels."""
+    return {"report": f"hotels:{city}:{district or 'all'}"}
+
+
+@tool
+async def calculate_budget(destination: str, days: int, people: int = 1, accommodation_level: str = "medium") -> dict[str, Any]:
+    """Calculate budget."""
+    return {"report": f"budget:{destination}:{days}:{people}:{accommodation_level}"}
+
+
+@tool
+async def plan_itinerary(destination: str, days: int, interests: str | None = None) -> dict[str, Any]:
+    """Plan itinerary."""
+    return {"report": f"plan:{destination}:{days}:{interests or ''}"}
+
+
+@tool
+async def get_travel_tips(destination: str, season: str | None = None) -> dict[str, Any]:
+    """Get tips."""
+    return {"report": f"tips:{destination}:{season or ''}"}
+
+
+@tool
+async def get_weather(city: str, days: int = 3) -> dict[str, Any]:
+    """Get weather."""
+    return {"report": f"weather:{city}:{days}"}
+
+
+TOOLS = [
+    search_cities,
+    query_attractions,
+    query_hotels,
+    calculate_budget,
+    plan_itinerary,
+    get_travel_tips,
+    get_weather,
+]
+
+
+def load_cases(path: Path) -> list[GoldenCase]:
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    return [
+        GoldenCase(
+            case_id=item["case_id"],
+            intent=item["intent"],
+            user_message=item["user_message"],
+            entities=item.get("entities", {}),
+        )
+        for item in raw
+    ]
+
+
+async def run_case(case: GoldenCase) -> dict[str, Any]:
+    agent = build_travel_agent(
+        llm=GoldenLLM(case),
+        tools=TOOLS,
+        system_prompt=TRAVEL_AGENT_SYSTEM_PROMPT,
+    )
+    result = await agent.ainvoke(
+        create_initial_state(
+            user_message=case.user_message,
+            session_id=f"golden-{case.case_id}",
+            system_message=TRAVEL_AGENT_SYSTEM_PROMPT,
+        )
+    )
+
+    summary = result.get("execution_summary", {}) or {}
+    tool_results = result.get("tool_results", {}) or {}
+    has_param_error = any(
+        isinstance(item, dict) and item.get("error_code") == "PARAM_VALIDATION_ERROR"
+        for item in tool_results.values()
+    )
+    success = True
+    reasons: list[str] = []
+    if not str(result.get("answer", "")).strip():
+        success = False
+        reasons.append("empty_answer")
+    if case.intent in TOOL_INTENTS:
+        if summary.get("success_steps", 0) < 1:
+            success = False
+            reasons.append("no_success_steps")
+        if has_param_error:
+            success = False
+            reasons.append("param_validation_error")
+    return {
+        "case_id": case.case_id,
+        "intent": case.intent,
+        "success": success,
+        "reasons": reasons,
+        "execution_summary": {
+            "total_steps": summary.get("total_steps", 0),
+            "success_steps": summary.get("success_steps", 0),
+            "failed_steps": summary.get("failed_steps", 0),
+            "blocked_steps": summary.get("blocked_steps", 0),
+        },
+    }
+
+
+async def run_eval(dataset_path: Path) -> dict[str, Any]:
+    cases = load_cases(dataset_path)
+    results = []
+    for case in cases:
+        results.append(await run_case(case))
+    passed = sum(1 for item in results if item["success"])
+    total = len(results)
+    pass_rate = (passed / total) if total else 0.0
+    return {
+        "dataset": str(dataset_path),
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": round(pass_rate, 4),
+        "results": results,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Golden evaluation for ReAct agent quality gate.")
+    parser.add_argument(
+        "--dataset",
+        default="tests/golden/agent_react_golden.json",
+        help="Path to golden dataset json.",
+    )
+    parser.add_argument(
+        "--min-pass-rate",
+        type=float,
+        default=0.96,
+        help="Minimal pass rate gate for CI.",
+    )
+    parser.add_argument(
+        "--report",
+        default="docs/benchmarks/agent_golden_eval_latest.json",
+        help="Output report path.",
+    )
+    args = parser.parse_args()
+
+    report = asyncio.run(run_eval(Path(args.dataset)))
+    report_path = Path(args.report)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    print(f"Golden eval report: {report_path}")
+    print(f"Pass rate: {report['pass_rate']:.4f} (threshold={args.min_pass_rate:.4f})")
+    if report["pass_rate"] < args.min_pass_rate:
+        print("Golden eval failed quality gate.")
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
