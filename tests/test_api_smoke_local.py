@@ -61,6 +61,14 @@ async def test_health_routes_smoke():
         assert llm_data.get("status") in {"ok", "not initialized"}
         assert isinstance(llm_data.get("tools_count"), int)
 
+        tools_resp = await client.get("/api/health/tools")
+        assert tools_resp.status_code == 200
+        tools_data = tools_resp.json()
+        assert tools_data.get("status") in {"ok", "not initialized"}
+        assert isinstance(tools_data.get("configured_tools_count"), int)
+        assert isinstance(tools_data.get("circuit_open_count"), int)
+        assert isinstance(tools_data.get("diagnostics"), dict)
+
         ready_resp = await client.get("/api/ready")
         assert ready_resp.status_code == 200
         assert ready_resp.json().get("status") == "ready"

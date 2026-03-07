@@ -44,11 +44,8 @@ import os
 from typing import Optional, Any
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 
-# LangChain 0.3+ imports
-try:
-    from langchain.chat_models.base import BaseChatModel
-except ImportError:
-    from langchain_core.chat_models import BaseChatModel
+# LangChain 1.0+ imports
+from langchain_core.language_models.chat_models import BaseChatModel
 
 from langchain_core.outputs import ChatResult, ChatGeneration
 from langchain_core.callbacks import CallbackManagerForLLMRun

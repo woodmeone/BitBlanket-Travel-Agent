@@ -16,6 +16,7 @@ if str(WEB_DIR) not in sys.path:
 
 from src.dependencies.container import get_container
 from src.main import create_app
+from src.services.chat_service import ChatService
 
 
 @pytest.mark.asyncio
@@ -27,7 +28,7 @@ async def test_chat_stream_sse_smoke(monkeypatch):
     async def mock_initialize(self):
         self._initialized = True
 
-    async def mock_stream_agent_events(self, session_id: str, message: str):
+    async def mock_stream_agent_events(self, session_id: str, message: str, run_id: str | None = None):
         yield {"type": "reasoning", "content": "analyzing"}
         yield {"type": "tool_start", "tool": "search_cities"}
         yield {"type": "tool_end", "tool": "search_cities", "result": "ok"}
@@ -81,6 +82,13 @@ async def test_chat_stream_sse_smoke(monkeypatch):
             chunks = [item.get("content", "") for item in events if item.get("type") == "chunk"]
             assert "".join(chunks) == "Hello world"
 
+            session_event = next(item for item in events if item.get("type") == "session_id")
+            metadata_event = next(item for item in events if item.get("type") == "metadata")
+            done_event = next(item for item in events if item.get("type") == "done")
+            assert session_event.get("run_id")
+            assert metadata_event.get("run_id") == session_event.get("run_id")
+            assert done_event.get("run_id") == session_event.get("run_id")
+
 
 @pytest.mark.asyncio
 async def test_chat_stream_plan_mode_emits_plan_preview(monkeypatch):
@@ -91,7 +99,7 @@ async def test_chat_stream_plan_mode_emits_plan_preview(monkeypatch):
     async def mock_initialize(self):
         self._initialized = True
 
-    async def mock_stream_agent_events(self, session_id: str, message: str):
+    async def mock_stream_agent_events(self, session_id: str, message: str, run_id: str | None = None):
         yield {"type": "reasoning", "content": "planning"}
         yield {"type": "chunk", "content": "final"}
         yield {"type": "done", "answer": "final", "tools_used": ["search_cities"]}
@@ -152,3 +160,9 @@ async def test_chat_stream_plan_mode_emits_plan_preview(monkeypatch):
     assert "plan_steps=2" in plan_event.get("explanation", "")
     assert plan_event.get("intent") == "itinerary"
     assert len(plan_event.get("steps", [])) == 2
+
+
+def test_sse_formatter_uses_real_newlines():
+    event = ChatService._sse({"type": "chunk", "content": "ok"})
+    assert event.endswith("\n\n")
+    assert "\\n\\n" not in event

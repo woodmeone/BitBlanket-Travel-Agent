@@ -27,6 +27,7 @@ class AgentState(TypedDict):
     answer: Optional[str]
     reasoning: Optional[str]
     session_id: str
+    run_id: Optional[str]
     error: Optional[str]
 
 
@@ -34,6 +35,7 @@ def create_initial_state(
     user_message: str,
     session_id: str = "default",
     system_message: Optional[str] = None,
+    run_id: Optional[str] = None,
 ) -> AgentState:
     """Build initial graph state for one user turn."""
     messages: list[BaseMessage] = []
@@ -58,6 +60,7 @@ def create_initial_state(
         answer=None,
         reasoning=None,
         session_id=session_id,
+        run_id=run_id,
         error=None,
     )
 

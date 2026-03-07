@@ -86,5 +86,314 @@
       }
     ],
     "user_preferences": {}
+  },
+  "3ca99ed8-1b75-4849-b646-8686e8e2af83": {
+    "session_id": "3ca99ed8-1b75-4849-b646-8686e8e2af83",
+    "created_at": "2026-03-07T21:40:45.073651",
+    "last_active": "2026-03-07T21:41:21.671254",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "user",
+        "content": "??????3???2???6000?????????",
+        "reasoning": null,
+        "timestamp": "21:40:45"
+      },
+      {
+        "role": "assistant",
+        "content": "为了更好地帮助您规划旅行，我需要澄清几点：\n\n1. 您的旅行目的地是哪个城市或国家？\n2. 您希望旅行的天数是三天还是其他？\n3. 您提到的6000是指预算吗？是以什么币种为单位？\n\n请提供这些信息，以便我为您制定具体的旅行建议。",
+        "reasoning": "开始制定旅行计划...",
+        "timestamp": "21:41:21"
+      }
+    ],
+    "user_preferences": {}
+  },
+  "3a395761-0392-4cad-b306-ef96a95b7acd": {
+    "session_id": "3a395761-0392-4cad-b306-ef96a95b7acd",
+    "created_at": "2026-03-07T21:41:36.370261",
+    "last_active": "2026-03-07T21:41:39.288421",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "user",
+        "content": "?????????3?????",
+        "reasoning": null,
+        "timestamp": "21:41:36"
+      },
+      {
+        "role": "assistant",
+        "content": "您好！看起来您的信息有些不完整，能否请您提供更多的具体内容？比如，您想要了解哪个目的地、景点，或者旅行的具体需求和偏好？这样我才能更好地帮助您！",
+        "reasoning": null,
+        "timestamp": "21:41:39"
+      }
+    ],
+    "user_preferences": {}
+  },
+  "1aabd2d9-80f1-458d-a620-0c5b52c3b092": {
+    "session_id": "1aabd2d9-80f1-458d-a620-0c5b52c3b092",
+    "created_at": "2026-03-07T21:42:02.168018",
+    "last_active": "2026-03-07T21:42:38.377450",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "user",
+        "content": "??????3???2???6000????????????",
+        "reasoning": null,
+        "timestamp": "21:42:02"
+      },
+      {
+        "role": "assistant",
+        "content": "为了更好地帮助您规划旅行，我有几个问题需要澄清：\n\n1. 您希望去哪个城市或国家旅游？\n2. 您的旅行时间是多长？（例如，3天、5天等）\n\n请提供这些信息，我将为您制定合适的旅行预算和建议。",
+        "reasoning": "开始制定旅行计划...",
+        "timestamp": "21:42:38"
+      }
+    ],
+    "user_preferences": {}
+  },
+  "959e0dbc-4def-42d2-b432-b0571720b96f": {
+    "session_id": "959e0dbc-4def-42d2-b432-b0571720b96f",
+    "created_at": "2026-03-07T21:48:02.465297",
+    "last_active": "2026-03-07T21:48:02.467311",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "MiniMax-M2.5",
+    "messages": [
+      {
+        "role": "user",
+        "content": "推荐旅行地",
+        "reasoning": null,
+        "timestamp": "21:48:02"
+      },
+      {
+        "role": "assistant",
+        "content": "Hello world",
+        "reasoning": "analyzing",
+        "timestamp": "21:48:02"
+      }
+    ],
+    "user_preferences": {}
+  },
+  "61557cd4-cb51-48bd-981d-09eb8eee6f88": {
+    "session_id": "61557cd4-cb51-48bd-981d-09eb8eee6f88",
+    "created_at": "2026-03-07T21:48:02.475776",
+    "last_active": "2026-03-07T21:48:02.477301",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "MiniMax-M2.5",
+    "messages": [
+      {
+        "role": "user",
+        "content": "做一个北京行程",
+        "reasoning": null,
+        "timestamp": "21:48:02"
+      },
+      {
+        "role": "assistant",
+        "content": "final",
+        "reasoning": "开始制定旅行计划... 识别意图：itinerary，共 2 步。planning",
+        "timestamp": "21:48:02"
+      }
+    ],
+    "user_preferences": {}
+  },
+  "82e23af7-40cf-4290-9cef-254e068a391e": {
+    "session_id": "82e23af7-40cf-4290-9cef-254e068a391e",
+    "created_at": "2026-03-07T22:04:05.849887",
+    "last_active": "2026-03-07T22:04:05.851832",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "MiniMax-M2.5",
+    "messages": [
+      {
+        "role": "user",
+        "content": "推荐旅行地",
+        "reasoning": null,
+        "timestamp": "22:04:05"
+      },
+      {
+        "role": "assistant",
+        "content": "Hello world",
+        "reasoning": "analyzing",
+        "timestamp": "22:04:05"
+      }
+    ],
+    "user_preferences": {}
+  },
+  "8a0ab980-03f0-421c-82e4-c85496dc4282": {
+    "session_id": "8a0ab980-03f0-421c-82e4-c85496dc4282",
+    "created_at": "2026-03-07T22:04:05.860126",
+    "last_active": "2026-03-07T22:04:05.861896",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "MiniMax-M2.5",
+    "messages": [
+      {
+        "role": "user",
+        "content": "做一个北京行程",
+        "reasoning": null,
+        "timestamp": "22:04:05"
+      },
+      {
+        "role": "assistant",
+        "content": "final",
+        "reasoning": "开始制定旅行计划... 识别意图：itinerary，共 2 步。planning",
+        "timestamp": "22:04:05"
+      }
+    ],
+    "user_preferences": {}
+  },
+  "9ea65a11-6efc-457b-99fd-52c45433ff22": {
+    "session_id": "9ea65a11-6efc-457b-99fd-52c45433ff22",
+    "created_at": "2026-03-07T22:04:46.911959",
+    "last_active": "2026-03-07T22:04:46.914277",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "MiniMax-M2.5",
+    "messages": [
+      {
+        "role": "user",
+        "content": "推荐旅行地",
+        "reasoning": null,
+        "timestamp": "22:04:46"
+      },
+      {
+        "role": "assistant",
+        "content": "Hello world",
+        "reasoning": "analyzing",
+        "timestamp": "22:04:46"
+      }
+    ],
+    "user_preferences": {}
+  },
+  "d3edf2a6-2317-4096-888f-eb08c664aef9": {
+    "session_id": "d3edf2a6-2317-4096-888f-eb08c664aef9",
+    "created_at": "2026-03-07T22:04:46.922468",
+    "last_active": "2026-03-07T22:04:46.923986",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "MiniMax-M2.5",
+    "messages": [
+      {
+        "role": "user",
+        "content": "做一个北京行程",
+        "reasoning": null,
+        "timestamp": "22:04:46"
+      },
+      {
+        "role": "assistant",
+        "content": "final",
+        "reasoning": "开始制定旅行计划... 识别意图：itinerary，共 2 步。planning",
+        "timestamp": "22:04:46"
+      }
+    ],
+    "user_preferences": {}
+  },
+  "abeff0d9-5575-4eb9-8e6b-94fcb2161558": {
+    "session_id": "abeff0d9-5575-4eb9-8e6b-94fcb2161558",
+    "created_at": "2026-03-07T22:22:47.085355",
+    "last_active": "2026-03-07T22:22:47.087799",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "MiniMax-M2.5",
+    "messages": [
+      {
+        "role": "user",
+        "content": "推荐旅行地",
+        "reasoning": null,
+        "timestamp": "22:22:47"
+      },
+      {
+        "role": "assistant",
+        "content": "Hello world",
+        "reasoning": "analyzing",
+        "timestamp": "22:22:47"
+      }
+    ],
+    "user_preferences": {}
+  },
+  "dee34b0d-a0b2-484c-98ed-325a5b666f0b": {
+    "session_id": "dee34b0d-a0b2-484c-98ed-325a5b666f0b",
+    "created_at": "2026-03-07T22:22:47.096100",
+    "last_active": "2026-03-07T22:22:47.097919",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "MiniMax-M2.5",
+    "messages": [
+      {
+        "role": "user",
+        "content": "做一个北京行程",
+        "reasoning": null,
+        "timestamp": "22:22:47"
+      },
+      {
+        "role": "assistant",
+        "content": "final",
+        "reasoning": "开始制定旅行计划... 识别意图：itinerary，共 2 步。planning",
+        "timestamp": "22:22:47"
+      }
+    ],
+    "user_preferences": {}
+  },
+  "027a67b6-67f3-4e31-b07a-200058dfaa58": {
+    "session_id": "027a67b6-67f3-4e31-b07a-200058dfaa58",
+    "created_at": "2026-03-07T22:49:56.441099",
+    "last_active": "2026-03-07T22:49:56.443037",
+    "message_count": 0,
+    "name": "新会话",
+    "model_id": "gpt-4o-mini",
+    "messages": [],
+    "user_preferences": {}
+  },
+  "c28e088a-eae9-4e9c-ad16-3ce813f706ba": {
+    "session_id": "c28e088a-eae9-4e9c-ad16-3ce813f706ba",
+    "created_at": "2026-03-07T22:49:56.461087",
+    "last_active": "2026-03-07T22:49:56.463437",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "MiniMax-M2.5",
+    "messages": [
+      {
+        "role": "user",
+        "content": "推荐旅行地",
+        "reasoning": null,
+        "timestamp": "22:49:56"
+      },
+      {
+        "role": "assistant",
+        "content": "Hello world",
+        "reasoning": "analyzing",
+        "timestamp": "22:49:56"
+      }
+    ],
+    "user_preferences": {}
+  },
+  "649f10e7-c1fe-4f21-bbc4-d9bb0a6b539b": {
+    "session_id": "649f10e7-c1fe-4f21-bbc4-d9bb0a6b539b",
+    "created_at": "2026-03-07T22:49:56.472519",
+    "last_active": "2026-03-07T22:49:56.474214",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "MiniMax-M2.5",
+    "messages": [
+      {
+        "role": "user",
+        "content": "做一个北京行程",
+        "reasoning": null,
+        "timestamp": "22:49:56"
+      },
+      {
+        "role": "assistant",
+        "content": "final",
+        "reasoning": "开始制定旅行计划... 识别意图：itinerary，共 2 步。planning",
+        "timestamp": "22:49:56"
+      }
+    ],
+    "user_preferences": {}
   }
 }

@@ -33,6 +33,14 @@ class SimpleStatusResponse(BaseModel):
     status: str
 
 
+class ToolHealthResponse(BaseModel):
+    status: Literal["ok", "not initialized"]
+    initialized: bool
+    configured_tools_count: int
+    circuit_open_count: int
+    diagnostics: dict[str, object]
+
+
 def _get_chat_service() -> ChatService:
     return get_container().resolve("ChatService")
 
@@ -62,6 +70,12 @@ async def llm_health_check():
         tools_count=chat_status.get("tools_count", 0),
         memory_enabled=chat_status.get("memory_enabled", False),
     )
+
+
+@router.get("/health/tools", response_model=ToolHealthResponse)
+async def tools_health_check():
+    status = await _get_chat_service().tools_health_status()
+    return ToolHealthResponse(**status)
 
 
 @router.get("/ready", response_model=SimpleStatusResponse)

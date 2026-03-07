@@ -20,6 +20,7 @@ from agent.src.graph import TRAVEL_AGENT_SYSTEM_PROMPT
 from agent.src.graph.builder import (
     TOOL_RESULT_PREVIEW_LIMIT,
     generate_plan_preview_with_memory,
+    get_tool_health_diagnostics,
     run_travel_agent_streaming_with_memory,
 )
 from agent.src.graph.memory_integration import get_agent_memory_manager
@@ -69,6 +70,17 @@ class ChatService:
             "memory_enabled": self._memory_manager is not None,
         }
 
+    async def tools_health_status(self) -> dict[str, Any]:
+        status = await self.health_status()
+        diagnostics = get_tool_health_diagnostics()
+        return {
+            "status": "ok" if status.get("initialized") else "not initialized",
+            "initialized": status.get("initialized", False),
+            "configured_tools_count": status.get("tools_count", 0),
+            "circuit_open_count": diagnostics.get("open_circuit_count", 0),
+            "diagnostics": diagnostics,
+        }
+
     async def stream_chat(
         self,
         message: str,
@@ -79,8 +91,9 @@ class ChatService:
 
         mode = self._normalize_mode(mode)
         sid = await self._ensure_session(session_id)
+        run_id = str(uuid.uuid4())
 
-        yield self._sse({"type": "session_id", "session_id": sid})
+        yield self._sse({"type": "session_id", "session_id": sid, "run_id": run_id})
         await self.save_message(sid, "user", message)
 
         answer_content = ""
@@ -135,7 +148,7 @@ class ChatService:
                     except Exception as exc:
                         logger.warning("Plan preview failed, continue react flow: %s", exc)
 
-                async for event in self._stream_agent_events(sid, message):
+                async for event in self._stream_agent_events(sid, message, run_id=run_id):
                     event_type = event.get("type")
 
                     if event_type == "reasoning":
@@ -197,6 +210,7 @@ class ChatService:
 
             yield self._sse({
                 "type": "metadata",
+                "run_id": run_id,
                 "total_steps": len(tools_used),
                 "tools_used": tools_used,
                 "has_reasoning": bool(reasoning_content),
@@ -205,7 +219,7 @@ class ChatService:
                 "plan_id": plan_id,
                 "execution_stats": execution_stats,
             })
-            yield self._sse({"type": "done"})
+            yield self._sse({"type": "done", "run_id": run_id})
 
         except Exception as exc:
             logger.exception("Chat stream failed: %s", exc)
@@ -215,8 +229,8 @@ class ChatService:
             except Exception:
                 pass
             await self._write_memory_assistant(sid, f"[INTERRUPTED]{answer_content}")
-            yield self._sse({"type": "error", "content": str(exc)})
-            yield self._sse({"type": "done"})
+            yield self._sse({"type": "error", "content": str(exc), "run_id": run_id})
+            yield self._sse({"type": "done", "run_id": run_id})
 
     async def _stream_direct_response(self, session_id: str, message: str) -> AsyncGenerator[str, None]:
         history = self._build_memory_context_messages(session_id)
@@ -231,7 +245,12 @@ class ChatService:
             if token:
                 yield token
 
-    async def _stream_agent_events(self, session_id: str, message: str) -> AsyncGenerator[dict[str, Any], None]:
+    async def _stream_agent_events(
+        self,
+        session_id: str,
+        message: str,
+        run_id: Optional[str] = None,
+    ) -> AsyncGenerator[dict[str, Any], None]:
         async for event in run_travel_agent_streaming_with_memory(
             user_message=message,
             llm=self._llm,
@@ -240,6 +259,7 @@ class ChatService:
             memory_manager=self._memory_manager,
             system_prompt=TRAVEL_AGENT_SYSTEM_PROMPT,
             persist_memory=False,
+            run_id=run_id,
         ):
             if event.get("type") == "tool_end":
                 event["result"] = str(event.get("result", ""))[:TOOL_RESULT_PREVIEW_LIMIT]
@@ -321,7 +341,7 @@ class ChatService:
     def _sse(payload: dict[str, Any]) -> str:
         import json
 
-        return f"data: {json.dumps(payload, ensure_ascii=False)}\\n\\n"
+        return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
     async def save_message(
         self,

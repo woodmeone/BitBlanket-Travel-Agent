@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import time
 import uuid
 from datetime import datetime
@@ -31,6 +32,18 @@ PROMPT_INJECTION_PATTERNS = (
     "忽略之前指令",
 )
 MAX_PARAM_VALUE_LENGTH = 1000
+
+
+def _resolve_parallelism_default() -> int:
+    raw = str(os.getenv("AGENT_MAX_PARALLELISM", str(DEFAULT_TOOL_PARALLELISM))).strip()
+    try:
+        value = int(raw)
+        if value < 1:
+            raise ValueError("parallelism must be >= 1")
+        return value
+    except Exception:
+        logger.warning("Invalid AGENT_MAX_PARALLELISM=%s, fallback=%s", raw, DEFAULT_TOOL_PARALLELISM)
+        return DEFAULT_TOOL_PARALLELISM
 
 
 class IntentResult(BaseModel):
@@ -68,6 +81,7 @@ class ExecutionResult(BaseModel):
 
 class AgentNodes:
     """LangGraph node implementations for the travel agent."""
+    _GLOBAL_TOOL_HEALTH: dict[str, dict[str, Any]] = {}
 
     def __init__(
         self,
@@ -83,18 +97,12 @@ class AgentNodes:
         self._planner_hooks = planner_hooks or {}
 
         self.llm_with_tools = llm.bind_tools(tools)
-        try:
-            try:
-                self.llm_with_intent = llm.with_structured_output(IntentResult, method="function_calling")
-            except TypeError:
-                self.llm_with_intent = llm.with_structured_output(IntentResult)
-        except Exception as exc:
-            logger.warning("Structured output unavailable; fallback to JSON parser: %s", exc)
-            self.llm_with_intent = None
+        self.llm_with_intent = self._build_intent_structured_llm()
+        if self.llm_with_intent is None:
             self.intent_parser = JsonOutputParser(pydantic_object=IntentResult)
 
         self.tool_node = ToolNode(tools)
-        self._tool_health: dict[str, dict[str, Any]] = {}
+        self._tool_health = AgentNodes._GLOBAL_TOOL_HEALTH
         self._tool_timeout_sla: dict[str, int] = {
             "search_cities": 10,
             "query_attractions": 15,
@@ -113,6 +121,25 @@ class AgentNodes:
             "get_travel_tips": {"source": "travel_guide", "ttl_seconds": 86400},
             "get_weather": {"source": "weather_provider", "ttl_seconds": 1800},
         }
+
+    def _build_intent_structured_llm(self) -> Optional[Runnable]:
+        preferred = str(os.getenv("AGENT_INTENT_STRUCTURED_METHOD", "json_schema")).strip().lower()
+        fallback_order = [preferred, "json_schema", "function_calling", "json_mode"]
+        methods: list[str] = []
+        for item in fallback_order:
+            if item and item not in methods:
+                methods.append(item)
+
+        for method in methods:
+            try:
+                llm_with_intent = self.llm.with_structured_output(IntentResult, method=method)
+                logger.info("[Intent Node] Structured output enabled with method=%s", method)
+                return llm_with_intent
+            except Exception as exc:
+                logger.debug("[Intent Node] Structured output method=%s unavailable: %s", method, exc)
+
+        logger.warning("Structured output unavailable; fallback to JSON parser")
+        return None
 
     def intent_node(self, state: AgentState) -> AgentState:
         logger.info("[Intent Node] Analyzing user intent...")
@@ -282,9 +309,10 @@ class AgentNodes:
                 "tools_used": tools_used,
             }
 
+        default_parallelism = _resolve_parallelism_default()
         parallelism = min(
-            int(state.get("parallelism", DEFAULT_TOOL_PARALLELISM)),
-            int(state.get("max_parallelism", DEFAULT_TOOL_PARALLELISM)),
+            int(state.get("parallelism", default_parallelism)),
+            int(state.get("max_parallelism", default_parallelism)),
             len(runnable),
         )
         selected = runnable[: max(1, parallelism)]
@@ -713,6 +741,25 @@ class AgentNodes:
 
     def _mark_tool_success(self, tool_name: str) -> None:
         self._tool_health[tool_name] = {"consecutive_failures": 0, "open_until": 0}
+
+    @classmethod
+    def get_global_tool_health_snapshot(cls) -> dict[str, Any]:
+        now = time.time()
+        tools: dict[str, dict[str, Any]] = {}
+        for name, item in cls._GLOBAL_TOOL_HEALTH.items():
+            open_until = float(item.get("open_until", 0) or 0)
+            tools[name] = {
+                "consecutive_failures": int(item.get("consecutive_failures", 0) or 0),
+                "open_until": open_until,
+                "is_circuit_open": now < open_until,
+                "cooldown_remaining_seconds": max(0, int(open_until - now)),
+            }
+
+        return {
+            "tool_count": len(tools),
+            "open_circuit_count": sum(1 for item in tools.values() if item["is_circuit_open"]),
+            "tools": tools,
+        }
 
     @staticmethod
     def _normalize_plan(plan: list[dict[str, Any]]) -> list[dict[str, Any]]:
