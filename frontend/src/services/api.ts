@@ -213,6 +213,8 @@ class APIService {
       const decoder = new TextDecoder();
       let buffer = '';
 
+      let streamEnded = false;
+
       while (true) {
         if (controller.signal.aborted) {
           break;
@@ -225,10 +227,12 @@ class APIService {
         const { done, value } = await reader.read();
         if (done) {
           if (buffer.trim()) {
-            this.handleSSELine(buffer, callbacks, requestKey);
+            streamEnded = this.handleSSELine(buffer, callbacks, requestKey) || streamEnded;
           }
           this.connectionStatus = SSEConnectionStatus.IDLE;
-          callbacks.onComplete();
+          if (!streamEnded) {
+            callbacks.onComplete();
+          }
           break;
         }
 
@@ -237,7 +241,15 @@ class APIService {
         buffer = lines.pop() ?? '';
 
         for (const line of lines) {
-          this.handleSSELine(line, callbacks, requestKey);
+          streamEnded = this.handleSSELine(line, callbacks, requestKey) || streamEnded;
+          if (streamEnded) {
+            await reader.cancel();
+            break;
+          }
+        }
+
+        if (streamEnded) {
+          break;
         }
       }
 
@@ -267,22 +279,22 @@ class APIService {
     }
   }
 
-  private handleSSELine(line: string, callbacks: StreamCallbacks, requestKey: string): void {
+  private handleSSELine(line: string, callbacks: StreamCallbacks, requestKey: string): boolean {
     const trimmed = line.replace(/\r$/, '').trim();
     if (!trimmed.startsWith('data:')) {
-      return;
+      return false;
     }
 
     const dataStr = trimmed.slice(5).trim();
     if (!dataStr) {
-      return;
+      return false;
     }
 
     if (dataStr === '[DONE]') {
       this.connectionStatus = SSEConnectionStatus.IDLE;
       callbacks.onComplete();
       this.pendingRequests.delete(requestKey);
-      return;
+      return true;
     }
 
     try {
@@ -290,7 +302,7 @@ class APIService {
       const dataType = data.type;
 
       if (dataType === 'heartbeat') {
-        return;
+        return false;
       } else if (dataType === 'metadata' || dataType === 'reasoning_metadata') {
         callbacks.onMetadata({
           totalSteps: data.total_steps || 0,
@@ -326,6 +338,7 @@ class APIService {
         this.connectionStatus = SSEConnectionStatus.IDLE;
         callbacks.onComplete();
         this.pendingRequests.delete(requestKey);
+        return true;
       } else if (data.chunk) {
         callbacks.onChunk(data.chunk);
       } else if (data.error) {
@@ -336,6 +349,7 @@ class APIService {
     } catch {
       // Ignore malformed SSE chunks and continue.
     }
+    return false;
   }
 }
 

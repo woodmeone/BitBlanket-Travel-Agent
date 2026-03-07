@@ -183,12 +183,16 @@ const MessageItem: React.FC<{
           height: '40px',
           borderRadius: '50%',
           background: isUser
-            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            : 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+            ? 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)'
+            : 'linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
+          border: '2px solid rgba(255, 255, 255, 0.9)',
+          boxShadow: isUser
+            ? '0 8px 18px rgba(239, 68, 68, 0.28)'
+            : '0 8px 18px rgba(20, 184, 166, 0.28)',
         }}
       >
         {isUser ? <UserOutlined style={{ color: 'white', fontSize: '18px' }} /> : <RobotOutlined style={{ color: 'white', fontSize: '18px' }} />}
@@ -203,11 +207,11 @@ const MessageItem: React.FC<{
         <Card
           className="chat-message-card"
           style={{
-            background: isUser ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#ffffff',
-            color: isUser ? 'white' : '#1f2937',
+            background: '#ffffff',
+            color: '#1f2937',
             borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-            border: isUser ? 'none' : '1px solid rgba(0,0,0,0.06)',
-            boxShadow: isUser ? '0 4px 20px rgba(102,126,234,0.30)' : '0 2px 12px rgba(0,0,0,0.04)',
+            border: isUser ? '1px solid rgba(239, 68, 68, 0.18)' : '1px solid rgba(0,0,0,0.06)',
+            boxShadow: isUser ? '0 4px 16px rgba(239, 68, 68, 0.12)' : '0 2px 12px rgba(0,0,0,0.04)',
           }}
           styles={{ body: { padding: '16px 18px' } }}
         >
@@ -275,11 +279,13 @@ const MessageList: React.FC<Props> = ({
             width: '40px',
             height: '40px',
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+            background: 'linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
+            border: '2px solid rgba(255, 255, 255, 0.9)',
+            boxShadow: '0 8px 18px rgba(20, 184, 166, 0.28)',
           }}
         >
           <RobotOutlined style={{ color: 'white', fontSize: '18px' }} />
