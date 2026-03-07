@@ -7,7 +7,7 @@
     "dev": "next dev -p 33001",
     "build": "next build",
     "start": "next start -p 33001",
-    "lint": "next lint",
+    "lint": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
