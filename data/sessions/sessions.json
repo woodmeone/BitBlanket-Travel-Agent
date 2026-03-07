@@ -30,5 +30,61 @@
     ],
     "created_at": "2026-03-06T22:13:10.958147",
     "last_active": "2026-03-06T22:13:10.958650"
+  },
+  "1157b3ed-9f0a-4112-82af-e161056a08aa": {
+    "session_id": "1157b3ed-9f0a-4112-82af-e161056a08aa",
+    "created_at": "2026-03-07T19:33:19.069198",
+    "last_active": "2026-03-07T19:33:19.071406",
+    "message_count": 0,
+    "name": "新会话",
+    "model_id": "gpt-4o-mini",
+    "messages": [],
+    "user_preferences": {}
+  },
+  "baf2be3e-1668-4c3e-aa23-2cbfc3831b4f": {
+    "session_id": "baf2be3e-1668-4c3e-aa23-2cbfc3831b4f",
+    "created_at": "2026-03-07T19:33:19.112593",
+    "last_active": "2026-03-07T19:33:19.114568",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "MiniMax-M2.5",
+    "messages": [
+      {
+        "role": "user",
+        "content": "推荐旅行地",
+        "reasoning": null,
+        "timestamp": "19:33:19"
+      },
+      {
+        "role": "assistant",
+        "content": "Hello world",
+        "reasoning": "analyzing",
+        "timestamp": "19:33:19"
+      }
+    ],
+    "user_preferences": {}
+  },
+  "0001bab4-2ee9-4fd1-8818-0dce1619a846": {
+    "session_id": "0001bab4-2ee9-4fd1-8818-0dce1619a846",
+    "created_at": "2026-03-07T19:33:19.129281",
+    "last_active": "2026-03-07T19:33:19.131323",
+    "message_count": 2,
+    "name": "新会话",
+    "model_id": "MiniMax-M2.5",
+    "messages": [
+      {
+        "role": "user",
+        "content": "做一个北京行程",
+        "reasoning": null,
+        "timestamp": "19:33:19"
+      },
+      {
+        "role": "assistant",
+        "content": "final",
+        "reasoning": "开始制定旅行计划... 识别意图：itinerary，共 2 步。planning",
+        "timestamp": "19:33:19"
+      }
+    ],
+    "user_preferences": {}
   }
 }
