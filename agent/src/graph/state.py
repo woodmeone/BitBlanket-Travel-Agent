@@ -21,6 +21,7 @@ class AgentState(TypedDict):
     current_step: int
     execution_state: Optional[Dict[str, Any]]
     execution_stats: Optional[Dict[str, Any]]
+    execution_summary: Optional[Dict[str, Any]]
     tools_used: List[str]
     tool_results: Dict[str, Any]
     answer: Optional[str]
@@ -51,6 +52,7 @@ def create_initial_state(
         current_step=0,
         execution_state=None,
         execution_stats=None,
+        execution_summary=None,
         tools_used=[],
         tool_results={},
         answer=None,

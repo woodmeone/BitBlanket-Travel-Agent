@@ -18,6 +18,7 @@
 
 - [system-architecture.md](architecture/system-architecture.md): 系统架构与调用链路
 - [data-storage.md](architecture/data-storage.md): 数据存储策略
+- [agent-p0-hardening-roadmap.md](architecture/agent-p0-hardening-roadmap.md): Agent P0 完善路线图
 
 ## Testing & Deployment
 

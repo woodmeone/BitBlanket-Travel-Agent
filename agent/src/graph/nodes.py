@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Callable, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.runnables import Runnable
@@ -22,6 +22,15 @@ DEFAULT_TOOL_MAX_RETRIES = 1
 DEFAULT_TOOL_PARALLELISM = 2
 DEFAULT_TOOL_COOLDOWN_SECONDS = 45
 DEFAULT_CIRCUIT_BREAKER_THRESHOLD = 3
+SENSITIVE_PARAM_KEYS = {"api_key", "token", "authorization", "password", "secret"}
+PROMPT_INJECTION_PATTERNS = (
+    "ignore previous instructions",
+    "reveal system prompt",
+    "show developer message",
+    "泄露系统提示词",
+    "忽略之前指令",
+)
+MAX_PARAM_VALUE_LENGTH = 1000
 
 
 class IntentResult(BaseModel):
@@ -47,6 +56,14 @@ class ExecutionResult(BaseModel):
     ended_at: Optional[str] = None
     error_code: Optional[str] = None
     error: Optional[str] = None
+    source: Optional[str] = None
+    fetched_at: Optional[str] = None
+    ttl_seconds: Optional[int] = None
+    is_stale: bool = False
+    provider_used: Optional[str] = None
+    provider_chain: Optional[list[str]] = None
+    fallback_used: bool = False
+    fallback_suggestion: Optional[str] = None
 
 
 class AgentNodes:
@@ -86,6 +103,15 @@ class AgentNodes:
             "plan_itinerary": 20,
             "get_travel_tips": 8,
             "get_weather": 10,
+        }
+        self._tool_source_profile: dict[str, dict[str, Any]] = {
+            "search_cities": {"source": "travel_catalog", "ttl_seconds": 86400},
+            "query_attractions": {"source": "travel_catalog", "ttl_seconds": 21600},
+            "query_hotels": {"source": "hotel_inventory", "ttl_seconds": 1800},
+            "calculate_budget": {"source": "budget_ruleset", "ttl_seconds": 86400},
+            "plan_itinerary": {"source": "itinerary_planner", "ttl_seconds": 86400},
+            "get_travel_tips": {"source": "travel_guide", "ttl_seconds": 86400},
+            "get_weather": {"source": "weather_provider", "ttl_seconds": 1800},
         }
 
     def intent_node(self, state: AgentState) -> AgentState:
@@ -188,6 +214,7 @@ class AgentNodes:
             "current_step": 0,
             "execution_state": {"completed": [], "failed": [], "blocked": []},
             "execution_stats": {"plan_id": plan_id, "started_at": datetime.now().isoformat(), "steps": []},
+            "execution_summary": {},
             "tools_used": [],
             "tool_results": {},
         }
@@ -250,6 +277,7 @@ class AgentNodes:
                 "current_step": len(completed) + len(failed) + len(blocked),
                 "execution_state": {"completed": sorted(completed), "failed": sorted(failed), "blocked": sorted(blocked)},
                 "execution_stats": {**execution_stats, "steps": stats_steps},
+                "execution_summary": self._build_execution_summary(stats_steps),
                 "tool_results": tool_results,
                 "tools_used": tools_used,
             }
@@ -283,6 +311,8 @@ class AgentNodes:
                     "status": "success" if result_obj.success else "failed",
                     "attempt": result_obj.attempt,
                     "error_code": result_obj.error_code,
+                    "fallback_used": result_obj.fallback_used,
+                    "provider_used": result_obj.provider_used,
                     "started_at": result_obj.started_at,
                     "ended_at": result_obj.ended_at,
                     "duration_ms": elapsed_ms,
@@ -293,6 +323,7 @@ class AgentNodes:
             "current_step": len(completed) + len(failed) + len(blocked),
             "execution_state": {"completed": sorted(completed), "failed": sorted(failed), "blocked": sorted(blocked)},
             "execution_stats": {**execution_stats, "steps": stats_steps},
+            "execution_summary": self._build_execution_summary(stats_steps),
             "tools_used": tools_used,
             "tool_results": tool_results,
         }
@@ -315,6 +346,7 @@ class AgentNodes:
         tools_used = state.get("tools_used", [])
         plan_id = state.get("plan_id")
         execution_stats = state.get("execution_stats", {}) or {}
+        execution_summary = state.get("execution_summary", {}) or {}
 
         context = ""
         if plan_id:
@@ -326,6 +358,17 @@ class AgentNodes:
                     f"- {item.get('step_id')} {item.get('tool')} {item.get('status')}"
                     f" ({item.get('duration_ms', 0)}ms)\n"
                 )
+        if execution_summary.get("total_steps", 0) > 0:
+            context += "\n## 执行汇总:\n"
+            context += (
+                f"- 总步骤: {execution_summary.get('total_steps', 0)}\n"
+                f"- 成功: {execution_summary.get('success_steps', 0)}\n"
+                f"- 失败: {execution_summary.get('failed_steps', 0)}\n"
+                f"- 阻塞: {execution_summary.get('blocked_steps', 0)}\n"
+                f"- 超时: {execution_summary.get('timeout_steps', 0)}\n"
+                f"- 备源切换: {execution_summary.get('fallback_steps', 0)}\n"
+                f"- 成功率: {execution_summary.get('success_rate', 0.0):.2f}\n"
+            )
         if tool_results:
             context += "\n\n## 工具执行结果:\n"
             for tool_name, result in tool_results.items():
@@ -334,6 +377,33 @@ class AgentNodes:
                         rendered = result.get("result")
                     else:
                         rendered = f"[{result.get('error_code')}] {result.get('error')}"
+                    if isinstance(rendered, dict) and "report" in rendered:
+                        rendered = rendered.get("report")
+                    source = result.get("source")
+                    fetched_at = result.get("fetched_at")
+                    ttl_seconds = result.get("ttl_seconds")
+                    stale = result.get("is_stale", False)
+                    provider_used = result.get("provider_used")
+                    provider_chain = result.get("provider_chain")
+                    fallback_used = result.get("fallback_used", False)
+                    fallback = result.get("fallback_suggestion")
+                    if source or fetched_at:
+                        rendered = (
+                            f"{rendered}\n"
+                            f"- source: {source or 'unknown'}\n"
+                            f"- fetched_at: {fetched_at or 'unknown'}\n"
+                            f"- ttl_seconds: {ttl_seconds if ttl_seconds is not None else 'unknown'}\n"
+                            f"- stale: {stale}"
+                        )
+                    if provider_used or provider_chain:
+                        rendered = (
+                            f"{rendered}\n"
+                            f"- provider_used: {provider_used or 'unknown'}\n"
+                            f"- provider_chain: {provider_chain or []}\n"
+                            f"- fallback_used: {fallback_used}"
+                        )
+                    if fallback:
+                        rendered = f"{rendered}\n- fallback: {fallback}"
                 else:
                     rendered = result
                 context += f"\n### {tool_name}:\n{rendered}\n"
@@ -343,7 +413,8 @@ class AgentNodes:
 
 {context}
 
-请根据以上工具执行结果，用友好的方式回答用户的问题。"""
+请根据以上工具执行结果，用友好的方式回答用户的问题。
+请优先引用工具结果中的 source 和 fetched_at，涉及时效信息时明确说明时间。"""
         else:
             prompt = f"""用户问题: {last_message.content}
 
@@ -560,7 +631,43 @@ class AgentNodes:
                 started_at=datetime.now().isoformat(),
                 ended_at=datetime.now().isoformat(),
             )
+            self._attach_execution_metadata(result, tool_name)
             return step, result, int((time.perf_counter() - started) * 1000)
+
+        validation_error = self._validate_tool_params(tool, params)
+        if validation_error is not None:
+            result = ExecutionResult(
+                success=False,
+                tool_name=tool_name,
+                result="",
+                error_code="PARAM_VALIDATION_ERROR",
+                error=validation_error,
+                started_at=datetime.now().isoformat(),
+                ended_at=datetime.now().isoformat(),
+            )
+            self._attach_execution_metadata(result, tool_name)
+            return step, result, int((time.perf_counter() - started) * 1000)
+
+        unsafe_reason = self._detect_unsafe_params(params)
+        if unsafe_reason is not None:
+            result = ExecutionResult(
+                success=False,
+                tool_name=tool_name,
+                result="",
+                error_code="UNSAFE_TOOL_INPUT",
+                error=unsafe_reason,
+                started_at=datetime.now().isoformat(),
+                ended_at=datetime.now().isoformat(),
+            )
+            self._attach_execution_metadata(result, tool_name)
+            return step, result, int((time.perf_counter() - started) * 1000)
+
+        logger.info(
+            "[Execute Node] Step %s invoking %s with params=%s",
+            step_id,
+            tool_name,
+            self._sanitize_params_for_log(params),
+        )
 
         try:
             result = await self._run_tool_with_retry(
@@ -581,6 +688,7 @@ class AgentNodes:
                 ended_at=datetime.now().isoformat(),
             )
 
+        self._attach_execution_metadata(result, tool_name)
         return step, result, int((time.perf_counter() - started) * 1000)
 
     def _resolve_timeout_seconds(self, step: dict[str, Any], tool_name: str) -> int:
@@ -644,6 +752,165 @@ class AgentNodes:
                 return f"计划 {plan_id} 执行 {step_count} 步，使用工具: {tool_str}"
             return f"使用工具: {tool_str}"
         return "直接回答"
+
+    @staticmethod
+    def _validate_tool_params(tool: Tool, params: dict[str, Any]) -> Optional[str]:
+        schema = getattr(tool, "args_schema", None)
+        if schema is None:
+            return None
+        try:
+            schema.model_validate(params)
+        except ValidationError as exc:
+            first_error = exc.errors()[0] if exc.errors() else {}
+            location = ".".join(str(x) for x in first_error.get("loc", []))
+            message = first_error.get("msg", str(exc))
+            return f"Invalid params for tool: {location} {message}".strip()
+        return None
+
+    @staticmethod
+    def _detect_unsafe_params(params: dict[str, Any]) -> Optional[str]:
+        def _walk(value: Any) -> list[str]:
+            found: list[str] = []
+            if isinstance(value, str):
+                text = value.lower()
+                for pattern in PROMPT_INJECTION_PATTERNS:
+                    if pattern in text:
+                        found.append(pattern)
+            elif isinstance(value, dict):
+                for nested in value.values():
+                    found.extend(_walk(nested))
+            elif isinstance(value, list):
+                for nested in value:
+                    found.extend(_walk(nested))
+            return found
+
+        matches = _walk(params)
+        if not matches:
+            return None
+        return f"Unsafe tool input detected: {matches[0]}"
+
+    @staticmethod
+    def _sanitize_params_for_log(params: dict[str, Any]) -> dict[str, Any]:
+        def _sanitize(key: Optional[str], value: Any) -> Any:
+            if key and key.lower() in SENSITIVE_PARAM_KEYS:
+                return "***"
+            if isinstance(value, str):
+                if len(value) > MAX_PARAM_VALUE_LENGTH:
+                    return f"{value[:MAX_PARAM_VALUE_LENGTH]}...(truncated)"
+                return value
+            if isinstance(value, dict):
+                return {k: _sanitize(k, v) for k, v in value.items()}
+            if isinstance(value, list):
+                return [_sanitize(key, v) for v in value]
+            return value
+
+        return {k: _sanitize(k, v) for k, v in params.items()}
+
+    @staticmethod
+    def _build_execution_summary(stats_steps: list[dict[str, Any]]) -> dict[str, Any]:
+        total_steps = len(stats_steps)
+        success_steps = sum(1 for item in stats_steps if item.get("status") == "success")
+        failed_steps = sum(1 for item in stats_steps if item.get("status") == "failed")
+        blocked_steps = sum(1 for item in stats_steps if item.get("status") == "blocked")
+        timeout_steps = sum(1 for item in stats_steps if item.get("error_code") == "TOOL_TIMEOUT")
+        fallback_steps = sum(1 for item in stats_steps if bool(item.get("fallback_used", False)))
+        duration_values = [int(item.get("duration_ms", 0) or 0) for item in stats_steps]
+        avg_duration = int(sum(duration_values) / total_steps) if total_steps else 0
+        success_rate = (success_steps / total_steps) if total_steps else 0.0
+
+        tool_metrics: dict[str, dict[str, Any]] = {}
+        for item in stats_steps:
+            tool = str(item.get("tool") or "unknown")
+            metric = tool_metrics.setdefault(
+                tool,
+                {"calls": 0, "success": 0, "failed": 0, "blocked": 0, "timeouts": 0, "avg_duration_ms": 0},
+            )
+            metric["calls"] += 1
+            status = item.get("status")
+            if status == "success":
+                metric["success"] += 1
+            elif status == "failed":
+                metric["failed"] += 1
+            elif status == "blocked":
+                metric["blocked"] += 1
+            if item.get("error_code") == "TOOL_TIMEOUT":
+                metric["timeouts"] += 1
+
+        for tool, metric in tool_metrics.items():
+            tool_durations = [
+                int(item.get("duration_ms", 0) or 0)
+                for item in stats_steps
+                if str(item.get("tool") or "unknown") == tool
+            ]
+            metric["avg_duration_ms"] = int(sum(tool_durations) / len(tool_durations)) if tool_durations else 0
+
+        return {
+            "total_steps": total_steps,
+            "success_steps": success_steps,
+            "failed_steps": failed_steps,
+            "blocked_steps": blocked_steps,
+            "timeout_steps": timeout_steps,
+            "fallback_steps": fallback_steps,
+            "success_rate": round(success_rate, 4),
+            "avg_duration_ms": avg_duration,
+            "tool_metrics": tool_metrics,
+        }
+
+    def _attach_execution_metadata(self, result: ExecutionResult, tool_name: str) -> None:
+        profile = self._tool_source_profile.get(
+            tool_name,
+            {"source": f"tool:{tool_name}", "ttl_seconds": DEFAULT_TOOL_TIMEOUT_SECONDS * 30},
+        )
+        result.source = str(profile.get("source", f"tool:{tool_name}"))
+        result.ttl_seconds = int(profile.get("ttl_seconds", DEFAULT_TOOL_TIMEOUT_SECONDS * 30))
+        result.fetched_at = datetime.now().isoformat()
+        result.is_stale = False
+        result_meta = self._extract_result_meta(result.result)
+        if result_meta:
+            if result_meta.get("source"):
+                result.source = str(result_meta.get("source"))
+            if result_meta.get("fetched_at"):
+                result.fetched_at = str(result_meta.get("fetched_at"))
+            if result_meta.get("ttl_seconds") is not None:
+                result.ttl_seconds = int(result_meta.get("ttl_seconds"))
+            if result_meta.get("is_stale") is not None:
+                result.is_stale = bool(result_meta.get("is_stale"))
+            if result_meta.get("provider_used") is not None:
+                result.provider_used = str(result_meta.get("provider_used"))
+            if result_meta.get("provider_chain") is not None:
+                result.provider_chain = list(result_meta.get("provider_chain"))
+            if result_meta.get("fallback_used") is not None:
+                result.fallback_used = bool(result_meta.get("fallback_used"))
+        if not result.success:
+            result.fallback_suggestion = self._build_fallback_suggestion(
+                tool_name=tool_name,
+                error_code=result.error_code,
+            )
+        elif result.is_stale:
+            result.fallback_suggestion = "数据可能已过期，建议刷新实时数据后再确认关键决策"
+
+    @staticmethod
+    def _extract_result_meta(result_payload: Any) -> dict[str, Any]:
+        if not isinstance(result_payload, dict):
+            return {}
+        raw_meta = result_payload.get("_meta") or result_payload.get("meta")
+        if not isinstance(raw_meta, dict):
+            return {}
+        return raw_meta
+
+    @staticmethod
+    def _build_fallback_suggestion(tool_name: str, error_code: Optional[str]) -> str:
+        if error_code == "TOOL_TIMEOUT":
+            return f"{tool_name} 超时，建议使用缓存信息或给出无实时依赖的备选方案"
+        if error_code == "CIRCUIT_OPEN":
+            return f"{tool_name} 当前不可用，建议切换备选数据源"
+        if error_code == "TOOL_NOT_FOUND":
+            return "工具配置缺失，建议走无需工具的保守回答并提示用户补充信息"
+        if error_code == "PARAM_VALIDATION_ERROR":
+            return "请求参数不完整，建议向用户补充澄清问题后重试"
+        if error_code == "UNSAFE_TOOL_INPUT":
+            return "输入触发安全策略，建议清理高风险指令后再执行"
+        return f"{tool_name} 执行失败，建议降级为规则模板回答并标注不确定性"
 
 
 def create_nodes(llm: Runnable, tools: list[Tool]) -> AgentNodes:

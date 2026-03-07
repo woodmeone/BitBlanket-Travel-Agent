@@ -1,316 +1,279 @@
-"""
-================================================================================
-真实旅游 API 数据源
-================================================================================
+﻿"""Travel API client with mock providers and metadata."""
 
-提供真实旅游数据的工具适配器。
-目前使用模拟数据，可接入真实 API。
+from __future__ import annotations
 
-__all__ = [
-    "TravelAPIClient",
-    "get_travel_api_client",
-]
-
-真实 API 来源:
-- 携程 API (ctrip.com)
-- 马蜂窝 API (mafengwo.com)
-- 去哪 er API (qunar.com)
-
-使用示例:
-```python
-from tools.travel_api import TravelAPIClient
-
-client = TravelAPIClient()
-
-# 搜索城市
-cities = await client.search_cities("北京")
-
-# 查询景点
-attractions = await client.search_attractions("北京", category="historical")
-
-# 查询酒店
-hotels = await client.search_hotels("北京", district="东城区")
-
-# 获取天气
-weather = await client.get_weather("北京")
-```
-
-================================================================================
-"""
-
-import os
-import json
 import asyncio
 import logging
-from typing import Optional, List, Dict, Any
-from datetime import datetime
+import os
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
-# 配置日志
 logger = logging.getLogger("agent.tools.travel_api")
 
 
 class TravelAPIClient:
-    """
-    旅游 API 客户端
-
-    统一封装多个旅游数据源的 API 调用
-    """
+    """Unified travel data adapter. Currently backed by mock data."""
 
     def __init__(self, use_cache: bool = True):
-        """
-        初始化
-
-        Args:
-            use_cache: 是否使用缓存
-        """
         self.use_cache = use_cache
         self._cache: Dict[str, Any] = {}
+        self._cache_meta: Dict[str, str] = {}
+
+    @staticmethod
+    def _now_iso() -> str:
+        return datetime.now(timezone.utc).isoformat()
 
     def _get_cache(self, key: str) -> Optional[Any]:
-        """获取缓存"""
         if self.use_cache and key in self._cache:
             return self._cache[key]
         return None
 
-    def _set_cache(self, key: str, value: Any):
-        """设置缓存"""
+    def _set_cache(self, key: str, value: Any) -> None:
         if self.use_cache:
             self._cache[key] = value
+            self._cache_meta[key] = self._now_iso()
 
-    async def search_cities(self, query: str) -> List[Dict[str, Any]]:
-        """
-        搜索城市
+    def _build_meta(self, key: str, source: str, ttl_seconds: int) -> Dict[str, Any]:
+        fetched_at = self._cache_meta.get(key, self._now_iso())
+        is_stale = False
+        try:
+            fetched_dt = datetime.fromisoformat(fetched_at.replace("Z", "+00:00"))
+            age = datetime.now(timezone.utc) - fetched_dt.astimezone(timezone.utc)
+            is_stale = age > timedelta(seconds=ttl_seconds)
+        except Exception:
+            is_stale = False
+        return {
+            "source": source,
+            "fetched_at": fetched_at,
+            "ttl_seconds": ttl_seconds,
+            "is_stale": is_stale,
+        }
 
-        Args:
-            query: 搜索关键词
+    @staticmethod
+    def _weather_provider_chain() -> List[str]:
+        primary = os.getenv("WEATHER_API_PROVIDER", "mock-weather-provider").strip() or "mock-weather-provider"
+        fallback = os.getenv("WEATHER_API_FALLBACK_PROVIDER", "mock-weather-fallback").strip() or "mock-weather-fallback"
+        if primary == fallback:
+            return [primary]
+        return [primary, fallback]
 
-        Returns:
-            城市列表
-        """
+    @staticmethod
+    def _is_provider_down(provider: str) -> bool:
+        down_list = [item.strip() for item in os.getenv("WEATHER_DOWN_PROVIDERS", "").split(",") if item.strip()]
+        return provider in down_list
+
+    @staticmethod
+    def _provider_chain(primary_env: str, fallback_env: str, primary_default: str, fallback_default: str) -> List[str]:
+        primary = os.getenv(primary_env, primary_default).strip() or primary_default
+        fallback = os.getenv(fallback_env, fallback_default).strip() or fallback_default
+        if primary == fallback:
+            return [primary]
+        return [primary, fallback]
+
+    @staticmethod
+    def _is_provider_down_by_env(provider: str, down_env: str) -> bool:
+        down_list = [item.strip() for item in os.getenv(down_env, "").split(",") if item.strip()]
+        return provider in down_list
+
+    async def search_cities(self, query: str) -> Dict[str, Any]:
         cache_key = f"city:{query}"
+        providers = self._provider_chain(
+            primary_env="CITIES_API_PROVIDER",
+            fallback_env="CITIES_API_FALLBACK_PROVIDER",
+            primary_default="mock-cities-provider",
+            fallback_default="mock-cities-fallback",
+        )
+        primary_provider = providers[0]
+        selected_provider = primary_provider
+        fallback_used = False
+        if self._is_provider_down_by_env(primary_provider, "CITIES_DOWN_PROVIDERS"):
+            if len(providers) > 1 and not self._is_provider_down_by_env(providers[1], "CITIES_DOWN_PROVIDERS"):
+                selected_provider = providers[1]
+                fallback_used = True
+                logger.warning(
+                    "Cities primary provider unavailable, switched to fallback provider: %s -> %s",
+                    primary_provider,
+                    selected_provider,
+                )
+            else:
+                raise RuntimeError(f"No available cities provider. primary={primary_provider}")
+        source = f"cities_provider:{selected_provider}"
+        ttl_seconds = 86400
         cached = self._get_cache(cache_key)
         if cached:
-            return cached
+            cached_result = dict(cached)
+            cached_meta = dict(cached_result.get("_meta", {}))
+            cached_result["_meta"] = {
+                **cached_meta,
+                **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+                "provider_chain": providers,
+                "provider_used": selected_provider,
+                "fallback_used": fallback_used,
+            }
+            return cached_result
 
-        # 模拟 API 调用
-        # 真实实现应该调用携程/马蜂窝 API
-        await asyncio.sleep(0.1)  # 模拟网络延迟
-
-        # 城市数据库
-        cities_db = [
+        await asyncio.sleep(0.05)
+        cities_db: List[Dict[str, Any]] = [
             {
                 "id": "101010100",
                 "name": "北京",
                 "pinyin": "beijing",
                 "province": "北京",
-                "description": "中国的首都，拥有悠久的历史和丰富的文化遗产",
-                "highlights": ["故宫", "长城", "天安门", "颐和园"],
-                "best_time": "春秋季节",
+                "description": "中国首都，历史文化名城。",
+                "highlights": ["故宫", "长城", "天坛", "颐和园"],
+                "best_time": "春秋季",
                 "weather": "四季分明",
-                "image": "https://example.com/beijing.jpg",
-                "rating": 4.8
+                "rating": 4.8,
             },
             {
                 "id": "101020100",
                 "name": "上海",
                 "pinyin": "shanghai",
                 "province": "上海",
-                "description": "国际化大都市，中西文化交融",
-                "highlights": ["外滩", "东方明珠", "豫园", "田子坊"],
-                "best_time": "春秋季节",
+                "description": "国际化都市，城市休闲与人文并重。",
+                "highlights": ["外滩", "豫园", "陆家嘴", "新天地"],
+                "best_time": "春秋季",
                 "weather": "亚热带季风气候",
-                "image": "https://example.com/shanghai.jpg",
-                "rating": 4.7
-            },
-            {
-                "id": "101280100",
-                "name": "广州",
-                "pinyin": "guangzhou",
-                "province": "广东",
-                "description": "华南地区最大城市，美食天堂",
-                "highlights": ["广州塔", "珠江新城", "上下九", "白云山"],
-                "best_time": "10月-次年4月",
-                "weather": "亚热带季风气候",
-                "rating": 4.6
-            },
-            {
-                "id": "101280600",
-                "name": "深圳",
-                "pinyin": "shenzhen",
-                "province": "广东",
-                "description": "现代化国际大都市",
-                "highlights": ["世界之窗", "欢乐谷", "东部华侨城", "深圳湾"],
-                "best_time": "10月-次年5月",
-                "weather": "亚热带季风气候",
-                "rating": 4.5
-            },
-            {
-                "id": "101210100",
-                "name": "杭州",
-                "pinyin": "hangzhou",
-                "province": "浙江",
-                "description": "人间天堂，丝绸之府",
-                "highlights": ["西湖", "灵隐寺", "宋城", "西溪湿地"],
-                "best_time": "3月-5月",
-                "weather": "亚热带季风气候",
-                "rating": 4.9
+                "rating": 4.7,
             },
             {
                 "id": "101230400",
                 "name": "丽江",
                 "pinyin": "lijiang",
                 "province": "云南",
-                "description": "世界文化遗产，古城之美",
-                "highlights": ["丽江古城", "玉龙雪山", "泸沽湖", "束河古镇"],
-                "best_time": "春秋季节",
-                "weather": "高原季风气候",
-                "rating": 4.8
+                "description": "古城与雪山并存，适合慢游。",
+                "highlights": ["丽江古城", "玉龙雪山", "束河古镇"],
+                "best_time": "春秋季",
+                "weather": "高原气候",
+                "rating": 4.8,
             },
-            {
-                "id": "101260100",
-                "name": "三亚",
-                "pinyin": "sanya",
-                "province": "海南",
-                "description": "东方夏威夷，海滨度假胜地",
-                "highlights": ["亚龙湾", "蜈支洲岛", "天涯海角", "南山文化旅游区"],
-                "best_time": "10月-次年3月",
-                "weather": "热带季风气候",
-                "rating": 4.9
-            },
-            {
-                "id": "101190400",
-                "name": "苏州",
-                "pinyin": "suzhou",
-                "province": "江苏",
-                "description": "江南水乡，园林之城",
-                "highlights": ["拙政园", "周庄", "平江路", "虎丘"],
-                "best_time": "4月-10月",
-                "weather": "亚热带季风气候",
-                "rating": 4.7
-            },
-            {
-                "id": "101200100",
-                "name": "西安",
-                "pinyin": "xian",
-                "province": "陕西",
-                "description": "十三朝古都，历史文化名城",
-                "highlights": ["秦始皇兵马俑", "大雁塔", "城墙", "回民街"],
-                "best_time": "3月-5月, 9月-10月",
-                "weather": "温带季风气候",
-                "rating": 4.8
-            },
-            {
-                "id": "101270100",
-                "name": "成都",
-                "pinyin": "chengdu",
-                "province": "四川",
-                "description": "天府之国，美食之都",
-                "highlights": ["大熊猫基地", "宽窄巷子", "锦里", "青城山"],
-                "best_time": "3月-6月, 9月-11月",
-                "weather": "亚热带季风气候",
-                "rating": 4.7
-            }
         ]
 
-        # 搜索匹配
-        query_lower = query.lower()
+        q = query.lower().strip()
         results = [
-            city for city in cities_db
-            if query_lower in city["name"].lower()
-            or query_lower in city["pinyin"].lower()
-            or query_lower in city["province"].lower()
-            or query_lower in city["description"].lower()
+            city
+            for city in cities_db
+            if q in city["name"].lower()
+            or q in city["pinyin"].lower()
+            or q in city["province"].lower()
+            or q in city["description"].lower()
         ]
-
-        # 如果没有精确匹配，返回部分匹配
         if not results:
-            results = cities_db[:5]
+            results = cities_db[:2]
 
-        self._set_cache(cache_key, results)
-        return results
+        result = {
+            "query": query,
+            "total": len(results),
+            "data": results,
+            "_meta": {
+                **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+                "provider_chain": providers,
+                "provider_used": selected_provider,
+                "fallback_used": fallback_used,
+            },
+        }
+        self._set_cache(cache_key, result)
+        result["_meta"] = {
+            **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+            "provider_chain": providers,
+            "provider_used": selected_provider,
+            "fallback_used": fallback_used,
+        }
+        return result
 
     async def search_attractions(
         self,
         city: str,
         category: Optional[str] = None,
         page: int = 1,
-        page_size: int = 20
+        page_size: int = 20,
     ) -> Dict[str, Any]:
-        """
-        查询景点
-
-        Args:
-            city: 城市名称
-            category: 景点类别 (natural/historical/entertainment/food)
-            page: 页码
-            page_size: 每页数量
-
-        Returns:
-            景点列表和分页信息
-        """
-        cache_key = f"attractions:{city}:{category}:{page}"
+        cache_key = f"attractions:{city}:{category}:{page}:{page_size}"
+        providers = self._provider_chain(
+            primary_env="ATTRACTIONS_API_PROVIDER",
+            fallback_env="ATTRACTIONS_API_FALLBACK_PROVIDER",
+            primary_default="mock-attractions-provider",
+            fallback_default="mock-attractions-fallback",
+        )
+        primary_provider = providers[0]
+        selected_provider = primary_provider
+        fallback_used = False
+        if self._is_provider_down_by_env(primary_provider, "ATTRACTIONS_DOWN_PROVIDERS"):
+            if len(providers) > 1 and not self._is_provider_down_by_env(providers[1], "ATTRACTIONS_DOWN_PROVIDERS"):
+                selected_provider = providers[1]
+                fallback_used = True
+                logger.warning(
+                    "Attractions primary provider unavailable, switched to fallback provider: %s -> %s",
+                    primary_provider,
+                    selected_provider,
+                )
+            else:
+                raise RuntimeError(f"No available attractions provider. primary={primary_provider}")
+        source = f"attraction_provider:{selected_provider}"
+        ttl_seconds = 21600
         cached = self._get_cache(cache_key)
         if cached:
-            return cached
+            cached_result = dict(cached)
+            cached_meta = dict(cached_result.get("_meta", {}))
+            cached_result["_meta"] = {
+                **cached_meta,
+                **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+                "provider_chain": providers,
+                "provider_used": selected_provider,
+                "fallback_used": fallback_used,
+            }
+            return cached_result
 
-        await asyncio.sleep(0.1)
-
-        # 景点数据库
-        attractions_db = {
+        await asyncio.sleep(0.08)
+        attractions_db: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
             "北京": {
                 "historical": [
-                    {"id": "a001", "name": "故宫", "desc": "明清两代皇家宫殿", "ticket": "60元", "hours": "8:30-17:00", "rating": 4.9, "address": "北京市东城区景山前街4号"},
-                    {"id": "a002", "name": "长城", "desc": "中国古代伟大工程", "ticket": "40-65元", "hours": "7:00-18:00", "rating": 4.8, "address": "北京市延庆区G6京藏高速58号"},
-                    {"id": "a003", "name": "天坛", "desc": "皇帝祭天祈谷场所", "ticket": "34元", "hours": "6:30-21:00", "rating": 4.7, "address": "北京市东城区天坛内东里7号"}
+                    {"id": "a001", "name": "故宫", "desc": "明清皇宫", "ticket": "60元", "hours": "8:30-17:00", "rating": 4.9},
+                    {"id": "a002", "name": "八达岭长城", "desc": "长城经典段", "ticket": "40-65元", "hours": "7:00-18:00", "rating": 4.8},
                 ],
                 "natural": [
-                    {"id": "a004", "name": "颐和园", "desc": "清代皇家园林", "ticket": "30元", "hours": "6:30-18:00", "rating": 4.8, "address": "北京市海淀区新建宫门路19号"},
-                    {"id": "a005", "name": "北海公园", "desc": "历史悠久的皇家园林", "ticket": "10元", "hours": "6:00-21:00", "rating": 4.6, "address": "北京市西城区文津街1号"}
-                ]
+                    {"id": "a003", "name": "颐和园", "desc": "皇家园林", "ticket": "30元", "hours": "6:30-18:00", "rating": 4.8},
+                ],
             },
             "上海": {
                 "historical": [
-                    {"id": "a101", "name": "外滩", "desc": "万国建筑群", "ticket": "免费", "hours": "全天", "rating": 4.8, "address": "上海市黄浦区中山东一路"},
-                    {"id": "a102", "name": "豫园", "desc": "江南园林", "ticket": "40元", "hours": "8:30-17:00", "rating": 4.6, "address": "上海市黄浦区安仁街137号"}
+                    {"id": "a101", "name": "豫园", "desc": "江南古典园林", "ticket": "40元", "hours": "8:30-17:00", "rating": 4.6},
                 ],
                 "entertainment": [
-                    {"id": "a103", "name": "东方明珠", "desc": "上海标志性建筑", "ticket": "180元", "hours": "8:00-21:30", "rating": 4.5, "address": "上海市浦东新区世纪大道1号"}
-                ]
+                    {"id": "a102", "name": "外滩", "desc": "黄浦江沿岸地标", "ticket": "免费", "hours": "全天", "rating": 4.8},
+                ],
             },
-            "三亚": {
-                "natural": [
-                    {"id": "a201", "name": "亚龙湾", "desc": "天下第一湾", "ticket": "免费", "hours": "全天", "rating": 4.9, "address": "三亚市吉阳区亚龙湾"},
-                    {"id": "a202", "name": "蜈支洲岛", "desc": "海岛度假胜地", "ticket": "168元", "hours": "8:00-18:30", "rating": 4.8, "address": "三亚市海棠区蜈支洲岛"}
-                ]
-            }
         }
 
-        attractions = attractions_db.get(city, {})
-
+        city_bucket = attractions_db.get(city, {})
         if category:
-            attractions = attractions.get(category, [])
+            items = city_bucket.get(category, [])
         else:
-            # 合并所有类别
-            all_attractions = []
-            for cat_attractions in attractions.values():
-                all_attractions.extend(cat_attractions)
-            attractions = all_attractions
+            items = [it for values in city_bucket.values() for it in values]
 
-        # 分页
-        start = (page - 1) * page_size
-        end = start + page_size
-        page_data = attractions[start:end]
-
+        start = max(0, (page - 1) * page_size)
+        data = items[start : start + page_size]
         result = {
             "city": city,
             "category": category,
             "page": page,
             "page_size": page_size,
-            "total": len(attractions),
-            "data": page_data
+            "total": len(items),
+            "data": data,
+            "_meta": {
+                **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+                "provider_chain": providers,
+                "provider_used": selected_provider,
+                "fallback_used": fallback_used,
+            },
         }
-
         self._set_cache(cache_key, result)
+        result["_meta"] = {
+            **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+            "provider_chain": providers,
+            "provider_used": selected_provider,
+            "fallback_used": fallback_used,
+        }
         return result
 
     async def search_hotels(
@@ -321,78 +284,127 @@ class TravelAPIClient:
         check_out: Optional[str] = None,
         price_range: Optional[tuple] = None,
         page: int = 1,
-        page_size: int = 20
+        page_size: int = 20,
     ) -> Dict[str, Any]:
-        """
-        搜索酒店
+        _ = (check_in, check_out)
+        cache_key = f"hotels:{city}:{district}:{price_range}:{page}:{page_size}"
+        providers = self._provider_chain(
+            primary_env="HOTELS_API_PROVIDER",
+            fallback_env="HOTELS_API_FALLBACK_PROVIDER",
+            primary_default="mock-hotels-provider",
+            fallback_default="mock-hotels-fallback",
+        )
+        primary_provider = providers[0]
+        selected_provider = primary_provider
+        fallback_used = False
+        if self._is_provider_down_by_env(primary_provider, "HOTELS_DOWN_PROVIDERS"):
+            if len(providers) > 1 and not self._is_provider_down_by_env(providers[1], "HOTELS_DOWN_PROVIDERS"):
+                selected_provider = providers[1]
+                fallback_used = True
+                logger.warning(
+                    "Hotels primary provider unavailable, switched to fallback provider: %s -> %s",
+                    primary_provider,
+                    selected_provider,
+                )
+            else:
+                raise RuntimeError(f"No available hotels provider. primary={primary_provider}")
+        source = f"hotel_provider:{selected_provider}"
+        ttl_seconds = 1800
+        cached = self._get_cache(cache_key)
+        if cached:
+            cached_result = dict(cached)
+            cached_meta = dict(cached_result.get("_meta", {}))
+            cached_result["_meta"] = {
+                **cached_meta,
+                **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+                "provider_chain": providers,
+                "provider_used": selected_provider,
+                "fallback_used": fallback_used,
+            }
+            return cached_result
 
-        Args:
-            city: 城市
-            district: 商圈/区域
-            check_in: 入住日期
-            check_out: 退房日期
-            price_range: 价格区间 (min, max)
-            page: 页码
-            page_size: 每页数量
-
-        Returns:
-            酒店列表
-        """
-        await asyncio.sleep(0.15)
-
-        # 模拟酒店数据
+        await asyncio.sleep(0.1)
         hotels = [
-            {"id": "h001", "name": f"{city}王府饭店", "district": "市中心", "rating": 4.8, "price": 680, "image": "https://example.com/h1.jpg"},
-            {"id": "h002", "name": f"{city}香格里拉大酒店", "district": "市中心", "rating": 4.9, "price": 980, "image": "https://example.com/h2.jpg"},
-            {"id": "h003", "name": f"{city}希尔顿酒店", "district": "金融区", "rating": 4.7, "price": 580, "image": "https://example.com/h3.jpg"},
+            {"id": "h001", "name": f"{city}中心酒店", "district": "市中心", "rating": 4.7, "price": 580},
+            {"id": "h002", "name": f"{city}商务酒店", "district": "金融区", "rating": 4.5, "price": 420},
+            {"id": "h003", "name": f"{city}度假酒店", "district": "景区", "rating": 4.8, "price": 760},
         ]
-
-        # 过滤
         if district:
             hotels = [h for h in hotels if h["district"] == district]
         if price_range:
             hotels = [h for h in hotels if price_range[0] <= h["price"] <= price_range[1]]
 
-        return {
+        start = max(0, (page - 1) * page_size)
+        result = {
             "city": city,
             "page": page,
             "page_size": page_size,
             "total": len(hotels),
-            "data": hotels
+            "data": hotels[start : start + page_size],
+            "_meta": {
+                **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+                "provider_chain": providers,
+                "provider_used": selected_provider,
+                "fallback_used": fallback_used,
+            },
         }
+        self._set_cache(cache_key, result)
+        result["_meta"] = {
+            **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+            "provider_chain": providers,
+            "provider_used": selected_provider,
+            "fallback_used": fallback_used,
+        }
+        return result
 
     async def get_weather(self, city: str, days: int = 7) -> Dict[str, Any]:
-        """
-        获取天气预报
-
-        Args:
-            city: 城市
-            days: 天数
-
-        Returns:
-            天气信息
-        """
         cache_key = f"weather:{city}:{days}"
+        ttl_seconds = 1800
+        providers = self._weather_provider_chain()
+        primary_provider = providers[0]
         cached = self._get_cache(cache_key)
         if cached:
-            return cached
+            cached_result = dict(cached)
+            cached_meta = dict(cached_result.get("_meta", {}))
+            source = str(cached_meta.get("source", f"weather_provider:{primary_provider}"))
+            cached_result["_meta"] = {
+                **cached_meta,
+                **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+            }
+            return cached_result
 
-        await asyncio.sleep(0.1)
+        selected_provider = primary_provider
+        fallback_used = False
+        if self._is_provider_down(primary_provider):
+            if len(providers) > 1 and not self._is_provider_down(providers[1]):
+                selected_provider = providers[1]
+                fallback_used = True
+                logger.warning(
+                    "Weather primary provider unavailable, switched to fallback provider: %s -> %s",
+                    primary_provider,
+                    selected_provider,
+                )
+            else:
+                raise RuntimeError(f"No available weather provider. primary={primary_provider}")
 
-        # 模拟天气数据
+        await asyncio.sleep(0.08)
         weather_types = ["晴", "多云", "阴", "小雨", "晴"]
         temps = [(18, 28), (20, 30), (19, 27), (17, 25), (20, 29)]
 
+        today = datetime.now(timezone.utc).date()
         forecast = []
-        for i in range(days):
-            forecast.append({
-                "date": f"2024-{(i // 30) + 1:02d}{(i % 30) + 1:02d}",
-                "weather": weather_types[i % len(weather_types)],
-                "temp_low": temps[i % len(temps)][0],
-                "temp_high": temps[i % len(temps)][1],
-                "wind": "东南风3-4级",
-                "pm25": "35"
-            })
+        for i in range(max(1, days)):
+            low, high = temps[i % len(temps)]
+            forecast.append(
+                {
+                    "date": (today + timedelta(days=i)).isoformat(),
+                    "weather": weather_types[i % len(weather_types)],
+                    "temp_low": low,
+                    "temp_high": high,
+                    "wind": "东南风3-4级",
+                    "pm25": "35",
+                }
+            )
 
         result = {
             "city": city,
@@ -400,21 +412,40 @@ class TravelAPIClient:
                 "weather": "晴",
                 "temp": 25,
                 "humidity": "65%",
-                "wind": "东南风3级"
+                "wind": "东南风2级",
             },
-            "forecast": forecast
+            "forecast": forecast,
+            "_meta": {
+                **self._build_meta(
+                    cache_key,
+                    source=f"weather_provider:{selected_provider}",
+                    ttl_seconds=ttl_seconds,
+                ),
+                "provider_chain": providers,
+                "provider_used": selected_provider,
+                "fallback_used": fallback_used,
+            },
         }
-
         self._set_cache(cache_key, result)
+        result["_meta"] = {
+            **self._build_meta(
+                cache_key,
+                source=f"weather_provider:{selected_provider}",
+                ttl_seconds=ttl_seconds,
+            ),
+            "provider_chain": providers,
+            "provider_used": selected_provider,
+            "fallback_used": fallback_used,
+        }
         return result
 
 
-# 全局客户端实例
 _travel_api_client: Optional[TravelAPIClient] = None
 
 
 def get_travel_api_client() -> TravelAPIClient:
-    """获取旅游 API 客户端单例"""
+    """Return singleton travel api client."""
+
     global _travel_api_client
     if _travel_api_client is None:
         _travel_api_client = TravelAPIClient()

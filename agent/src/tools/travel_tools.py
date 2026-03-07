@@ -97,7 +97,8 @@ def search_cities(query: str) -> str:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
 
-            cities = loop.run_until_complete(client.search_cities(query))
+            result = loop.run_until_complete(client.search_cities(query))
+            cities = result.get("data", []) if isinstance(result, dict) else result
 
             if cities:
                 output = "为您找到以下城市：\n\n"
@@ -107,7 +108,10 @@ def search_cities(query: str) -> str:
                     output += f"   必游景点：{', '.join(city['highlights'][:3])}\n"
                     output += f"   最佳旅行时间：{city['best_time']}\n"
                     output += f"   评分：{'⭐' * int(city['rating'])}\n\n"
-                return output
+                return {
+                    "report": output,
+                    "_meta": result.get("_meta", {}) if isinstance(result, dict) else {},
+                }
             else:
                 return f"未找到与「{query}」相关的城市信息。"
 
@@ -210,7 +214,10 @@ def query_attractions(city: str, category: Optional[str] = None) -> str:
                     output += f"   开放时间：{att['hours']}\n"
                     output += f"   评分：{'⭐' * int(att['rating'])}\n"
                     output += f"   地址：{att.get('address', '暂无')}\n\n"
-                return output
+                return {
+                    "report": output,
+                    "_meta": result.get("_meta", {}),
+                }
             else:
                 return f"暂未找到「{city}」的景点信息"
 
@@ -304,7 +311,10 @@ def query_hotels(city: str, district: Optional[str] = None) -> str:
                     output += f"   区域：{hotel['district']}\n"
                     output += f"   评分：{'⭐' * int(hotel['rating'])}\n"
                     output += f"   价格：¥{hotel['price']}/晚\n\n"
-                return output
+                return {
+                    "report": output,
+                    "_meta": result.get("_meta", {}),
+                }
             else:
                 return f"暂未找到「{city}」的酒店信息"
 
@@ -532,7 +542,10 @@ def get_weather(city: str, days: int = 7) -> str:
                 for day in forecast[:days]:
                     output += f"   {day['date']}: {day['weather']} {day['temp_low']}~{day['temp_high']}°C\n"
 
-            return output
+            return {
+                "report": output,
+                "_meta": result.get("_meta", {}),
+            }
 
         except Exception as e:
             logger.error(f"Failed to get weather with API: {e}", extra={"city": city, "days": days})
