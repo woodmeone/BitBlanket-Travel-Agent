@@ -23,6 +23,34 @@
 }
 ```
 
+SSE 事件（`type`）：
+
+- `session_id`
+- `reasoning_start`
+- `reasoning_chunk`
+- `reasoning_end`
+- `plan_preview`（仅 `mode=plan`）
+- `tool_start`
+- `tool_end`
+- `answer_start`
+- `chunk`
+- `metadata`
+- `error`
+- `done`
+
+`plan_preview` 关键字段：
+- `plan_id`
+- `intent`
+- `explanation`
+- `steps`（含 `step_id` / `depends_on` / `tool` / `params`）
+
+`metadata` 关键字段：
+- `tools_used`
+- `answer_length`
+- `reasoning_length`
+- `plan_id`
+- `execution_stats`
+
 ## Session
 
 - `POST /api/session/new`
