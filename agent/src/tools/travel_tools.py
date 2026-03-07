@@ -57,7 +57,7 @@ logger = logging.getLogger("agent.tools")
 
 # 尝试导入真实 API 客户端
 try:
-    from tools.travel_api import get_travel_api_client, TravelAPIClient
+    from .travel_api import get_travel_api_client, TravelAPIClient
     USE_REAL_API = True
 except ImportError as e:
     USE_REAL_API = False
