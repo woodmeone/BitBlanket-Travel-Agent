@@ -75,8 +75,11 @@ class AgentNodes:
         self,
         llm: Runnable,
         tools: list[Tool],
-        system_prompt: str = TRAVEL_AGENT_SYSTEM_PROMPT
+        system_prompt: str = None
     ):
+        # 设置默认系统提示词
+        if system_prompt is None:
+            system_prompt = TRAVEL_AGENT_SYSTEM_PROMPT
         """
         初始化节点
 
@@ -192,7 +195,7 @@ class AgentNodes:
 
         if intent in ["recommend", "attractions", "itinerary", "budget", "tips"]:
             logger.info(f"[Router Node] Routing to 'plan' (intent: {intent})")
-            return {" routing": "plan"}
+            return {"routing": "plan"}
         else:
             logger.info(f"[Router Node] Routing to 'direct' (intent: {intent})")
             return {"routing": "direct"}
