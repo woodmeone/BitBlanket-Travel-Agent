@@ -1,77 +1,73 @@
-"""健康检查API路由模块
+"""Health check routes."""
 
-提供服务健康状态检查的RESTful API接口。
+from __future__ import annotations
 
-API端点:
-- GET /health - 详细健康检查
-- GET /ready - 就绪检查
-- GET /live - 存活检查
-- GET /health/llm - LLM 服务状态
-"""
+from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel
-from datetime import datetime
+
+from ..dependencies.container import get_container
+from ..services.chat_service import ChatService
 
 router = APIRouter()
 
-# 全局状态 (从 chat_langchain 导入)
-try:
-    from .chat_langchain import _llm_adapter, _tools, _sessions
-except ImportError:
-    _llm_adapter = None
-    _tools = None
-    _sessions = {}
-
 
 class HealthResponse(BaseModel):
-    """健康检查响应模型"""
     status: str
     version: str
     timestamp: str
-    services: dict
+    services: dict[str, str]
+
+
+class LLMHealthResponse(BaseModel):
+    status: Literal["ok", "not initialized"]
+    llm_adapter: bool
+    tools_count: int
+    memory_enabled: bool
+
+
+class SimpleStatusResponse(BaseModel):
+    status: str
+
+
+def _get_chat_service() -> ChatService:
+    return get_container().resolve("ChatService")
 
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
-    """
-    详细健康检查端点
+    chat_status = await _get_chat_service().health_status()
 
-    返回完整的健康状态信息：
-    - 服务总体状态
-    - 应用版本
-    - 各服务状态
-    """
     return HealthResponse(
         status="healthy",
-        version="3.2.0",
-        timestamp=datetime.now().isoformat(),
+        version="3.3.0",
+        timestamp=datetime.now(timezone.utc).isoformat(),
         services={
             "api": "healthy",
-            "llm": "initialized" if _llm_adapter else "not initialized",
-            "sessions": "healthy"
-        }
+            "llm": "initialized" if chat_status.get("initialized") else "not initialized",
+            "sessions": "healthy",
+        },
     )
 
 
-@router.get("/health/llm")
+@router.get("/health/llm", response_model=LLMHealthResponse)
 async def llm_health_check():
-    """LLM 服务健康检查"""
-    return {
-        "status": "ok" if _llm_adapter else "not initialized",
-        "llm_adapter": _llm_adapter is not None,
-        "tools_count": len(_tools) if _tools else 0,
-        "sessions_count": len(_sessions) if _sessions else 0
-    }
+    chat_status = await _get_chat_service().health_status()
+    return LLMHealthResponse(
+        status="ok" if chat_status.get("initialized") else "not initialized",
+        llm_adapter=chat_status.get("llm_adapter", False),
+        tools_count=chat_status.get("tools_count", 0),
+        memory_enabled=chat_status.get("memory_enabled", False),
+    )
 
 
-@router.get("/ready")
+@router.get("/ready", response_model=SimpleStatusResponse)
 async def readiness_check():
-    """就绪检查端点 - 判断服务是否准备好接收流量"""
-    return {"status": "ready"}
+    return SimpleStatusResponse(status="ready")
 
 
-@router.get("/live")
+@router.get("/live", response_model=SimpleStatusResponse)
 async def liveness_check():
-    """存活检查端点 - 判断服务是否正在运行"""
-    return {"status": "alive"}
+    return SimpleStatusResponse(status="alive")
