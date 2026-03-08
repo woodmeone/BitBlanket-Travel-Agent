@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+﻿import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { App } from 'antd';
 import type React from 'react';
@@ -17,11 +17,7 @@ describe('MessageList', () => {
     ];
 
     renderWithApp(
-      <MessageList
-        messages={messages}
-        reasoningExpanded={{}}
-        onToggleReasoning={vi.fn()}
-      />
+      <MessageList messages={messages} reasoningExpanded={{}} onToggleReasoning={vi.fn()} />
     );
 
     expect(screen.getByText('Hello')).toBeInTheDocument();
@@ -58,11 +54,7 @@ describe('MessageList', () => {
     ];
 
     renderWithApp(
-      <MessageList
-        messages={messages}
-        reasoningExpanded={{}}
-        onToggleReasoning={vi.fn()}
-      />
+      <MessageList messages={messages} reasoningExpanded={{}} onToggleReasoning={vi.fn()} />
     );
 
     expect(screen.getByText('验证状态: 未通过')).toBeInTheDocument();
