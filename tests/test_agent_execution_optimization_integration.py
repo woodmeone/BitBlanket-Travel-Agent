@@ -1,3 +1,8 @@
+"""Automated tests for test agent execution optimization integration.
+
+The module validates behavior, regressions, and integration contracts.
+"""
+
 from __future__ import annotations
 
 from datetime import datetime

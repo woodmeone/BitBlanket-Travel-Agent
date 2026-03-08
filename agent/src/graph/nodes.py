@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Core graph nodes implementing intent, planning, tooling, and answer stages."""
+
+from __future__ import annotations
 
 import asyncio
 import json

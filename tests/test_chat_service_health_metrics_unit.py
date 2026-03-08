@@ -1,3 +1,8 @@
+"""Automated tests for test chat service health metrics unit.
+
+The module validates behavior, regressions, and integration contracts.
+"""
+
 from __future__ import annotations
 
 import sys

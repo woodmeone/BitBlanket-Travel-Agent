@@ -1,3 +1,8 @@
+/**
+ * Session navigation panel for create, select, rename, and delete operations.
+ * Encapsulates list interactions to keep the main page focused on chat rendering.
+ */
+
 import React, { useState } from 'react';
 import { Button, Input, Space, Card, Modal, Select, Spin, App, Flex, Badge, Tag } from 'antd';
 import {

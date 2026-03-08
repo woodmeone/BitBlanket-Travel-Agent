@@ -1,3 +1,8 @@
+/**
+ * Shared domain type contracts used across components and services.
+ * Defines API payloads, message models, and session metadata types.
+ */
+
 // 类型定义
 export interface Message {
   role: 'user' | 'assistant';

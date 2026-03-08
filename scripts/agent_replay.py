@@ -1,3 +1,5 @@
+"""Checkpoint replay utility for failure reproduction and incident analysis."""
+
 from __future__ import annotations
 
 import argparse
@@ -25,6 +27,7 @@ from agent.src.tools.travel_tools import get_travel_tools
 
 
 def _build_config(session_id: str, checkpoint_ns: str, checkpoint_id: str | None = None) -> dict[str, Any]:
+    """Build LangGraph configurable context for checkpoint access."""
     configurable: dict[str, Any] = {"thread_id": session_id, "checkpoint_ns": checkpoint_ns}
     if checkpoint_id:
         configurable["checkpoint_id"] = checkpoint_id
@@ -32,6 +35,7 @@ def _build_config(session_id: str, checkpoint_ns: str, checkpoint_id: str | None
 
 
 def _message_text(message: Any) -> str:
+    """Normalize different message payload shapes into plain text."""
     if isinstance(message, BaseMessage):
         content = message.content
         if isinstance(content, str):
@@ -65,6 +69,7 @@ def _message_text(message: Any) -> str:
 
 
 def extract_latest_user_message(messages: Iterable[Any]) -> str:
+    """Extract latest non-empty user/human message from checkpoint history."""
     message_list = list(messages or [])
     for item in reversed(message_list):
         if isinstance(item, HumanMessage):
@@ -91,6 +96,7 @@ def extract_latest_user_message(messages: Iterable[Any]) -> str:
 
 
 def _build_failure_distribution(execution_summary: dict[str, Any], execution_stats: dict[str, Any]) -> dict[str, int]:
+    """Return normalized failure-code histogram from summary or execution steps."""
     summary_distribution = execution_summary.get("error_code_distribution")
     if isinstance(summary_distribution, dict):
         normalized: dict[str, int] = {}
@@ -118,6 +124,7 @@ def load_checkpoint_source(
     checkpoint_ns: str = "",
     checkpoint_id: str | None = None,
 ) -> dict[str, Any]:
+    """Load checkpoint snapshot and normalize replay source metadata."""
     saver = PersistentSqliteSaver(db_path)
 
     if checkpoint_id:
@@ -181,6 +188,7 @@ async def run_replay(
     session_id: str,
     llm_config_path: str,
 ) -> dict[str, Any]:
+    """Re-execute one user prompt through live runtime and capture replay metrics."""
     started = time.perf_counter()
     try:
         llm_adapter = create_from_yaml_config(llm_config_path)
@@ -235,6 +243,7 @@ async def generate_replay_report(
     dry_run: bool,
     message_override: str | None,
 ) -> dict[str, Any]:
+    """Generate combined source snapshot and replay result payload."""
     source = load_checkpoint_source(
         session_id=session_id,
         db_path=db_path,
@@ -269,11 +278,13 @@ async def generate_replay_report(
 
 
 def _sanitize_file_stem(value: str) -> str:
+    """Sanitize dynamic session text for safe filesystem filename usage."""
     text = re.sub(r"[^a-zA-Z0-9_-]+", "_", value)
     return (text.strip("_") or "session")[:60]
 
 
 def write_report(report: dict[str, Any], output_dir: Path, session_id: str) -> tuple[Path, Path]:
+    """Persist replay report as timestamped JSON and Markdown artifacts."""
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     stem = f"agent_replay_{_sanitize_file_stem(session_id)}_{timestamp}"
@@ -344,6 +355,7 @@ def write_report(report: dict[str, Any], output_dir: Path, session_id: str) -> t
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Construct CLI argument parser for replay utility."""
     parser = argparse.ArgumentParser(description="Replay failed agent session from LangGraph checkpoint.")
     parser.add_argument("--session-id", required=True, help="Session ID (LangGraph thread_id).")
     parser.add_argument(
@@ -377,6 +389,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI entrypoint for checkpoint replay report generation."""
     parser = build_parser()
     args = parser.parse_args(argv)
 

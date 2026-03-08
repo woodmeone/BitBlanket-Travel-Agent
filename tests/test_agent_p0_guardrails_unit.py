@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Guardrail regression tests for planner validation, routing, and orchestration safety."""
+
+from __future__ import annotations
 
 import pytest
 from langchain_core.messages import AIMessage
@@ -92,7 +94,7 @@ async def test_execution_summary_aggregates_step_results():
                 "step": 1,
                 "step_id": "s1",
                 "tool": "search_cities",
-                "params": {"query": "鍖椾含"},
+                "params": {"query": "Beijing"},
                 "description": "ok",
                 "depends_on": [],
             },
@@ -115,7 +117,7 @@ async def test_execution_summary_aggregates_step_results():
 
     result = await agent.ainvoke(
         create_initial_state(
-            user_message="鎺ㄨ崘鍩庡競",
+            user_message="recommend cities",
             session_id="summary-session",
             system_message=TRAVEL_AGENT_SYSTEM_PROMPT,
         )
@@ -152,7 +154,7 @@ async def test_tool_result_contains_source_metadata_and_fallback():
                 "step": 1,
                 "step_id": "s1",
                 "tool": "search_cities",
-                "params": {"query": "涓婃捣"},
+                "params": {"query": "Shanghai"},
                 "description": "ok",
                 "depends_on": [],
             },
@@ -175,7 +177,7 @@ async def test_tool_result_contains_source_metadata_and_fallback():
 
     result = await agent.ainvoke(
         create_initial_state(
-            user_message="鎺ㄨ崘鍩庡競",
+            user_message="recommend cities",
             session_id="source-meta-session",
             system_message=TRAVEL_AGENT_SYSTEM_PROMPT,
         )
@@ -215,7 +217,7 @@ async def test_tool_result_meta_overrides_default_source_profile():
                 "step": 1,
                 "step_id": "s1",
                 "tool": "get_weather",
-                "params": {"city": "鍖椾含", "days": 2},
+                "params": {"city": "Beijing", "days": 2},
                 "description": "weather",
                 "depends_on": [],
             }
@@ -285,7 +287,7 @@ async def test_param_auto_correction_fills_missing_city():
         )
     )
     assert calls["count"] == 1
-    assert calls["city"] in {"北京", "鍖椾含"}
+    assert calls["city"] in {"北京", "Beijing"}
     tool_result = result["tool_results"]["s1:query_attractions"]
     assert tool_result["success"] is True
 
@@ -299,9 +301,9 @@ async def test_loop_detection_blocks_repeated_same_tool_invocation():
 
     def loop_plan(_entities: dict) -> list[dict]:
         return [
-            {"step": 1, "step_id": "s1", "tool": "query_attractions", "params": {"city": "鍖椾含"}, "description": "1", "depends_on": []},
-            {"step": 2, "step_id": "s2", "tool": "query_attractions", "params": {"city": "鍖椾含"}, "description": "2", "depends_on": []},
-            {"step": 3, "step_id": "s3", "tool": "query_attractions", "params": {"city": "鍖椾含"}, "description": "3", "depends_on": []},
+            {"step": 1, "step_id": "s1", "tool": "query_attractions", "params": {"city": "Beijing"}, "description": "1", "depends_on": []},
+            {"step": 2, "step_id": "s2", "tool": "query_attractions", "params": {"city": "Beijing"}, "description": "2", "depends_on": []},
+            {"step": 3, "step_id": "s3", "tool": "query_attractions", "params": {"city": "Beijing"}, "description": "3", "depends_on": []},
         ]
 
     agent = build_travel_agent(
@@ -313,7 +315,7 @@ async def test_loop_detection_blocks_repeated_same_tool_invocation():
 
     result = await agent.ainvoke(
         create_initial_state(
-            user_message="鍋氫釜鍖椾含琛岀▼",
+            user_message="plan a Beijing itinerary",
             session_id="loop-detection-session",
             system_message=TRAVEL_AGENT_SYSTEM_PROMPT,
         )
@@ -346,7 +348,7 @@ async def test_early_stop_after_terminal_tool_success():
                 "step": 1,
                 "step_id": "s1",
                 "tool": "calculate_budget",
-                "params": {"destination": "鍖椾含", "days": 3, "people": 2, "accommodation_level": "medium"},
+                "params": {"destination": "Beijing", "days": 3, "people": 2, "accommodation_level": "medium"},
                 "description": "core",
                 "depends_on": [],
             },
@@ -354,14 +356,14 @@ async def test_early_stop_after_terminal_tool_success():
                 "step": 2,
                 "step_id": "s2",
                 "tool": "get_travel_tips",
-                "params": {"destination": "鍖椾含"},
+                "params": {"destination": "Beijing"},
                 "description": "optional",
                 "depends_on": [],
             },
         ]
 
     initial = create_initial_state(
-        user_message="棰勭畻 3 澶?2 浜?鍖椾含",
+        user_message="budget for 3 days, 2 people, Beijing",
         session_id="early-stop-session",
         system_message=TRAVEL_AGENT_SYSTEM_PROMPT,
     )
@@ -392,9 +394,9 @@ async def test_plan_truncated_by_max_plan_steps(monkeypatch):
 
     def long_plan(_entities: dict) -> list[dict]:
         return [
-            {"step": 1, "step_id": "s1", "tool": "query_attractions", "params": {"city": "鍖椾含"}, "description": "1", "depends_on": []},
-            {"step": 2, "step_id": "s2", "tool": "query_attractions", "params": {"city": "涓婃捣"}, "description": "2", "depends_on": []},
-            {"step": 3, "step_id": "s3", "tool": "query_attractions", "params": {"city": "骞垮窞"}, "description": "3", "depends_on": []},
+            {"step": 1, "step_id": "s1", "tool": "query_attractions", "params": {"city": "Beijing"}, "description": "1", "depends_on": []},
+            {"step": 2, "step_id": "s2", "tool": "query_attractions", "params": {"city": "Shanghai"}, "description": "2", "depends_on": []},
+            {"step": 3, "step_id": "s3", "tool": "query_attractions", "params": {"city": "Guangzhou"}, "description": "3", "depends_on": []},
         ]
 
     agent = build_travel_agent(
@@ -447,7 +449,7 @@ async def test_verifier_failed_then_retry_once_then_answer():
                 "step": 1,
                 "step_id": "s1",
                 "tool": "query_attractions",
-                "params": {"city": "鍖椾含"},
+                "params": {"city": "Beijing"},
                 "description": "wrong tool for budget",
                 "depends_on": [],
             }
@@ -461,7 +463,7 @@ async def test_verifier_failed_then_retry_once_then_answer():
     )
     result = await agent.ainvoke(
         create_initial_state(
-            user_message="棰勭畻涓夊ぉ鍖椾含鏃呰",
+            user_message="budget for a three-day Beijing trip",
             session_id="verify-retry-session",
             system_message=TRAVEL_AGENT_SYSTEM_PROMPT,
         )
@@ -489,8 +491,8 @@ async def test_orchestrator_round_budget_and_fused_results(monkeypatch):
 
     def recommend_plan(_entities: dict) -> list[dict]:
         return [
-            {"step": 1, "step_id": "s1", "tool": "search_cities", "params": {"query": "鍖椾含"}, "description": "cities", "depends_on": []},
-            {"step": 2, "step_id": "s2", "tool": "query_attractions", "params": {"city": "鍖椾含"}, "description": "atts", "depends_on": []},
+            {"step": 1, "step_id": "s1", "tool": "search_cities", "params": {"query": "Beijing"}, "description": "cities", "depends_on": []},
+            {"step": 2, "step_id": "s2", "tool": "query_attractions", "params": {"city": "Beijing"}, "description": "atts", "depends_on": []},
         ]
 
     agent = build_travel_agent(
@@ -501,7 +503,7 @@ async def test_orchestrator_round_budget_and_fused_results(monkeypatch):
     )
     result = await agent.ainvoke(
         create_initial_state(
-            user_message="鎺ㄨ崘鍖椾含",
+            user_message="recommend Beijing",
             session_id="orchestrator-budget-session",
             system_message=TRAVEL_AGENT_SYSTEM_PROMPT,
         )

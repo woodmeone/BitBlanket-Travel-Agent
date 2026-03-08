@@ -1,3 +1,5 @@
+"""Storage backends used by repository implementations."""
+
 # Storage Package
 from .session_storage import SessionStorage, MemorySessionStorage, FileSessionStorage
 

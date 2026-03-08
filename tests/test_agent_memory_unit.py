@@ -1,3 +1,8 @@
+"""Automated tests for test agent memory unit.
+
+The module validates behavior, regressions, and integration contracts.
+"""
+
 import pytest
 from datetime import datetime, timedelta
 

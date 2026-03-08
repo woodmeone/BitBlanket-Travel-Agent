@@ -1,4 +1,4 @@
-﻿"""FastAPI entrypoint for ShuaiTravelAgent web API."""
+"""FastAPI entrypoint for ShuaiTravelAgent web API."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ ensure_project_paths()
 
 
 def create_app() -> FastAPI:
+    """Create and configure the FastAPI application instance."""
     app = FastAPI(
         title=APP_NAME,
         description="AI Travel Assistant API with SSE streaming support.",
@@ -107,6 +108,7 @@ app = create_app()
 
 
 def main(host: str = "0.0.0.0", port: int = 38000, debug: bool = False) -> None:
+    """Run uvicorn server with config defaults and CLI overrides."""
     try:
         server_config = get_server_config()
 

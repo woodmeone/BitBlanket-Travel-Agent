@@ -1,4 +1,4 @@
-﻿"""Model info routes."""
+"""Model info routes."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ def set_config_manager(config_manager: Any) -> None:
 
 
 def _resolve_config_manager() -> Any:
+    """Resolve runtime model config manager with graceful fallback handling."""
     if _config_manager is not None:
         return _config_manager
     try:
@@ -33,6 +34,7 @@ def _resolve_config_manager() -> Any:
 
 
 def _fallback_models():
+    """Provide static model metadata when runtime config is unavailable."""
     return [
         {"model_id": "minimax-m2-5", "name": "MiniMax M2.5", "provider": "anthropic", "model": "MiniMax-M2.5"},
         {"model_id": "gpt-4o-mini", "name": "GPT-4o Mini", "provider": "openai", "model": "gpt-4o-mini"},
@@ -48,6 +50,7 @@ def _fallback_models():
 
 @router.get("/models")
 async def list_models():
+    """List available models from runtime config or fallback catalog."""
     config_manager = _resolve_config_manager()
     if config_manager is not None:
         try:
@@ -60,6 +63,7 @@ async def list_models():
 
 @router.get("/models/{model_id}")
 async def get_model(model_id: str):
+    """Get one model by id from runtime config or fallback catalog."""
     config_manager = _resolve_config_manager()
     if config_manager is not None:
         try:

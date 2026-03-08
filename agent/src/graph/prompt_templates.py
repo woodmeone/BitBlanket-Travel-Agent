@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Prompt builders and intent-specific guidance templates for graph nodes."""
+
+from __future__ import annotations
 
 from typing import Optional
 

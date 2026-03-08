@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Chat orchestration service for SSE streaming, memory sync, and health metrics."""
+
+from __future__ import annotations
 
 import asyncio
 import json

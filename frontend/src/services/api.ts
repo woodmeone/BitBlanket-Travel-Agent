@@ -1,3 +1,8 @@
+/**
+ * HTTP and SSE client wrapper for backend chat/session/model endpoints.
+ * Normalizes transport errors and stream lifecycle callbacks for UI components.
+ */
+
 import axios from 'axios';
 import {
   SessionInfo,

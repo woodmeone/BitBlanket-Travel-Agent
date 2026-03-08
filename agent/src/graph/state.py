@@ -1,4 +1,4 @@
-﻿"""State model and defaults for the travel agent graph."""
+"""State model and defaults for the travel agent graph."""
 
 from __future__ import annotations
 

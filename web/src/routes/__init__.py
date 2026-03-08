@@ -1,4 +1,4 @@
-﻿"""Route package exports.
+"""Route package exports.
 
 Business routers are mounted under `/api` in `src.main`.
 Documentation routers are mounted without API prefix.

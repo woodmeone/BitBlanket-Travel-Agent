@@ -1,4 +1,4 @@
-﻿"""Local ASGI smoke test for chat streaming route."""
+"""Local ASGI smoke test for chat streaming route."""
 
 from __future__ import annotations
 

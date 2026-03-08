@@ -1,3 +1,8 @@
+/**
+ * Model selector dropdown synchronized with current session settings.
+ * Provides user feedback for successful or failed model switches.
+ */
+
 import React from 'react';
 import { Select, Spin, App } from 'antd';
 import { RobotOutlined } from '@ant-design/icons';

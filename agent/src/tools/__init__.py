@@ -1,3 +1,5 @@
+"""Tool registry package for travel data access and planning helpers."""
+
 # Tools Module
 
 # LangChain Tools

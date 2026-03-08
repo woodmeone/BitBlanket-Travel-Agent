@@ -1,4 +1,9 @@
 /**
+ * Frontend logging helper with environment-aware verbosity controls.
+ * Use this utility instead of direct console calls in application code.
+ */
+
+/**
  * 日志工具
  * 提供统一的日志输出，支持不同环境配置不同的日志级别
  */

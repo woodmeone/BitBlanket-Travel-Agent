@@ -1,4 +1,4 @@
-﻿"""Dependency providers for web application services."""
+"""Dependency providers for web application services."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ _chat_service: Optional[ChatService] = None
 
 
 def _get_storage() -> FileSessionStorage:
+    """Create or reuse file-backed session storage singleton."""
     global _storage
     if _storage is None:
         session_file = os.path.join(str(PROJECT_ROOT), "data", "sessions", "sessions.json")
@@ -31,6 +32,7 @@ def _get_storage() -> FileSessionStorage:
 
 
 def provide_session_repository() -> SessionRepositoryImpl:
+    """Create or reuse session repository singleton."""
     global _repository
     if _repository is None:
         _repository = SessionRepositoryImpl(_get_storage())
@@ -38,6 +40,7 @@ def provide_session_repository() -> SessionRepositoryImpl:
 
 
 def provide_session_service() -> SessionService:
+    """Create or reuse session service singleton with memory integration."""
     global _session_service
     if _session_service is None:
         _session_service = SessionService(
@@ -48,6 +51,7 @@ def provide_session_service() -> SessionService:
 
 
 def provide_chat_service() -> ChatService:
+    """Create or reuse chat service singleton."""
     global _chat_service
     if _chat_service is None:
         _chat_service = ChatService(provide_session_repository())
@@ -55,6 +59,7 @@ def provide_chat_service() -> ChatService:
 
 
 def provide_travel_agent():
+    """Build one travel agent instance using configured LLM and tools."""
     from agent.src.llm.langchain_adapter import create_from_yaml_config
     from agent.src.tools.travel_tools import get_travel_tools
     from agent.src.graph.builder import build_travel_agent

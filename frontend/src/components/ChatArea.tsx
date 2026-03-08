@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Streaming chat controller for user input, SSE consumption, and rendering queues.
+ * Implements incremental flush scheduling to keep long responses smooth.
+ */
+
+
 import React, { useEffect, useRef, useState } from 'react';
 import { App, Button, Input, Space } from 'antd';
 import { SendOutlined, StopOutlined } from '@ant-design/icons';
@@ -10,6 +16,20 @@ import MessageList from './MessageList';
 import ChatModeSelector from './ChatModeSelector';
 
 const { TextArea } = Input;
+
+const ANSWER_CHARS_PER_TICK = 1;
+const REASONING_CHARS_PER_TICK = 2;
+const STREAM_FLUSH_INTERVAL_MS = 28;
+
+const takeChars = (source: string, count: number): [string, string] => {
+  if (!source) {
+    return ['', ''];
+  }
+  const chars = Array.from(source);
+  const head = chars.slice(0, count).join('');
+  const tail = chars.slice(count).join('');
+  return [head, tail];
+};
 
 const ChatArea: React.FC = () => {
   const {
@@ -41,9 +61,106 @@ const ChatArea: React.FC = () => {
   const skipNextSessionResetRef = useRef(false);
   const metadataRef = useRef<StreamMetadata | null>(null);
 
+  const fullResponseRef = useRef('');
+  const fullReasoningRef = useRef('');
+  const reasoningTimestampRef = useRef('');
+  const streamQueueRef = useRef({ answer: '', reasoning: '' });
+  const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scrollRafRef = useRef<number | null>(null);
+
+  const scheduleScrollToBottom = () => {
+    if (scrollRafRef.current !== null) {
+      return;
+    }
+    scrollRafRef.current = window.requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+    });
+  };
+
+  const stopFlushTimer = () => {
+    if (flushTimerRef.current !== null) {
+      clearInterval(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+  };
+
+  const flushStreamingQueue = () => {
+    let didUpdate = false;
+
+    if (streamQueueRef.current.reasoning) {
+      const [chunk, rest] = takeChars(streamQueueRef.current.reasoning, REASONING_CHARS_PER_TICK);
+      streamQueueRef.current.reasoning = rest;
+      if (chunk) {
+        didUpdate = true;
+        setStreamingReasoning((prev) => prev + chunk);
+      }
+    }
+
+    if (streamQueueRef.current.answer) {
+      const [chunk, rest] = takeChars(streamQueueRef.current.answer, ANSWER_CHARS_PER_TICK);
+      streamQueueRef.current.answer = rest;
+      if (chunk) {
+        didUpdate = true;
+        setStreamingMessage((prev) => prev + chunk);
+      }
+    }
+
+    if (didUpdate) {
+      scheduleScrollToBottom();
+    }
+
+    if (!streamQueueRef.current.answer && !streamQueueRef.current.reasoning) {
+      stopFlushTimer();
+    }
+  };
+
+  const startFlushTimer = () => {
+    if (flushTimerRef.current !== null) {
+      return;
+    }
+    flushTimerRef.current = setInterval(flushStreamingQueue, STREAM_FLUSH_INTERVAL_MS);
+  };
+
+  const enqueueAnswer = (content: string) => {
+    if (!content) {
+      return;
+    }
+    streamQueueRef.current.answer += content;
+    startFlushTimer();
+  };
+
+  const enqueueReasoning = (content: string) => {
+    if (!content) {
+      return;
+    }
+    streamQueueRef.current.reasoning += content;
+    startFlushTimer();
+  };
+
+  const clearStreamRuntimeRefs = () => {
+    stopFlushTimer();
+    streamQueueRef.current.answer = '';
+    streamQueueRef.current.reasoning = '';
+    fullResponseRef.current = '';
+    fullReasoningRef.current = '';
+    reasoningTimestampRef.current = '';
+  };
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-  }, [messages, streamingMessage, streamingReasoning, isThinking, waitingForResponse, currentTool]);
+    return () => {
+      stopFlushTimer();
+      if (scrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = null;
+      }
+    };
+  }, []);
+
+  const streamScrollMarker = `${Math.floor(streamingMessage.length / 8)}-${Math.floor(streamingReasoning.length / 12)}`;
+  useEffect(() => {
+    scheduleScrollToBottom();
+  }, [messages.length, streamScrollMarker, isThinking, waitingForResponse, currentTool]);
 
   useEffect(() => {
     if (skipNextSessionResetRef.current) {
@@ -51,6 +168,7 @@ const ChatArea: React.FC = () => {
       return;
     }
 
+    clearStreamRuntimeRefs();
     setStreamingMessage('');
     setStreamingReasoning('');
     setWaitingForResponse(false);
@@ -94,6 +212,7 @@ const ChatArea: React.FC = () => {
         timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       });
 
+      clearStreamRuntimeRefs();
       setInputValue('');
       setIsStreaming(true);
       setStopStreaming(false);
@@ -115,10 +234,6 @@ const ChatArea: React.FC = () => {
         }
       }
 
-      let fullResponse = '';
-      let fullReasoning = '';
-      let reasoningTimestamp = '';
-
       await apiService.fetchStreamChat(
         {
           message: trimmed,
@@ -127,24 +242,24 @@ const ChatArea: React.FC = () => {
         },
         {
           onChunk: (content) => {
-            fullResponse += content;
-            setStreamingMessage((prev) => prev + content);
+            fullResponseRef.current += content;
+            enqueueAnswer(content);
           },
           onReasoning: (content) => {
-            fullReasoning += content;
-            setStreamingReasoning((prev) => prev + content);
+            fullReasoningRef.current += content;
+            enqueueReasoning(content);
           },
           onReasoningStart: () => {
             setIsThinking(true);
           },
           onReasoningTimestamp: (timestamp) => {
-            reasoningTimestamp = timestamp;
+            reasoningTimestampRef.current = timestamp;
           },
           onReasoningEnd: () => {
             setIsThinking(false);
           },
           onAnswerStart: () => {
-            // no-op
+            setIsThinking(false);
           },
           onToolStart: (toolName: string) => {
             setCurrentTool(toolName);
@@ -158,19 +273,27 @@ const ChatArea: React.FC = () => {
           onError: (errorMsg) => {
             message.destroy();
             message.error('错误: ' + errorMsg);
+
+            clearStreamRuntimeRefs();
             setWaitingForResponse(false);
             setIsThinking(false);
             setCurrentTool(null);
             setError(errorMsg);
-            fullResponse = `抱歉，出现错误：${errorMsg}`;
+
+            fullResponseRef.current = `抱歉，出现错误：${errorMsg}`;
+            setStreamingMessage(fullResponseRef.current);
           },
           onComplete: () => {
             message.destroy();
-            const finalReasoning = reasoningTimestamp
-              ? `[Timestamp: ${reasoningTimestamp}]\n\n${fullReasoning}`
-              : fullReasoning;
-            const finalContent = fullResponse || streamingMessage;
+
+            const finalReasoning = reasoningTimestampRef.current
+              ? `[Timestamp: ${reasoningTimestampRef.current}]\n\n${fullReasoningRef.current}`
+              : fullReasoningRef.current;
+
+            const finalContent = fullResponseRef.current || streamingMessage;
             const finalMetadata = metadataRef.current;
+
+            clearStreamRuntimeRefs();
 
             addMessage({
               role: 'assistant',
@@ -209,23 +332,29 @@ const ChatArea: React.FC = () => {
       setIsThinking(false);
       setCurrentTool(null);
       setError(errorMsg);
+      clearStreamRuntimeRefs();
     }
   };
 
   const handleStop = () => {
     stopRef.current = true;
     setStopStreaming(true);
+
+    const stoppedContent = streamingMessage || fullResponseRef.current;
+    const stoppedReasoning = streamingReasoning || fullReasoningRef.current;
+    clearStreamRuntimeRefs();
+
     setWaitingForResponse(false);
     setIsThinking(false);
     setIsStreaming(false);
     setCurrentTool(null);
     metadataRef.current = null;
 
-    if (streamingMessage || streamingReasoning) {
+    if (stoppedContent || stoppedReasoning) {
       addMessage({
         role: 'assistant',
-        content: (streamingMessage || '已停止生成') + '\n\n⚠️ 已停止生成',
-        reasoning: streamingReasoning,
+        content: (stoppedContent || '已停止生成') + '\n\n⏹️ 已停止生成',
+        reasoning: stoppedReasoning,
         timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       });
     }
@@ -302,7 +431,7 @@ const ChatArea: React.FC = () => {
           >
             {chatMode === 'direct' && '⚡ 快速响应'}
             {chatMode === 'react' && '🧠 深度思考'}
-            {chatMode === 'plan' && '📋 先规划后执行'}
+            {chatMode === 'plan' && '📝 先规划后执行'}
           </div>
         </div>
 

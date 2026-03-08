@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Ant Design runtime provider with global locale and theme defaults.
+ * Use this component to keep UI behavior consistent across pages.
+ */
+
+
 import React from 'react';
 import { ConfigProvider, App as AntApp } from 'antd';
 

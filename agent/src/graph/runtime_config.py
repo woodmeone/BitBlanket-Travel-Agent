@@ -14,6 +14,8 @@ _SUPPORTED_INTENT_STRUCTURED_METHODS = {"json_schema", "function_calling", "json
 
 @dataclass(frozen=True)
 class AgentRuntimeConfig:
+    """Normalized runtime toggles and thresholds for graph execution."""
+
     reliability_controls_enabled: bool
     timeliness_controls_enabled: bool
     security_controls_enabled: bool
@@ -36,10 +38,12 @@ class AgentRuntimeConfig:
     round_max_tokens: int
 
     def to_dict(self) -> dict[str, object]:
+        """Convert dataclass fields to a serializable dictionary."""
         return asdict(self)
 
 
 def _parse_int_env(name: str, default: int, min_value: int = 0) -> int:
+    """Parse an integer environment variable with lower-bound validation."""
     raw = str(os.getenv(name, str(default))).strip()
     try:
         value = int(raw)
@@ -52,6 +56,7 @@ def _parse_int_env(name: str, default: int, min_value: int = 0) -> int:
 
 
 def _parse_bool_env(name: str, default: bool) -> bool:
+    """Parse a boolean environment variable with explicit true/false keywords."""
     raw = str(os.getenv(name, str(default))).strip().lower()
     if raw in {"1", "true", "yes", "on"}:
         return True
@@ -62,6 +67,7 @@ def _parse_bool_env(name: str, default: bool) -> bool:
 
 
 def _resolve_stream_events_version() -> str:
+    """Resolve stream payload version and fallback to the supported default."""
     raw = str(os.getenv("AGENT_STREAM_EVENTS_VERSION", "v1")).strip().lower()
     if raw in _SUPPORTED_STREAM_EVENT_VERSIONS:
         return raw
@@ -70,6 +76,7 @@ def _resolve_stream_events_version() -> str:
 
 
 def _resolve_intent_structured_methods() -> tuple[str, ...]:
+    """Build prioritized fallback methods for structured intent extraction."""
     preferred = str(os.getenv("AGENT_INTENT_STRUCTURED_METHOD", "json_schema")).strip().lower()
     fallback_order = [preferred, "json_schema", "function_calling", "json_mode"]
     methods: list[str] = []
@@ -84,6 +91,7 @@ def _resolve_intent_structured_methods() -> tuple[str, ...]:
 
 
 def _parse_float_env(name: str, default: float, min_value: float = 0.0, max_value: float = 1.0) -> float:
+    """Parse float environment values within an inclusive range."""
     raw = str(os.getenv(name, str(default))).strip()
     try:
         value = float(raw)
@@ -96,6 +104,7 @@ def _parse_float_env(name: str, default: float, min_value: float = 0.0, max_valu
 
 
 def get_runtime_config() -> AgentRuntimeConfig:
+    """Read environment variables and return an immutable runtime configuration."""
     return AgentRuntimeConfig(
         reliability_controls_enabled=_parse_bool_env("AGENT_RELIABILITY_CONTROLS_ENABLED", default=True),
         timeliness_controls_enabled=_parse_bool_env("AGENT_TIMELINESS_CONTROLS_ENABLED", default=True),

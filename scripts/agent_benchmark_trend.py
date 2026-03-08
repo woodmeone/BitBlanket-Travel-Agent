@@ -1,3 +1,5 @@
+"""Trend report generator comparing current benchmark data with a baseline snapshot."""
+
 from __future__ import annotations
 
 import argparse
@@ -17,6 +19,7 @@ METRICS = [
 
 
 def _safe_float(value: Any) -> float:
+    """Convert arbitrary value to float with safe fallback."""
     try:
         return float(value)
     except Exception:
@@ -24,6 +27,7 @@ def _safe_float(value: Any) -> float:
 
 
 def _safe_int(value: Any) -> int:
+    """Convert arbitrary value to int with safe fallback."""
     try:
         return int(value)
     except Exception:
@@ -31,18 +35,21 @@ def _safe_int(value: Any) -> int:
 
 
 def load_report(path: Path) -> dict[str, Any]:
+    """Load benchmark report JSON; return empty payload when missing."""
     if not path.exists():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _format_delta(current: float, baseline: float) -> str:
+    """Format signed metric delta for markdown tables."""
     delta = current - baseline
     sign = "+" if delta > 0 else ""
     return f"{sign}{delta:.4f}"
 
 
 def _build_aggregate_rows(current: dict[str, Any], baseline: dict[str, Any]) -> list[str]:
+    """Build aggregate-level comparison rows for markdown output."""
     rows = ["| metric | current | baseline | delta | direction |", "|---|---:|---:|---:|---|"]
     current_agg = current.get("aggregate", {}) if isinstance(current, dict) else {}
     baseline_agg = baseline.get("aggregate", {}) if isinstance(baseline, dict) else {}
@@ -61,6 +68,7 @@ def _build_aggregate_rows(current: dict[str, Any], baseline: dict[str, Any]) -> 
 
 
 def _build_scenario_rows(current: dict[str, Any], baseline: dict[str, Any]) -> list[str]:
+    """Build per-scenario comparison rows for markdown output."""
     rows = ["| scenario | current_success | baseline_success | delta_success | current_elapsed_ms | baseline_elapsed_ms | delta_elapsed_ms | current_fallback | baseline_fallback | delta_fallback |", "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
     current_runs = {str(item.get("scenario")): item for item in (current.get("runs", []) or []) if isinstance(item, dict)}
     baseline_runs = {str(item.get("scenario")): item for item in (baseline.get("runs", []) or []) if isinstance(item, dict)}
@@ -102,6 +110,7 @@ def build_markdown(
     baseline_path: Path,
     baseline_missing: bool,
 ) -> str:
+    """Render a complete trend markdown report from two benchmark snapshots."""
     lines = [
         "# Agent Benchmark Trend Report",
         "",
@@ -127,6 +136,7 @@ def build_markdown(
 
 
 def generate_trend_report(current_path: Path, baseline_path: Path, output_path: Path) -> Path:
+    """Generate and save benchmark trend markdown report."""
     current_report = load_report(current_path)
     baseline_missing = not baseline_path.exists()
     baseline_report = load_report(baseline_path) if not baseline_missing else current_report
@@ -143,6 +153,7 @@ def generate_trend_report(current_path: Path, baseline_path: Path, output_path: 
 
 
 def main() -> None:
+    """CLI entrypoint for benchmark trend generation."""
     parser = argparse.ArgumentParser(description="Generate trend report for benchmark current vs baseline.")
     parser.add_argument(
         "--current",

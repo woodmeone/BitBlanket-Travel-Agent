@@ -1,3 +1,5 @@
+"""Golden dataset evaluator for deterministic quality-gate checks."""
+
 from __future__ import annotations
 
 import argparse
@@ -23,6 +25,8 @@ TOOL_INTENTS = {"recommend", "attractions", "itinerary", "budget", "tips", "poli
 
 @dataclass
 class GoldenCase:
+    """Single golden evaluation case with expected routing intent."""
+
     case_id: str
     intent: str
     user_message: str
@@ -30,6 +34,8 @@ class GoldenCase:
 
 
 class _StructuredIntentLLM:
+    """Structured-output shim that emits deterministic intent payloads."""
+
     def __init__(self, schema, intent: str, entities: dict[str, Any], requires_tools: bool):
         self._schema = schema
         self._intent = intent
@@ -46,6 +52,8 @@ class _StructuredIntentLLM:
 
 
 class GoldenLLM:
+    """Fake LLM used to make golden evaluation deterministic."""
+
     def __init__(self, case: GoldenCase):
         self._case = case
 
@@ -118,6 +126,7 @@ TOOLS = [
 
 
 def load_cases(path: Path) -> list[GoldenCase]:
+    """Load golden dataset JSON into typed GoldenCase records."""
     raw = json.loads(path.read_text(encoding="utf-8"))
     return [
         GoldenCase(
@@ -131,6 +140,7 @@ def load_cases(path: Path) -> list[GoldenCase]:
 
 
 async def run_case(case: GoldenCase) -> dict[str, Any]:
+    """Execute one golden case and return normalized evaluation metrics."""
     import time
 
     started = time.perf_counter()
@@ -195,6 +205,7 @@ async def run_case(case: GoldenCase) -> dict[str, Any]:
 
 
 async def run_eval(dataset_path: Path) -> dict[str, Any]:
+    """Run all golden cases and compute aggregate quality indicators."""
     cases = load_cases(dataset_path)
     results = []
     for case in cases:
@@ -272,6 +283,7 @@ async def run_eval(dataset_path: Path) -> dict[str, Any]:
 
 
 def main() -> int:
+    """CLI entrypoint for golden dataset evaluation."""
     parser = argparse.ArgumentParser(description="Golden evaluation for ReAct agent quality gate.")
     parser.add_argument(
         "--dataset",

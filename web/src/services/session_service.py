@@ -1,4 +1,4 @@
-﻿"""Session application service."""
+"""Session application service."""
 
 from __future__ import annotations
 

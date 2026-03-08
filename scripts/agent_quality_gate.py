@@ -1,3 +1,5 @@
+"""CI quality gate checker combining golden and benchmark thresholds."""
+
 from __future__ import annotations
 
 import argparse
@@ -7,6 +9,7 @@ from typing import Any
 
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
+    """Convert value to float; return provided default on conversion failure."""
     try:
         return float(value)
     except Exception:
@@ -14,6 +17,7 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
 
 
 def _safe_int(value: Any, default: int = 0) -> int:
+    """Convert value to int; return provided default on conversion failure."""
     try:
         return int(value)
     except Exception:
@@ -21,6 +25,7 @@ def _safe_int(value: Any, default: int = 0) -> int:
 
 
 def _load_json(path: Path) -> dict[str, Any]:
+    """Load JSON report from disk and fail fast when missing."""
     if not path.exists():
         raise FileNotFoundError(f"Report not found: {path}")
     return json.loads(path.read_text(encoding="utf-8"))
@@ -40,6 +45,7 @@ def run_quality_gate(
     max_hallucination_rate_regression: float,
     max_fallback_steps_regression: int,
 ) -> tuple[bool, list[str]]:
+    """Validate golden/benchmark reports against absolute and regression thresholds."""
     reasons: list[str] = []
 
     golden = _load_json(golden_report)
@@ -103,6 +109,7 @@ def run_quality_gate(
 
 
 def main() -> int:
+    """CLI entrypoint for quality gate evaluation."""
     parser = argparse.ArgumentParser(description="Quality gate for golden/benchmark reports.")
     parser.add_argument(
         "--golden-report",

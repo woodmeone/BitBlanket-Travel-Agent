@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Mode switcher for direct, ReAct, and planning conversation strategies.
+ * Maps UI labels to backend mode identifiers.
+ */
+
+
 import React from 'react';
 import { Select, Tooltip, Badge } from 'antd';
 import {

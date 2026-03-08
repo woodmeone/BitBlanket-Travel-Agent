@@ -1,4 +1,4 @@
-﻿"""Local ASGI smoke tests for key web APIs."""
+"""Local ASGI smoke tests for key web APIs."""
 
 from __future__ import annotations
 
@@ -35,6 +35,15 @@ async def test_models_session_clear_smoke():
         assert create_data.get("success") is True
         session_id = create_data.get("session_id")
         assert isinstance(session_id, str) and session_id
+
+        # Backward compatibility: allow legacy `model` field besides `model_id`.
+        set_model_resp = await client.put(
+            f"/api/session/{session_id}/model",
+            json={"model": "gpt-4o-mini"},
+        )
+        assert set_model_resp.status_code == 200
+        assert set_model_resp.json().get("success") is True
+        assert set_model_resp.json().get("model_id") == "gpt-4o-mini"
 
         clear_resp = await client.post("/api/clear", params={"session_id": session_id})
         assert clear_resp.status_code == 200

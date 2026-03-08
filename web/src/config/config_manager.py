@@ -1,4 +1,4 @@
-﻿"""Web-layer configuration manager.
+"""Web-layer configuration manager.
 
 Prefers delegating to agent's ConfigManager implementation. Falls back to a
 local lightweight implementation when agent config module is unavailable.

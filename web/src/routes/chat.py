@@ -1,4 +1,6 @@
-﻿"""LangChain chat routes."""
+"""LangChain chat routes."""
+
+from __future__ import annotations
 
 from typing import Optional
 
@@ -13,22 +15,28 @@ router = APIRouter()
 
 
 class ChatRequest(BaseModel):
+    """Request payload for streaming chat endpoint."""
+
     message: str
     session_id: Optional[str] = None
     mode: Optional[str] = "react"
 
 
 def _get_chat_service() -> ChatService:
+    """Resolve chat service instance from dependency container."""
     container = get_container()
     return container.resolve("ChatService")
 
 
 @router.post("/chat/stream")
 async def stream_chat(request: ChatRequest, fastapi_request: Request):
+    """Proxy SSE stream from chat service to API client."""
+    _ = fastapi_request  # Reserved for request-scoped metadata and tracing hooks.
+
     if not request.message or not request.message.strip():
-        raise HTTPException(status_code=422, detail="消息不能为空")
+        raise HTTPException(status_code=422, detail="Message cannot be empty")
     if len(request.message) > 5000:
-        raise HTTPException(status_code=422, detail="消息长度不能超过5000字符")
+        raise HTTPException(status_code=422, detail="Message length cannot exceed 5000 characters")
 
     service = _get_chat_service()
 

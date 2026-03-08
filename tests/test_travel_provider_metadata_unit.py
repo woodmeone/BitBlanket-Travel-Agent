@@ -1,3 +1,8 @@
+"""Automated tests for test travel provider metadata unit.
+
+The module validates behavior, regressions, and integration contracts.
+"""
+
 from __future__ import annotations
 
 import pytest

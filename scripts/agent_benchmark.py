@@ -1,3 +1,5 @@
+"""Synthetic benchmark runner for agent runtime latency and tool quality metrics."""
+
 from __future__ import annotations
 
 import argparse
@@ -22,12 +24,16 @@ from agent.src.graph.state import TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_sta
 
 @dataclass
 class Scenario:
+    """Single synthetic scenario used by benchmark runs."""
+
     name: str
     intent: str
     user_message: str
 
 
 class _StructuredIntentLLM:
+    """Structured-output stub that simulates deterministic intent extraction."""
+
     def __init__(self, schema, intent: str):
         self._schema = schema
         self._intent = intent
@@ -42,6 +48,8 @@ class _StructuredIntentLLM:
 
 
 class BenchmarkLLM:
+    """Minimal fake LLM adapter used by benchmark script."""
+
     def __init__(self, intent: str):
         self._intent = intent
 
@@ -142,6 +150,7 @@ async def get_travel_tips(destination: str, season: str | None = None) -> dict[s
 
 
 async def run_benchmark() -> dict[str, Any]:
+    """Execute all benchmark scenarios and aggregate performance metrics."""
     import time
 
     scenarios = [
@@ -209,6 +218,7 @@ async def run_benchmark() -> dict[str, Any]:
 
 
 def write_report(report: dict[str, Any], output_dir: Path) -> tuple[Path, Path]:
+    """Persist benchmark artifacts in JSON and Markdown formats."""
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / "agent_benchmark_latest.json"
     md_path = output_dir / "agent_benchmark_latest.md"
@@ -248,6 +258,7 @@ def write_report(report: dict[str, Any], output_dir: Path) -> tuple[Path, Path]:
 
 
 def main() -> None:
+    """CLI entrypoint for synthetic runtime benchmark execution."""
     parser = argparse.ArgumentParser(description="Run synthetic benchmark for travel agent runtime.")
     parser.add_argument(
         "--output-dir",

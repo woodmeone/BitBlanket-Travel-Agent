@@ -1,4 +1,4 @@
-﻿"""Travel API client with mock providers and metadata."""
+"""Travel API client with mock providers and metadata."""
 
 from __future__ import annotations
 

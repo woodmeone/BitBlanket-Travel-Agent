@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+"""Graph assembly and execution entrypoints for the travel agent runtime."""
+
+from __future__ import annotations
 
 import asyncio
 import logging

@@ -16,6 +16,8 @@ router = APIRouter()
 
 
 class HealthResponse(BaseModel):
+    """System-level health payload used by `/health`."""
+
     status: str
     version: str
     timestamp: str
@@ -23,6 +25,8 @@ class HealthResponse(BaseModel):
 
 
 class LLMHealthResponse(BaseModel):
+    """LLM runtime and tool initialization status snapshot."""
+
     status: Literal["ok", "not initialized"]
     llm_adapter: bool
     tools_count: int
@@ -30,10 +34,14 @@ class LLMHealthResponse(BaseModel):
 
 
 class SimpleStatusResponse(BaseModel):
+    """Simple OK-style response for liveness/readiness probes."""
+
     status: str
 
 
 class ToolHealthResponse(BaseModel):
+    """Aggregated tool subsystem health diagnostics."""
+
     status: Literal["ok", "not initialized"]
     initialized: bool
     configured_tools_count: int
@@ -45,6 +53,8 @@ class ToolHealthResponse(BaseModel):
 
 
 class ToolIntentHealthResponse(BaseModel):
+    """Intent-level request SLO snapshot over the rolling health window."""
+
     status: Literal["ok", "not initialized"]
     window_minutes: int
     total_requests: int
@@ -52,11 +62,13 @@ class ToolIntentHealthResponse(BaseModel):
 
 
 def _get_chat_service() -> ChatService:
+    """Resolve ChatService through the dependency container."""
     return get_container().resolve("ChatService")
 
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
+    """Return API health plus dependency initialization states."""
     chat_status = await _get_chat_service().health_status()
 
     return HealthResponse(
@@ -73,6 +85,7 @@ async def health_check():
 
 @router.get("/health/llm", response_model=LLMHealthResponse)
 async def llm_health_check():
+    """Return LLM adapter and tool readiness details."""
     chat_status = await _get_chat_service().health_status()
     return LLMHealthResponse(
         status="ok" if chat_status.get("initialized") else "not initialized",
@@ -84,21 +97,25 @@ async def llm_health_check():
 
 @router.get("/health/tools", response_model=ToolHealthResponse)
 async def tools_health_check():
+    """Return tool diagnostics and aggregated SLO metrics."""
     status = await _get_chat_service().tools_health_status()
     return ToolHealthResponse(**status)
 
 
 @router.get("/health/tools/intents", response_model=ToolIntentHealthResponse)
 async def tools_intents_health_check():
+    """Return per-intent request metrics for the monitoring window."""
     status = await _get_chat_service().tools_intents_health_status()
     return ToolIntentHealthResponse(**status)
 
 
 @router.get("/ready", response_model=SimpleStatusResponse)
 async def readiness_check():
+    """Kubernetes readiness probe endpoint."""
     return SimpleStatusResponse(status="ready")
 
 
 @router.get("/live", response_model=SimpleStatusResponse)
 async def liveness_check():
+    """Kubernetes liveness probe endpoint."""
     return SimpleStatusResponse(status="alive")

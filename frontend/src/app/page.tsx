@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Main chat page that composes sidebar and conversation workspace.
+ * Keeps page-level layout concerns separated from chat state logic.
+ */
+
+
 import { Layout } from 'antd';
 import ChatArea from '@/components/ChatArea';
 import Sidebar from '@/components/Sidebar';

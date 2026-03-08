@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Global application context for sessions, messages, and UI runtime flags.
+ * Centralizes cross-component chat state mutations and derived actions.
+ */
+
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Message, AppConfig, ModelInfo, SessionInfo, ChatMode } from '@/types';
 import { apiService } from '@/services/api';

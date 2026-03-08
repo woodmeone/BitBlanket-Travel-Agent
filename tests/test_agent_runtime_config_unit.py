@@ -1,3 +1,8 @@
+"""Automated tests for test agent runtime config unit.
+
+The module validates behavior, regressions, and integration contracts.
+"""
+
 from __future__ import annotations
 
 from agent.src.graph.builder import get_tool_health_diagnostics

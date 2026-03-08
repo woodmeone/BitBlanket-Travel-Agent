@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+/**
+ * Conversation timeline renderer with markdown, reasoning panels, and copy actions.
+ * Optimized for frequent incremental updates during SSE streaming.
+ */
+
+
+import React, { memo, useMemo, useState } from 'react';
 import { App, Card } from 'antd';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
@@ -52,11 +58,7 @@ interface ReasoningBlockProps {
   isStreaming?: boolean;
 }
 
-interface CopyButtonProps {
-  content: string;
-}
-
-const CopyButton: React.FC<CopyButtonProps> = ({ content }) => {
+const CopyButton: React.FC<{ content: string }> = ({ content }) => {
   const [copied, setCopied] = useState(false);
   const { message } = App.useApp();
 
@@ -98,7 +100,7 @@ const ReasoningBlock: React.FC<ReasoningBlockProps> = ({ reasoning, messageId, i
 
   const timestampMatch = reasoning.match(/\[Timestamp: ([^\]]+)\]/);
   const timestamp = timestampMatch ? timestampMatch[1] : null;
-  const cleanReasoning = reasoning.replace(/\[Timestamp: [^\]]+\]\n?\n?/g, '').trim();
+  const cleaned = reasoning.replace(/\[Timestamp: [^\]]+\]\n?\n?/g, '').trim();
 
   return (
     <div
@@ -146,7 +148,7 @@ const ReasoningBlock: React.FC<ReasoningBlockProps> = ({ reasoning, messageId, i
             borderTop: '1px dashed rgba(114, 46, 209, 0.1)',
           }}
         >
-          <ReactMarkdown components={markdownComponents}>{cleanContent(cleanReasoning)}</ReactMarkdown>
+          <ReactMarkdown components={markdownComponents}>{cleanContent(cleaned)}</ReactMarkdown>
         </div>
       )}
     </div>
@@ -175,12 +177,8 @@ const DiagnosticsPanel: React.FC<{ diagnostics?: Message['diagnostics'] }> = ({ 
       <div style={{ fontSize: '12px', color: '#334155' }}>
         验证状态: {verification === null || verification === undefined ? '未知' : verification ? '通过' : '未通过'}
       </div>
-      <div style={{ fontSize: '12px', color: '#334155' }}>
-        过期结果: {staleCount} 条
-      </div>
-      <div style={{ fontSize: '12px', color: '#334155' }}>
-        备源切换: {fallbackSteps} 次
-      </div>
+      <div style={{ fontSize: '12px', color: '#334155' }}>过期结果: {staleCount} 条</div>
+      <div style={{ fontSize: '12px', color: '#334155' }}>备源切换: {fallbackSteps} 次</div>
       <div style={{ fontSize: '12px', color: '#334155', wordBreak: 'break-all' }}>
         工具列表: {toolsUsed.length > 0 ? toolsUsed.join(', ') : '无'}
       </div>
@@ -188,13 +186,18 @@ const DiagnosticsPanel: React.FC<{ diagnostics?: Message['diagnostics'] }> = ({ 
   );
 };
 
-const MessageItem: React.FC<{
+const MessageItem = memo(function MessageItem({
+  msg,
+  messageId,
+  reasoningExpanded,
+  onToggleReasoning,
+}: {
   msg: Message;
+  messageId: string;
   reasoningExpanded: Record<string, boolean>;
   onToggleReasoning: (messageId: string) => void;
-}> = ({ msg, reasoningExpanded, onToggleReasoning }) => {
+}) {
   const isUser = msg.role === 'user';
-  const messageId = `msg_${msg.timestamp}_${msg.content.slice(0, 10)}`;
   const isExpanded = reasoningExpanded[messageId] ?? false;
 
   return (
@@ -271,7 +274,158 @@ const MessageItem: React.FC<{
       </div>
     </div>
   );
-};
+}, (prev, next) => prev.msg === next.msg && prev.reasoningExpanded === next.reasoningExpanded && prev.onToggleReasoning === next.onToggleReasoning);
+
+const StreamingMessageItem = memo(function StreamingMessageItem({
+  content,
+  reasoning,
+  isWaiting = false,
+  isThinking = false,
+  currentTool = null,
+}: {
+  content: string;
+  reasoning?: string;
+  isWaiting?: boolean;
+  isThinking?: boolean;
+  currentTool?: string | null;
+}) {
+  const hasContent = Boolean(content && content.length > 0);
+  const cleanReasoning = cleanContent(reasoning || '');
+  const showReasoning = Boolean(cleanReasoning);
+  const statusLabel = hasContent ? '生成中' : (isThinking ? '思考中' : '等待响应');
+  const statusColor = hasContent ? '#2563eb' : '#7c3aed';
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        justifyContent: 'flex-start',
+        marginBottom: '16px',
+        alignItems: 'flex-start',
+        gap: '12px',
+        maxWidth: '100%',
+        padding: '0 16px',
+        animation: 'fadeInUp 0.25s ease-out',
+      }}
+    >
+      <div
+        style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          border: '2px solid rgba(255, 255, 255, 0.9)',
+          boxShadow: '0 8px 18px rgba(20, 184, 166, 0.28)',
+        }}
+      >
+        <RobotOutlined style={{ color: 'white', fontSize: '18px' }} />
+      </div>
+
+      <div style={{ flex: 1, maxWidth: 'calc(100% - 52px)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 500, color: '#1f2937' }}>小帅助手</span>
+          <span
+            style={{
+              fontSize: '11px',
+              color: statusColor,
+              background: `${statusColor}1A`,
+              padding: '2px 10px',
+              borderRadius: '10px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: statusColor,
+                animation: 'pulse 1.2s infinite',
+              }}
+            />
+            {statusLabel}
+          </span>
+        </div>
+
+        <Card
+          className="chat-message-card"
+          style={{
+            background: '#ffffff',
+            color: '#1f2937',
+            borderRadius: '18px 18px 18px 4px',
+            border: '1px solid rgba(0, 0, 0, 0.06)',
+            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04)',
+          }}
+          styles={{ body: { padding: '16px 18px' } }}
+        >
+          {!hasContent && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    style={{
+                      width: '7px',
+                      height: '7px',
+                      borderRadius: '50%',
+                      background: '#8b5cf6',
+                      animation: `bounce 1.2s infinite ease-in-out both`,
+                      animationDelay: `${i * 0.16}s`,
+                    }}
+                  />
+                ))}
+                <span style={{ fontSize: '13px', color: '#6d28d9' }}>正在分析你的问题，请稍候...</span>
+              </div>
+              <div style={{ display: 'grid', gap: '8px' }}>
+                <span style={{ height: '8px', borderRadius: '999px', background: '#eef2ff', animation: 'pulse 1.8s infinite' }} />
+                <span style={{ width: '82%', height: '8px', borderRadius: '999px', background: '#f1f5f9', animation: 'pulse 2s infinite' }} />
+              </div>
+            </div>
+          )}
+
+          {showReasoning && (
+            <div
+              style={{
+                marginBottom: hasContent ? '12px' : 0,
+                padding: '10px 12px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)',
+                border: '1px solid rgba(124, 58, 237, 0.14)',
+              }}
+            >
+              <div style={{ fontSize: '12px', color: '#6d28d9', marginBottom: '6px', fontWeight: 500 }}>思考过程</div>
+              <div style={{ fontSize: '12px', color: '#4c1d95', lineHeight: 1.65, maxHeight: '120px', overflow: 'auto', whiteSpace: 'pre-wrap' }}>
+                {cleanReasoning}
+              </div>
+            </div>
+          )}
+
+          {currentTool && <div style={{ marginBottom: hasContent ? '12px' : 0, fontSize: '12px', color: '#92400e' }}>工具执行中: {currentTool}</div>}
+
+          {hasContent && (
+            <div style={{ lineHeight: 1.7, fontSize: '14px', color: '#1f2937', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {cleanContent(content)}
+              {(isWaiting || isThinking) && (
+                <span style={{ display: 'inline-block', width: '2px', height: '16px', background: '#2563eb', marginLeft: '2px', animation: 'blink 0.8s infinite' }} />
+              )}
+            </div>
+          )}
+        </Card>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+          <CopyButton content={hasContent ? content : '小帅助手正在思考中...'} />
+        </div>
+      </div>
+    </div>
+  );
+});
 
 const MessageList: React.FC<Props> = ({
   messages,
@@ -283,148 +437,24 @@ const MessageList: React.FC<Props> = ({
   reasoningExpanded = {},
   onToggleReasoning,
 }) => {
-  const StreamingMessageItem: React.FC<{
-    content: string;
-    reasoning?: string;
-    isWaiting?: boolean;
-    isThinking?: boolean;
-    currentTool?: string | null;
-  }> = ({ content, reasoning, isWaiting: waiting = false, isThinking: thinking = false, currentTool: activeTool = null }) => {
-    const hasContent = Boolean(content && content.length > 0);
-    const cleanReasoning = cleanContent(reasoning || '');
-    const showReasoning = Boolean(cleanReasoning);
-    const statusLabel = hasContent ? '生成中' : (thinking ? '思考中' : '等待响应');
-    const statusColor = hasContent ? '#2563eb' : '#7c3aed';
+  const toggleHandler = onToggleReasoning || (() => {});
 
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          justifyContent: 'flex-start',
-          marginBottom: '16px',
-          alignItems: 'flex-start',
-          gap: '12px',
-          maxWidth: '100%',
-          padding: '0 16px',
-          animation: 'fadeInUp 0.25s ease-out',
-        }}
-      >
-        <div
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            border: '2px solid rgba(255, 255, 255, 0.9)',
-            boxShadow: '0 8px 18px rgba(20, 184, 166, 0.28)',
-          }}
-        >
-          <RobotOutlined style={{ color: 'white', fontSize: '18px' }} />
-        </div>
-
-        <div style={{ flex: 1, maxWidth: 'calc(100% - 52px)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 500, color: '#1f2937' }}>小帅助手</span>
-            <span
-              style={{
-                fontSize: '11px',
-                color: statusColor,
-                background: `${statusColor}1A`,
-                padding: '2px 10px',
-                borderRadius: '10px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              <span
-                style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: statusColor,
-                  animation: 'pulse 1.2s infinite',
-                }}
-              />
-              {statusLabel}
-            </span>
-          </div>
-
-          <Card
-            className="chat-message-card"
-            style={{
-              background: '#ffffff',
-              color: '#1f2937',
-              borderRadius: '18px 18px 18px 4px',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04)',
-            }}
-            styles={{ body: { padding: '16px 18px' } }}
-          >
-            {!hasContent && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
-                      style={{
-                        width: '7px',
-                        height: '7px',
-                        borderRadius: '50%',
-                        background: '#8b5cf6',
-                        animation: `bounce 1.2s infinite ease-in-out both`,
-                        animationDelay: `${i * 0.16}s`,
-                      }}
-                    />
-                  ))}
-                  <span style={{ fontSize: '13px', color: '#6d28d9' }}>正在分析你的问题，请稍候...</span>
-                </div>
-                <div style={{ display: 'grid', gap: '8px' }}>
-                  <span style={{ height: '8px', borderRadius: '999px', background: '#eef2ff', animation: 'pulse 1.8s infinite' }} />
-                  <span style={{ width: '82%', height: '8px', borderRadius: '999px', background: '#f1f5f9', animation: 'pulse 2s infinite' }} />
-                </div>
-              </div>
-            )}
-
-            {showReasoning && (
-              <div
-                style={{
-                  marginBottom: hasContent ? '12px' : 0,
-                  padding: '10px 12px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)',
-                  border: '1px solid rgba(124, 58, 237, 0.14)',
-                }}
-              >
-                <div style={{ fontSize: '12px', color: '#6d28d9', marginBottom: '6px', fontWeight: 500 }}>思考过程</div>
-                <div style={{ fontSize: '12px', color: '#4c1d95', lineHeight: 1.65, maxHeight: '120px', overflow: 'auto', whiteSpace: 'pre-wrap' }}>
-                  {cleanReasoning}
-                </div>
-              </div>
-            )}
-
-            {activeTool && <div style={{ marginBottom: hasContent ? '12px' : 0, fontSize: '12px', color: '#92400e' }}>工具执行中: {activeTool}</div>}
-
-            {hasContent && (
-              <div style={{ lineHeight: 1.7, fontSize: '14px', color: '#1f2937' }}>
-                <ReactMarkdown components={markdownComponents}>{cleanContent(content)}</ReactMarkdown>
-                {(waiting || thinking) && <span style={{ display: 'inline-block', width: '2px', height: '16px', background: '#2563eb', marginLeft: '2px', animation: 'blink 0.8s infinite' }} />}
-              </div>
-            )}
-          </Card>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-            <CopyButton content={hasContent ? content : '小帅助手正在思考中...'} />
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const renderedMessages = useMemo(
+    () =>
+      messages.map((msg, index) => {
+        const messageId = `msg_${msg.timestamp}_${index}`;
+        return (
+          <MessageItem
+            key={`${msg.role}-${msg.timestamp}-${index}`}
+            msg={msg}
+            messageId={messageId}
+            reasoningExpanded={reasoningExpanded}
+            onToggleReasoning={toggleHandler}
+          />
+        );
+      }),
+    [messages, reasoningExpanded, toggleHandler]
+  );
 
   const shouldShowStreamingDialog =
     isWaiting ||
@@ -434,14 +464,7 @@ const MessageList: React.FC<Props> = ({
 
   return (
     <div className="chat-message-container" style={{ maxWidth: '900px', margin: '0 auto', width: '100%' }}>
-      {messages.map((msg, index) => (
-        <MessageItem
-          key={index}
-          msg={msg}
-          reasoningExpanded={reasoningExpanded}
-          onToggleReasoning={onToggleReasoning || (() => {})}
-        />
-      ))}
+      {renderedMessages}
 
       {shouldShowStreamingDialog && (
         <StreamingMessageItem

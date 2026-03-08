@@ -1,3 +1,8 @@
+"""Automated tests for test session memory sync unit.
+
+The module validates behavior, regressions, and integration contracts.
+"""
+
 import pytest
 import sys
 from pathlib import Path

@@ -1,4 +1,9 @@
 /**
+ * Project-level global ambient type declarations.
+ * Keep browser or runtime-wide type augmentations in this file.
+ */
+
+/**
  * 全局类型声明
  */
 
