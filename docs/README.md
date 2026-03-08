@@ -19,6 +19,7 @@
 - [system-architecture.md](architecture/system-architecture.md): 系统架构与调用链路
 - [data-storage.md](architecture/data-storage.md): 数据存储策略
 - [agent-p0-hardening-roadmap.md](architecture/agent-p0-hardening-roadmap.md): Agent P0 完善路线图
+- [agent-dialogue-4-week-execution-plan.md](architecture/agent-dialogue-4-week-execution-plan.md): Agent 对话链路 4 周执行排期（到文件/接口级别）
 
 ## Testing & Deployment
 

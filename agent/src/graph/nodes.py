@@ -51,6 +51,16 @@ HIGH_RISK_KEYWORDS = (
     "机票",
     "酒店价格",
 )
+INTENT_TOOL_POLICY: dict[str, dict[str, Any]] = {
+    "recommend": {"required": ["search_cities"], "optional": ["get_weather", "query_hotels"], "verify_required": False},
+    "attractions": {"required": ["query_attractions"], "optional": ["get_weather"], "verify_required": False},
+    "itinerary": {"required": ["plan_itinerary"], "optional": ["query_attractions", "get_weather", "query_hotels"], "verify_required": False},
+    "budget": {"required": ["calculate_budget"], "optional": ["query_hotels", "get_weather"], "verify_required": True},
+    "tips": {"required": ["get_travel_tips"], "optional": ["get_weather"], "verify_required": False},
+    "hotel": {"required": ["query_hotels"], "optional": ["get_weather"], "verify_required": True},
+    "policy": {"required": [], "optional": ["get_travel_tips"], "verify_required": True},
+    "general": {"required": [], "optional": ["search_cities"], "verify_required": False},
+}
 CITY_HINTS = [
     "北京",
     "上海",
@@ -166,6 +176,10 @@ class ToolOrchestrator:
 
 class StrategyResult(BaseModel):
     strategy: str
+    primary_intent: str = "general"
+    secondary_intent: Optional[str] = None
+    required_tools: list[str] = []
+    optional_tools: list[str] = []
     requires_verification: bool = False
     routing: Literal["plan", "direct"] = "direct"
     reason: str = ""
@@ -375,13 +389,20 @@ class AgentNodes:
         confidence = float(intent_detail.get("confidence", 0.0) or 0.0)
         user_text = self._last_user_text(state)
         high_risk = self._is_high_risk_query(user_text, intent)
-
-        strategy = str(intent or "general").lower()
+        primary_intent = str(intent or "general").lower()
+        secondary_intent = self._infer_secondary_intent(primary_intent, user_text, intent_detail)
+        strategy = primary_intent if not secondary_intent else f"{primary_intent}+{secondary_intent}"
+        required_tools, optional_tools = self._resolve_tool_policy(primary_intent, secondary_intent)
+        policy_verify_required = self._is_verify_required(primary_intent, secondary_intent)
         reason = "default_strategy"
         if high_risk:
             logger.info("[Strategy Node] Routing to plan due to high-risk query (intent=%s)", intent)
             output = StrategyResult(
                 strategy=strategy,
+                primary_intent=primary_intent,
+                secondary_intent=secondary_intent,
+                required_tools=required_tools,
+                optional_tools=optional_tools,
                 requires_verification=True,
                 routing="plan",
                 reason="high_risk_requires_tool_verification",
@@ -399,7 +420,11 @@ class AgentNodes:
             reason = "intent_or_requires_tools"
             output = StrategyResult(
                 strategy=strategy,
-                requires_verification=bool(intent in {"budget"}),
+                primary_intent=primary_intent,
+                secondary_intent=secondary_intent,
+                required_tools=required_tools,
+                optional_tools=optional_tools,
+                requires_verification=bool(policy_verify_required),
                 routing="plan",
                 reason=reason,
             )
@@ -419,6 +444,10 @@ class AgentNodes:
         logger.info("[Strategy Node] Routing to direct (intent=%s)", intent)
         output = StrategyResult(
             strategy=strategy,
+            primary_intent=primary_intent,
+            secondary_intent=secondary_intent,
+            required_tools=required_tools,
+            optional_tools=optional_tools,
             requires_verification=False,
             routing="direct",
             reason=reason,
@@ -443,8 +472,14 @@ class AgentNodes:
 
         intent = state.get("intent", "general")
         entities = (state.get("intent_detail") or {}).get("entities", {})
+        strategy_detail = state.get("strategy_detail", {}) or {}
+        primary_intent = str(strategy_detail.get("primary_intent") or intent or "general")
+        secondary_intent = strategy_detail.get("secondary_intent")
+        required_tools = list(strategy_detail.get("required_tools", []))
+        optional_tools = list(strategy_detail.get("optional_tools", []))
 
-        planner_hook = self._planner_hooks.get(intent)
+        planner_hook = self._planner_hooks.get(primary_intent) or self._planner_hooks.get(intent)
+        used_planner_hook = planner_hook is not None
         if planner_hook:
             try:
                 plan = planner_hook(entities)
@@ -452,7 +487,17 @@ class AgentNodes:
                 logger.warning("[Plan Node] Planner hook failed (intent=%s): %s", intent, exc)
                 plan = []
         else:
-            plan = self._default_plan(intent, entities)
+            plan = self._default_plan(primary_intent, entities)
+            if secondary_intent and secondary_intent != primary_intent:
+                secondary_plan = self._default_plan(str(secondary_intent), entities)
+                plan = self._merge_plans(plan, secondary_plan)
+
+        plan = self._enforce_tool_policy(
+            plan=plan,
+            required_tools=required_tools,
+            optional_tools=[] if used_planner_hook else optional_tools,
+            entities=entities,
+        )
 
         normalized_plan = self._normalize_plan(plan)
         if len(normalized_plan) > self.runtime_config.max_plan_steps:
@@ -716,6 +761,7 @@ class AgentNodes:
         intent = str(state.get("intent") or "general")
         strategy_detail = state.get("strategy_detail", {}) or {}
         requires_verification = bool(strategy_detail.get("requires_verification", False))
+        required_tools = [str(item) for item in strategy_detail.get("required_tools", [])]
         verify_retry_count = self._safe_int(state.get("verify_retry_count"), 0)
         tool_results = state.get("tool_results", {}) or {}
         user_text = self._last_user_text(state)
@@ -734,17 +780,20 @@ class AgentNodes:
                     severity="high",
                 )
             )
-
-        if intent == "budget":
-            has_budget = any(item.get("tool_name") == "calculate_budget" for item in successful_results)
-            if not has_budget:
-                issues.append(
-                    VerifyIssue(
-                        issue_type="budget_not_verified",
-                        message="预算类问题未命中 calculate_budget，结论不可信",
-                        severity="high",
-                    )
+        matched_success_tools = {
+            str(item.get("tool_name") or "").split(":")[-1]
+            for item in successful_results
+            if isinstance(item, dict)
+        }
+        missing_required = [name for name in required_tools if name not in matched_success_tools]
+        if requires_verification and missing_required:
+            issues.append(
+                VerifyIssue(
+                    issue_type="required_tools_missing",
+                    message=f"缺少必选验证工具结果: {missing_required}",
+                    severity="high",
                 )
+            )
 
         stale_count = sum(1 for item in successful_results if bool(item.get("is_stale", False)))
         if stale_count > 0:
@@ -785,7 +834,7 @@ class AgentNodes:
                 )
             )
 
-        retryable = any(item.issue_type in {"missing_evidence", "stale_data", "budget_not_verified"} for item in issues)
+        retryable = any(item.issue_type in {"missing_evidence", "stale_data", "required_tools_missing"} for item in issues)
         should_retry = retryable and verify_retry_count < 1
         passed = len(issues) == 0
         summary = "verification_passed" if passed else "; ".join(item.message for item in issues)
@@ -864,6 +913,10 @@ class AgentNodes:
         execution_summary = state.get("execution_summary", {}) or {}
         execution_budget = state.get("execution_budget", {}) or {}
         early_stop_reason = state.get("early_stop_reason")
+        strategy_detail = state.get("strategy_detail", {}) or {}
+        verify_result = state.get("verify_result", {}) or {}
+        verify_required = bool(strategy_detail.get("requires_verification", False))
+        verify_passed = bool(verify_result.get("passed", False)) if verify_result else False
         fused_tool_results: Optional[dict[str, Any]] = None
 
         context = ""
@@ -916,6 +969,12 @@ class AgentNodes:
         ])
 
         answer = response.content
+        if verify_required and not verify_passed:
+            answer = (
+                "当前结论未通过工具验证，以下为暂定建议而非确定结论。"
+                "请先补充或刷新关键数据后再做最终决策。\n\n"
+                + str(answer)
+            )
         messages = list(messages)
         messages.append(AIMessage(content=answer))
 
@@ -936,6 +995,20 @@ class AgentNodes:
         messages = state["messages"]
         last_message = messages[-1] if messages else HumanMessage(content="")
         intent = state.get("intent")
+        strategy_detail = state.get("strategy_detail", {}) or {}
+        if bool(strategy_detail.get("requires_verification", False)):
+            answer = "该任务需要工具验证后才能给出确定性结论，请使用 ReAct 工具模式。"
+            messages = list(messages)
+            messages.append(AIMessage(content=answer))
+            return self._validate_stage_output(
+                AnswerStageOutput,
+                {
+                    "messages": messages,
+                    "answer": answer,
+                    "reasoning": "策略要求强制验证，拒绝直接确定性回答",
+                    "fused_tool_results": None,
+                },
+            )
         if self._is_high_risk_query(str(last_message.content), str(intent)):
             answer = "该问题涉及价格或政策等高风险信息。请切换到工具验证模式后我再给出结论。"
             messages = list(messages)
@@ -1060,6 +1133,88 @@ class AgentNodes:
                 }
             ]
         return []
+
+    @staticmethod
+    def _merge_plans(primary: list[dict[str, Any]], secondary: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        merged = list(primary)
+        existing_signatures = {
+            f"{item.get('tool')}:{json.dumps(item.get('params', {}), ensure_ascii=False, sort_keys=True)}"
+            for item in merged
+        }
+        for item in secondary:
+            signature = f"{item.get('tool')}:{json.dumps(item.get('params', {}), ensure_ascii=False, sort_keys=True)}"
+            if signature not in existing_signatures:
+                merged.append(item)
+                existing_signatures.add(signature)
+        return merged
+
+    def _enforce_tool_policy(
+        self,
+        plan: list[dict[str, Any]],
+        required_tools: list[str],
+        optional_tools: list[str],
+        entities: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        merged = list(plan)
+        existing_tools = {str(item.get("tool", "")) for item in merged}
+        next_step = len(merged) + 1
+
+        for tool_name in required_tools:
+            if tool_name in existing_tools:
+                continue
+            step = self._default_step_for_tool(step_num=next_step, tool_name=tool_name, entities=entities, required=True)
+            if step:
+                merged.append(step)
+                existing_tools.add(tool_name)
+                next_step += 1
+
+        # Optional tools are only auto-injected when plan is very short.
+        if len(merged) <= 2:
+            for tool_name in optional_tools:
+                if tool_name in existing_tools:
+                    continue
+                step = self._default_step_for_tool(step_num=next_step, tool_name=tool_name, entities=entities, required=False)
+                if step:
+                    merged.append(step)
+                    existing_tools.add(tool_name)
+                    next_step += 1
+                if len(merged) >= self.runtime_config.max_plan_steps:
+                    break
+
+        return merged
+
+    @staticmethod
+    def _default_step_for_tool(step_num: int, tool_name: str, entities: dict[str, Any], required: bool) -> Optional[dict[str, Any]]:
+        city = entities.get("city") or entities.get("destination") or "北京"
+        days = entities.get("days", 3)
+        mapping: dict[str, dict[str, Any]] = {
+            "search_cities": {"params": {"query": entities.get("query") or city}, "description": "补全候选目的地"},
+            "query_attractions": {"params": {"city": city, "category": entities.get("category")}, "description": "补全景点信息"},
+            "query_hotels": {"params": {"city": city}, "description": "补全住宿信息"},
+            "get_weather": {"params": {"city": city, "days": days}, "description": "补全天气信息"},
+            "plan_itinerary": {"params": {"destination": city, "days": days, "interests": entities.get("interests")}, "description": "补全行程规划"},
+            "calculate_budget": {
+                "params": {
+                    "destination": city,
+                    "days": days,
+                    "people": entities.get("people", 1),
+                    "accommodation_level": entities.get("level", "medium"),
+                },
+                "description": "补全预算测算",
+            },
+            "get_travel_tips": {"params": {"destination": city, "season": entities.get("season")}, "description": "补全出行建议"},
+        }
+        item = mapping.get(tool_name)
+        if not item:
+            return None
+        return {
+            "step": step_num,
+            "step_id": f"s{step_num}",
+            "tool": tool_name,
+            "params": item["params"],
+            "description": f"{item['description']} ({'required' if required else 'optional'})",
+            "depends_on": [],
+        }
 
     @staticmethod
     async def _invoke_tool(tool: Tool, params: dict) -> Any:
@@ -1254,8 +1409,46 @@ class AgentNodes:
             "itinerary": "plan_itinerary",
             "budget": "calculate_budget",
             "tips": "get_travel_tips",
+            "hotel": "query_hotels",
         }
         return mapping.get(intent)
+
+    @staticmethod
+    def _resolve_tool_policy(primary_intent: str, secondary_intent: Optional[str]) -> tuple[list[str], list[str]]:
+        primary = INTENT_TOOL_POLICY.get(primary_intent, INTENT_TOOL_POLICY["general"])
+        required = list(primary.get("required", []))
+        optional = list(primary.get("optional", []))
+        if secondary_intent:
+            secondary = INTENT_TOOL_POLICY.get(secondary_intent, INTENT_TOOL_POLICY["general"])
+            for name in secondary.get("required", []):
+                if name not in required:
+                    required.append(name)
+            for name in secondary.get("optional", []):
+                if name not in optional and name not in required:
+                    optional.append(name)
+        return required, optional
+
+    @staticmethod
+    def _is_verify_required(primary_intent: str, secondary_intent: Optional[str]) -> bool:
+        primary_required = bool(INTENT_TOOL_POLICY.get(primary_intent, {}).get("verify_required", False))
+        secondary_required = bool(INTENT_TOOL_POLICY.get(str(secondary_intent), {}).get("verify_required", False)) if secondary_intent else False
+        return primary_required or secondary_required
+
+    @staticmethod
+    def _infer_secondary_intent(primary_intent: str, user_text: str, intent_detail: dict[str, Any]) -> Optional[str]:
+        text = str(user_text or "")
+        entities = intent_detail.get("entities", {}) if isinstance(intent_detail, dict) else {}
+        if primary_intent != "budget" and any(token in text for token in ("预算", "花费", "费用", "价格")):
+            return "budget"
+        if primary_intent != "itinerary" and any(token in text for token in ("行程", "路线", "安排", "几天")):
+            return "itinerary"
+        if primary_intent != "hotel" and any(token in text for token in ("酒店", "住宿", "民宿")):
+            return "hotel"
+        if primary_intent != "attractions" and any(token in text for token in ("景点", "打卡", "门票")):
+            return "attractions"
+        if any(key in entities for key in ("days", "people", "budget", "budget_cny")) and primary_intent != "budget":
+            return "budget"
+        return None
 
     @staticmethod
     def _is_consecutive_loop(execution_trace: list[dict[str, Any]], signature: str) -> bool:
@@ -1644,8 +1837,12 @@ class AgentNodes:
     @staticmethod
     def _normalize_plan(plan: list[dict[str, Any]]) -> list[dict[str, Any]]:
         normalized: list[dict[str, Any]] = []
+        used_step_ids: set[str] = set()
         for idx, raw in enumerate(plan, start=1):
-            step_id = raw.get("step_id") or f"s{idx}"
+            step_id = str(raw.get("step_id") or f"s{idx}")
+            if step_id in used_step_ids:
+                step_id = f"{step_id}_{idx}"
+            used_step_ids.add(step_id)
             depends_on = list(raw.get("depends_on", []))
             normalized.append(
                 {
