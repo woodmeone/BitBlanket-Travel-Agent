@@ -141,12 +141,16 @@ class ChatService:
                         preview_intent = plan_preview.get("intent")
                         preview_plan_id = plan_preview.get("plan_id")
                         preview_explanation = plan_preview.get("plan_explanation")
+                        preview_validation_status = plan_preview.get("validation_status", "pass")
+                        preview_validation_errors = plan_preview.get("validation_errors", [])
                         yield self._sse(
                             {
                                 "type": "plan_preview",
                                 "plan_id": preview_plan_id,
                                 "intent": preview_intent,
                                 "explanation": preview_explanation,
+                                "validation_status": preview_validation_status,
+                                "validation_errors": preview_validation_errors,
                                 "steps": preview_steps,
                             }
                         )

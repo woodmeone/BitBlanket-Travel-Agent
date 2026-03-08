@@ -541,6 +541,8 @@ def generate_plan_preview_with_memory(
         "intent": plan_state.get("intent"),
         "intent_detail": plan_state.get("intent_detail", {}),
         "plan_explanation": plan_state.get("plan_explanation"),
+        "validation_status": plan_state.get("validation_status", "pass"),
+        "validation_errors": plan_state.get("validation_errors", []),
         "plan": plan_state.get("plan", []),
     }
 
