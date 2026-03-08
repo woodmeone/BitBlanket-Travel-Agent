@@ -51,6 +51,7 @@ HIGH_RISK_KEYWORDS = (
     "机票",
     "酒店价格",
 )
+STALE_REFRESHABLE_TOOLS = {"get_weather", "query_hotels"}
 INTENT_TOOL_POLICY: dict[str, dict[str, Any]] = {
     "recommend": {"required": ["search_cities"], "optional": ["get_weather", "query_hotels"], "verify_required": False},
     "attractions": {"required": ["query_attractions"], "optional": ["get_weather"], "verify_required": False},
@@ -120,6 +121,8 @@ class ExecutionResult(BaseModel):
     provider_used: Optional[str] = None
     provider_chain: Optional[list[str]] = None
     fallback_used: bool = False
+    refresh_attempted: bool = False
+    refresh_success: bool = False
     fallback_suggestion: Optional[str] = None
 
 
@@ -194,6 +197,8 @@ class VerifyIssue(BaseModel):
 class VerifyResult(BaseModel):
     passed: bool
     should_retry: bool = False
+    refresh_targets: list[str] = []
+    refresh_tools: list[str] = []
     issues: list[VerifyIssue] = []
     summary: str = ""
 
@@ -651,32 +656,53 @@ class AgentNodes:
         execution_budget.setdefault("tools_used", 0)
         execution_budget.setdefault("elapsed_ms", 0)
         execution_budget.setdefault("tokens_used", 0)
+        verify_result = state.get("verify_result", {}) or {}
+        refresh_targets = self._resolve_refresh_targets(verify_result)
+        refresh_target_set = set(refresh_targets)
+        verify_result_update: Optional[dict[str, Any]] = None
+        if refresh_target_set:
+            logger.info("[Execute Node] Refresh retry requested for steps=%s", sorted(refresh_target_set))
+            for sid in refresh_target_set:
+                completed.discard(sid)
+                failed.discard(sid)
+                blocked.discard(sid)
+            verify_result_update = {
+                **verify_result,
+                "should_retry": False,
+                "refresh_targets": [],
+                "refresh_tools": [],
+            }
+
+        def _with_refresh(payload: dict[str, Any]) -> dict[str, Any]:
+            if verify_result_update is not None:
+                payload["verify_result"] = verify_result_update
+            return payload
 
         if not plan:
             logger.info("[Execute Node] No plan to execute")
-            return state
+            return _with_refresh(dict(state))
 
         pending = [s for s in plan if s["step_id"] not in completed and s["step_id"] not in failed and s["step_id"] not in blocked]
         if not pending:
             logger.info("[Execute Node] No pending plan steps")
-            return state
+            return _with_refresh(dict(state))
         if execution_round >= self.runtime_config.max_execution_rounds:
             logger.warning(
                 "[Execute Node] Max execution rounds reached (%d)",
                 self.runtime_config.max_execution_rounds,
             )
-            return {
+            return _with_refresh({
                 "execution_round": execution_round,
                 "execution_budget": execution_budget,
                 "early_stop_reason": f"执行回合达到上限({self.runtime_config.max_execution_rounds})，提前结束",
                 "execution_summary": self._build_execution_summary(stats_steps),
-            }
+            })
 
         runnable: list[dict[str, Any]] = []
         for step in pending:
             deps = set(step.get("depends_on", []))
             if deps.issubset(completed):
-                runnable.append(step)
+                runnable.append(self._apply_refresh_params(step, refresh_target_set))
 
         if not runnable:
             blocked_steps = []
@@ -704,7 +730,7 @@ class AgentNodes:
                             "duration_ms": 0,
                         }
                     )
-            return {
+            return _with_refresh({
                 "current_step": len(completed) + len(failed) + len(blocked),
                 "execution_round": execution_round + 1,
                 "execution_budget": execution_budget,
@@ -713,7 +739,7 @@ class AgentNodes:
                 "execution_summary": self._build_execution_summary(stats_steps),
                 "tool_results": tool_results,
                 "tools_used": tools_used,
-            }
+            })
 
         default_parallelism = self.runtime_config.default_max_parallelism
         requested_parallelism = self._safe_int(state.get("parallelism"), default_parallelism)
@@ -758,7 +784,7 @@ class AgentNodes:
             early_stop_reason = decision.budget_stop_reason
 
         if not selected:
-            return {
+            return _with_refresh({
                 "current_step": len(completed) + len(failed) + len(blocked),
                 "execution_round": execution_round + 1,
                 "execution_budget": execution_budget,
@@ -769,7 +795,7 @@ class AgentNodes:
                 "early_stop_reason": early_stop_reason,
                 "tool_results": tool_results,
                 "tools_used": tools_used,
-            }
+            })
 
         tasks = [self._execute_plan_step(step, state) for step in selected]
         batch_results = await asyncio.gather(*tasks)
@@ -834,7 +860,7 @@ class AgentNodes:
                 tool_results=tool_results,
             )
 
-        return {
+        return _with_refresh({
             "current_step": len(completed) + len(failed) + len(blocked),
             "execution_round": execution_round + 1,
             "execution_budget": execution_budget,
@@ -845,7 +871,7 @@ class AgentNodes:
             "early_stop_reason": early_stop_reason,
             "tools_used": tools_used,
             "tool_results": tool_results,
-        }
+        })
 
     def verify_node(self, state: AgentState) -> AgentState:
         intent = str(state.get("intent") or "general")
@@ -885,7 +911,23 @@ class AgentNodes:
                 )
             )
 
-        stale_count = sum(1 for item in successful_results if bool(item.get("is_stale", False)))
+        stale_count = 0
+        refresh_targets: list[str] = []
+        refresh_tools: list[str] = []
+        for key, item in tool_results.items():
+            if not isinstance(item, dict) or not bool(item.get("success")):
+                continue
+            if not bool(item.get("is_stale", False)):
+                continue
+            stale_count += 1
+            tool_name = str(item.get("tool_name") or "").split(":")[-1]
+            step_id = str(key).split(":", 1)[0].strip()
+            if tool_name in STALE_REFRESHABLE_TOOLS and step_id:
+                if step_id not in refresh_targets:
+                    refresh_targets.append(step_id)
+                if tool_name not in refresh_tools:
+                    refresh_tools.append(tool_name)
+
         if stale_count > 0:
             issues.append(
                 VerifyIssue(
@@ -894,6 +936,22 @@ class AgentNodes:
                     severity="medium",
                 )
             )
+            if verify_retry_count >= 1:
+                issues.append(
+                    VerifyIssue(
+                        issue_type="stale_refresh_failed",
+                        message="已尝试刷新过期数据但仍无法得到稳定实时结果，建议按降级策略回答并标注不确定性",
+                        severity="high",
+                    )
+                )
+            elif not refresh_targets:
+                issues.append(
+                    VerifyIssue(
+                        issue_type="stale_unrefreshable",
+                        message="存在过期结果但缺少可刷新的天气/酒店工具步骤，建议按降级策略回答",
+                        severity="medium",
+                    )
+                )
 
         fetched_dates: list[datetime] = []
         for item in successful_results:
@@ -924,14 +982,20 @@ class AgentNodes:
                 )
             )
 
-        retryable = any(item.issue_type in {"missing_evidence", "stale_data", "required_tools_missing"} for item in issues)
-        should_retry = retryable and verify_retry_count < 1
+        stale_retryable = stale_count > 0 and bool(refresh_targets) and verify_retry_count < 1
+        structural_retryable = any(item.issue_type in {"missing_evidence", "required_tools_missing"} for item in issues) and verify_retry_count < 1
+        should_retry = stale_retryable or structural_retryable
+        if not stale_retryable:
+            refresh_targets = []
+            refresh_tools = []
         passed = len(issues) == 0
         summary = "verification_passed" if passed else "; ".join(item.message for item in issues)
 
         result = VerifyResult(
             passed=passed,
             should_retry=should_retry,
+            refresh_targets=refresh_targets,
+            refresh_tools=refresh_tools,
             issues=issues,
             summary=summary,
         )
@@ -1007,6 +1071,8 @@ class AgentNodes:
         verify_result = state.get("verify_result", {}) or {}
         verify_required = bool(strategy_detail.get("requires_verification", False))
         verify_passed = bool(verify_result.get("passed", False)) if verify_result else False
+        user_question = str(last_message.content or "")
+        evidence_required = bool(verify_required or self._is_high_risk_query(user_question, str(intent or "")))
         fused_tool_results: Optional[dict[str, Any]] = None
 
         context = ""
@@ -1047,10 +1113,11 @@ class AgentNodes:
             context += json.dumps(fused, ensure_ascii=False, indent=2)
 
         prompt = build_answer_prompt(
-            user_question=str(last_message.content),
+            user_question=user_question,
             context=context,
             tools_used=tools_used,
             intent=intent,
+            evidence_required=evidence_required,
         )
 
         response = self.llm.invoke([
@@ -1058,12 +1125,33 @@ class AgentNodes:
             HumanMessage(content=prompt),
         ])
 
+        verify_issue_types = {
+            str(item.get("issue_type") or "")
+            for item in verify_result.get("issues", [])
+            if isinstance(item, dict)
+        }
+        stale_degraded = bool(verify_issue_types & {"stale_data", "stale_refresh_failed", "stale_unrefreshable"})
+
         answer = response.content
         if verify_required and not verify_passed:
-            answer = (
+            prefix = (
                 "当前结论未通过工具验证，以下为暂定建议而非确定结论。"
-                "请先补充或刷新关键数据后再做最终决策。\n\n"
+                "请先补充或刷新关键数据后再做最终决策。"
+            )
+            if stale_degraded:
+                prefix += "天气/酒店实时数据刷新未完全成功，内容可能存在时效偏差。"
+            answer = f"{prefix}\n\n{answer}"
+        elif stale_degraded and not verify_passed:
+            answer = (
+                "以下建议基于可能过期的数据，系统已尝试刷新但未获得稳定实时结果，请谨慎参考。\n\n"
                 + str(answer)
+            )
+
+        if evidence_required:
+            answer = self._ensure_source_evidence_section(
+                answer=str(answer or ""),
+                tool_results=tool_results,
+                intent=intent,
             )
         messages = list(messages)
         messages.append(AIMessage(content=answer))
@@ -1377,6 +1465,7 @@ class AgentNodes:
         max_retries = int(step.get("max_retries", self.runtime_config.default_tool_max_retries))
         started = time.perf_counter()
         corrected_params = self._auto_correct_tool_params(tool_name, params, state)
+        refresh_requested = bool(corrected_params.get("refresh", False))
         step_with_params = {**step, "params": corrected_params}
 
         logger.info("[Execute Node] Step %s running tool=%s timeout=%ss", step_id, tool_name, timeout_seconds)
@@ -1391,6 +1480,7 @@ class AgentNodes:
                 started_at=datetime.now().isoformat(),
                 ended_at=datetime.now().isoformat(),
             )
+            result.refresh_attempted = refresh_requested
             self._attach_execution_metadata(result, tool_name)
             return step_with_params, result, int((time.perf_counter() - started) * 1000)
 
@@ -1405,6 +1495,7 @@ class AgentNodes:
                 started_at=datetime.now().isoformat(),
                 ended_at=datetime.now().isoformat(),
             )
+            result.refresh_attempted = refresh_requested
             self._attach_execution_metadata(result, tool_name)
             return step_with_params, result, int((time.perf_counter() - started) * 1000)
 
@@ -1419,6 +1510,7 @@ class AgentNodes:
                 started_at=datetime.now().isoformat(),
                 ended_at=datetime.now().isoformat(),
             )
+            result.refresh_attempted = refresh_requested
             self._attach_execution_metadata(result, tool_name)
             return step_with_params, result, int((time.perf_counter() - started) * 1000)
 
@@ -1448,6 +1540,9 @@ class AgentNodes:
                 ended_at=datetime.now().isoformat(),
             )
 
+        result.refresh_attempted = refresh_requested or bool(result.refresh_attempted)
+        if refresh_requested and not result.success and not result.fallback_suggestion:
+            result.fallback_suggestion = "实时刷新失败，已降级为可能非实时结果，请谨慎决策"
         if result.success:
             result.result = self._normalize_tool_result(tool_name, result.result)
         self._attach_execution_metadata(result, tool_name)
@@ -1490,6 +1585,34 @@ class AgentNodes:
                 return f"核心步骤已完成（{terminal_tool}），提前结束剩余低价值步骤，当前成功率={rate:.2f}"
 
         return None
+
+    @staticmethod
+    def _resolve_refresh_targets(verify_result: dict[str, Any]) -> list[str]:
+        if not isinstance(verify_result, dict):
+            return []
+        if not bool(verify_result.get("should_retry", False)):
+            return []
+        raw_targets = verify_result.get("refresh_targets", [])
+        if not isinstance(raw_targets, list):
+            return []
+        targets: list[str] = []
+        for item in raw_targets:
+            step_id = str(item or "").strip()
+            if not step_id:
+                continue
+            if step_id not in targets:
+                targets.append(step_id)
+        return targets
+
+    @staticmethod
+    def _apply_refresh_params(step: dict[str, Any], refresh_targets: set[str]) -> dict[str, Any]:
+        step_id = str(step.get("step_id") or "")
+        tool_name = str(step.get("tool") or "")
+        if step_id not in refresh_targets or tool_name not in STALE_REFRESHABLE_TOOLS:
+            return step
+        params = dict(step.get("params", {}) or {})
+        params["refresh"] = True
+        return {**step, "params": params}
 
     @staticmethod
     def _terminal_tool_for_intent(intent: str) -> Optional[str]:
@@ -1676,8 +1799,58 @@ class AgentNodes:
                     "source": result.get("source"),
                     "fetched_at": result.get("fetched_at"),
                 }
-            )
+                )
         return fused
+
+    def _build_source_evidence_entries(
+        self,
+        tool_results: dict[str, Any],
+        intent: Optional[str],
+        limit: int = 4,
+    ) -> list[dict[str, str]]:
+        ranked = self._rank_tool_results(tool_results, intent=intent)
+        entries: list[dict[str, str]] = []
+        for tool_name, result, _score in ranked:
+            if not isinstance(result, dict) or not bool(result.get("success")):
+                continue
+            source = str(result.get("source") or "").strip() or "unavailable"
+            fetched_at = str(result.get("fetched_at") or "").strip() or "unavailable"
+            canonical_name = str(result.get("tool_name") or tool_name).split(":")[-1]
+            entries.append(
+                {
+                    "tool": canonical_name,
+                    "source": source,
+                    "fetched_at": fetched_at,
+                }
+            )
+            if len(entries) >= limit:
+                break
+
+        if entries:
+            return entries
+        return [{"tool": "unavailable", "source": "unavailable", "fetched_at": "unavailable"}]
+
+    def _ensure_source_evidence_section(
+        self,
+        answer: str,
+        tool_results: dict[str, Any],
+        intent: Optional[str],
+    ) -> str:
+        lowered = str(answer or "").lower()
+        if "source" in lowered and "fetched_at" in lowered:
+            return str(answer or "")
+
+        entries = self._build_source_evidence_entries(tool_results, intent=intent)
+        lines = ["证据来源:"]
+        for item in entries:
+            lines.append(
+                f"- {item['tool']}: source={item['source']}; fetched_at={item['fetched_at']}"
+            )
+        section = "\n".join(lines)
+        base = str(answer or "").rstrip()
+        if base:
+            return f"{base}\n\n{section}"
+        return section
 
     def _auto_correct_tool_params(self, tool_name: str, params: dict[str, Any], state: AgentState) -> dict[str, Any]:
         corrected = dict(params or {})
@@ -2121,6 +2294,8 @@ class AgentNodes:
         result.ttl_seconds = int(profile.get("ttl_seconds", DEFAULT_TOOL_TIMEOUT_SECONDS * 30))
         result.fetched_at = datetime.now().isoformat()
         result.is_stale = False
+        result.refresh_attempted = bool(result.refresh_attempted)
+        result.refresh_success = bool(result.refresh_success)
         result_meta = self._extract_result_meta(result.result)
         if result_meta:
             if result_meta.get("source"):
@@ -2137,11 +2312,21 @@ class AgentNodes:
                 result.provider_chain = list(result_meta.get("provider_chain"))
             if result_meta.get("fallback_used") is not None:
                 result.fallback_used = bool(result_meta.get("fallback_used"))
+            if result_meta.get("refresh_attempted") is not None:
+                result.refresh_attempted = bool(result_meta.get("refresh_attempted"))
+            if result_meta.get("refresh_success") is not None:
+                result.refresh_success = bool(result_meta.get("refresh_success"))
+        if result.refresh_attempted and result.success and not result.refresh_success:
+            result.refresh_success = not bool(result.is_stale)
+        if result.refresh_attempted and not result.success:
+            result.refresh_success = False
         if not result.success:
             result.fallback_suggestion = self._build_fallback_suggestion(
                 tool_name=tool_name,
                 error_code=result.error_code,
             )
+        elif result.refresh_attempted and not result.refresh_success:
+            result.fallback_suggestion = "已尝试刷新实时数据但未成功，当前结果可能仍过期，建议谨慎参考"
         elif result.is_stale:
             result.fallback_suggestion = "数据可能已过期，建议刷新实时数据后再确认关键决策"
 

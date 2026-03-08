@@ -278,7 +278,7 @@ def query_attractions(city: str, category: Optional[str] = None) -> str:
 
 
 @tool
-def query_hotels(city: str, district: Optional[str] = None) -> str:
+def query_hotels(city: str, district: Optional[str] = None, refresh: bool = False) -> str:
     """
     查询酒店信息
 
@@ -302,7 +302,9 @@ def query_hotels(city: str, district: Optional[str] = None) -> str:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
 
-            result = loop.run_until_complete(client.search_hotels(city, district))
+            result = loop.run_until_complete(
+                client.search_hotels(city, district, bypass_cache=bool(refresh))
+            )
 
             if result["data"]:
                 output = f"🏨 {city}酒店推荐：\n\n"
@@ -502,7 +504,7 @@ def get_travel_tips(destination: str, season: Optional[str] = None) -> str:
 
 
 @tool
-def get_weather(city: str, days: int = 7) -> str:
+def get_weather(city: str, days: int = 7, refresh: bool = False) -> str:
     """
     获取天气预报
 
@@ -526,7 +528,7 @@ def get_weather(city: str, days: int = 7) -> str:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
 
-            result = loop.run_until_complete(client.get_weather(city, days))
+            result = loop.run_until_complete(client.get_weather(city, days, bypass_cache=bool(refresh)))
 
             output = f"🌤️ {city}天气预报：\n\n"
 

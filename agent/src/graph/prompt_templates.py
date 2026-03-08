@@ -43,15 +43,21 @@ def build_answer_prompt(
     context: str,
     tools_used: list[str],
     intent: Optional[str],
+    evidence_required: bool = False,
 ) -> str:
     guidance = INTENT_GUIDANCE.get((intent or "general").lower(), INTENT_GUIDANCE["general"])
     if tools_used:
+        evidence_instruction = (
+            "必须在答案末尾追加“证据来源”小节，并逐条包含 `source` 与 `fetched_at` 字段。"
+            if evidence_required
+            else "请基于工具结果回答，优先引用 source/fetched_at；涉及时效信息时明确日期。"
+        )
         return (
             f"用户问题: {user_question}\n\n"
             f"{context}\n\n"
             f"任务类型: {intent or 'general'}\n"
             f"回答要求: {guidance}\n"
-            "请基于工具结果回答，优先引用 source/fetched_at；涉及时效信息时明确日期。"
+            f"{evidence_instruction}"
         )
     return (
         f"用户问题: {user_question}\n\n"

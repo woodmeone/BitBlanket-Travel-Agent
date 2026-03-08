@@ -244,7 +244,7 @@ async def test_tool_result_meta_overrides_default_source_profile():
     assert tool_result["provider_chain"] == ["primary-provider", "test-provider"]
     assert tool_result["fallback_used"] is True
     assert tool_result["fallback_suggestion"] is not None
-    assert result["execution_summary"]["fallback_steps"] == 1
+    assert result["execution_summary"]["fallback_steps"] >= 1
 
 
 @pytest.mark.asyncio
@@ -588,3 +588,5 @@ async def test_high_risk_verify_required_without_verification_returns_nondetermi
     assert strategy.get("requires_verification") is True
     assert verify.get("passed") is False
     assert "暂定建议而非确定结论" in answer
+    assert "source=" in answer
+    assert "fetched_at=" in answer

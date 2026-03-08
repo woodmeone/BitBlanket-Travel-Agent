@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from agent.src.tools.travel_api import TravelAPIClient
-from agent.src.tools.travel_tools import query_attractions, query_hotels, search_cities
+from agent.src.tools.travel_tools import get_weather, query_attractions, query_hotels, search_cities
 
 
 @pytest.mark.asyncio
@@ -92,6 +92,34 @@ async def test_travel_api_weather_fallback_to_secondary_provider(monkeypatch):
     assert meta.get("provider_chain") == ["primary-provider", "secondary-provider"]
 
 
+@pytest.mark.asyncio
+async def test_travel_api_weather_bypass_cache_sets_refresh_metadata():
+    client = TravelAPIClient(use_cache=True)
+    cached = await client.get_weather(city="北京", days=2)
+    refreshed = await client.get_weather(city="北京", days=2, bypass_cache=True)
+
+    cached_meta = cached.get("_meta", {})
+    refreshed_meta = refreshed.get("_meta", {})
+    assert cached_meta.get("refresh_attempted") is False
+    assert cached_meta.get("refresh_success") is False
+    assert refreshed_meta.get("refresh_attempted") is True
+    assert refreshed_meta.get("refresh_success") is True
+
+
+@pytest.mark.asyncio
+async def test_travel_api_hotels_bypass_cache_sets_refresh_metadata():
+    client = TravelAPIClient(use_cache=True)
+    cached = await client.search_hotels(city="北京", district=None, page=1, page_size=10)
+    refreshed = await client.search_hotels(city="北京", district=None, page=1, page_size=10, bypass_cache=True)
+
+    cached_meta = cached.get("_meta", {})
+    refreshed_meta = refreshed.get("_meta", {})
+    assert cached_meta.get("refresh_attempted") is False
+    assert cached_meta.get("refresh_success") is False
+    assert refreshed_meta.get("refresh_attempted") is True
+    assert refreshed_meta.get("refresh_success") is True
+
+
 def test_travel_tools_attractions_metadata_passthrough():
     payload = query_attractions.invoke({"city": "北京", "category": "historical"})
     assert isinstance(payload, dict)
@@ -108,9 +136,27 @@ def test_travel_tools_hotels_metadata_passthrough():
     assert meta.get("source", "").startswith("hotel_provider:")
 
 
+def test_travel_tools_hotels_refresh_metadata_passthrough():
+    payload = query_hotels.invoke({"city": "北京", "refresh": True})
+    assert isinstance(payload, dict)
+    meta = payload.get("_meta", {})
+    assert meta.get("source", "").startswith("hotel_provider:")
+    assert meta.get("refresh_attempted") is True
+    assert meta.get("refresh_success") is True
+
+
 def test_travel_tools_cities_metadata_passthrough():
     payload = search_cities.invoke({"query": "北京"})
     assert isinstance(payload, dict)
     assert "report" in payload
     meta = payload.get("_meta", {})
     assert meta.get("source", "").startswith("cities_provider:")
+
+
+def test_travel_tools_weather_refresh_metadata_passthrough():
+    payload = get_weather.invoke({"city": "北京", "days": 2, "refresh": True})
+    assert isinstance(payload, dict)
+    meta = payload.get("_meta", {})
+    assert meta.get("source", "").startswith("weather_provider:")
+    assert meta.get("refresh_attempted") is True
+    assert meta.get("refresh_success") is True

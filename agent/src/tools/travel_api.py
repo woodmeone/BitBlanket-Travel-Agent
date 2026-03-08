@@ -23,7 +23,9 @@ class TravelAPIClient:
     def _now_iso() -> str:
         return datetime.now(timezone.utc).isoformat()
 
-    def _get_cache(self, key: str) -> Optional[Any]:
+    def _get_cache(self, key: str, *, bypass_cache: bool = False) -> Optional[Any]:
+        if bypass_cache:
+            return None
         if self.use_cache and key in self._cache:
             return self._cache[key]
         return None
@@ -47,6 +49,13 @@ class TravelAPIClient:
             "fetched_at": fetched_at,
             "ttl_seconds": ttl_seconds,
             "is_stale": is_stale,
+        }
+
+    @staticmethod
+    def _refresh_meta(refresh_attempted: bool, refresh_success: bool) -> Dict[str, Any]:
+        return {
+            "refresh_attempted": bool(refresh_attempted),
+            "refresh_success": bool(refresh_success),
         }
 
     @staticmethod
@@ -285,6 +294,7 @@ class TravelAPIClient:
         price_range: Optional[tuple] = None,
         page: int = 1,
         page_size: int = 20,
+        bypass_cache: bool = False,
     ) -> Dict[str, Any]:
         _ = (check_in, check_out)
         cache_key = f"hotels:{city}:{district}:{price_range}:{page}:{page_size}"
@@ -310,13 +320,14 @@ class TravelAPIClient:
                 raise RuntimeError(f"No available hotels provider. primary={primary_provider}")
         source = f"hotel_provider:{selected_provider}"
         ttl_seconds = 1800
-        cached = self._get_cache(cache_key)
+        cached = self._get_cache(cache_key, bypass_cache=bypass_cache)
         if cached:
             cached_result = dict(cached)
             cached_meta = dict(cached_result.get("_meta", {}))
             cached_result["_meta"] = {
                 **cached_meta,
                 **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+                **self._refresh_meta(refresh_attempted=False, refresh_success=False),
                 "provider_chain": providers,
                 "provider_used": selected_provider,
                 "fallback_used": fallback_used,
@@ -343,6 +354,7 @@ class TravelAPIClient:
             "data": hotels[start : start + page_size],
             "_meta": {
                 **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+                **self._refresh_meta(refresh_attempted=bypass_cache, refresh_success=bypass_cache),
                 "provider_chain": providers,
                 "provider_used": selected_provider,
                 "fallback_used": fallback_used,
@@ -351,18 +363,19 @@ class TravelAPIClient:
         self._set_cache(cache_key, result)
         result["_meta"] = {
             **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+            **self._refresh_meta(refresh_attempted=bypass_cache, refresh_success=bypass_cache),
             "provider_chain": providers,
             "provider_used": selected_provider,
             "fallback_used": fallback_used,
         }
         return result
 
-    async def get_weather(self, city: str, days: int = 7) -> Dict[str, Any]:
+    async def get_weather(self, city: str, days: int = 7, bypass_cache: bool = False) -> Dict[str, Any]:
         cache_key = f"weather:{city}:{days}"
         ttl_seconds = 1800
         providers = self._weather_provider_chain()
         primary_provider = providers[0]
-        cached = self._get_cache(cache_key)
+        cached = self._get_cache(cache_key, bypass_cache=bypass_cache)
         if cached:
             cached_result = dict(cached)
             cached_meta = dict(cached_result.get("_meta", {}))
@@ -370,6 +383,7 @@ class TravelAPIClient:
             cached_result["_meta"] = {
                 **cached_meta,
                 **self._build_meta(cache_key, source=source, ttl_seconds=ttl_seconds),
+                **self._refresh_meta(refresh_attempted=False, refresh_success=False),
             }
             return cached_result
 
@@ -421,6 +435,7 @@ class TravelAPIClient:
                     source=f"weather_provider:{selected_provider}",
                     ttl_seconds=ttl_seconds,
                 ),
+                **self._refresh_meta(refresh_attempted=bypass_cache, refresh_success=bypass_cache),
                 "provider_chain": providers,
                 "provider_used": selected_provider,
                 "fallback_used": fallback_used,
@@ -433,6 +448,7 @@ class TravelAPIClient:
                 source=f"weather_provider:{selected_provider}",
                 ttl_seconds=ttl_seconds,
             ),
+            **self._refresh_meta(refresh_attempted=bypass_cache, refresh_success=bypass_cache),
             "provider_chain": providers,
             "provider_used": selected_provider,
             "fallback_used": fallback_used,

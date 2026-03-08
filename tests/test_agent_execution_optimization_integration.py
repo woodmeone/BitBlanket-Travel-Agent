@@ -34,6 +34,30 @@ class FakeLLM:
         return AIMessage(content="ok")
 
 
+class _StructuredGeneralIntentLLM:
+    def __init__(self, schema):
+        self._schema = schema
+
+    def invoke(self, _messages):
+        return self._schema(
+            intent="general",
+            confidence=1.0,
+            entities={"city": "北京"},
+            requires_tools=True,
+        )
+
+
+class FakeGeneralLLM:
+    def bind_tools(self, _tools):
+        return self
+
+    def with_structured_output(self, schema, method=None):  # noqa: ARG002
+        return _StructuredGeneralIntentLLM(schema)
+
+    def invoke(self, _messages):
+        return AIMessage(content="ok")
+
+
 @tool
 async def query_attractions(city: str, category: str | None = None) -> str:  # noqa: ARG001
     """Query attractions."""
@@ -87,3 +111,128 @@ async def test_parallel_steps_have_close_start_times():
 
     assert result.get("plan_id")
     assert "plan_steps" in (result.get("plan_explanation") or "")
+
+
+@pytest.mark.asyncio
+async def test_stale_weather_triggers_refresh_retry_and_recovers():
+    calls = {"count": 0, "refresh_flags": []}
+
+    @tool
+    async def get_weather(city: str, days: int = 3, refresh: bool = False) -> dict:
+        """Get weather."""
+        calls["count"] += 1
+        calls["refresh_flags"].append(bool(refresh))
+        return {
+            "report": f"weather:{city}:{days}:{'fresh' if refresh else 'stale'}",
+            "_meta": {
+                "source": "weather_provider:test",
+                "fetched_at": datetime.now().isoformat(),
+                "ttl_seconds": 1800,
+                "is_stale": not bool(refresh),
+                "refresh_attempted": bool(refresh),
+                "refresh_success": bool(refresh),
+            },
+        }
+
+    def stale_plan(_entities: dict) -> list[dict]:
+        return [
+            {
+                "step": 1,
+                "step_id": "s1",
+                "tool": "get_weather",
+                "params": {"city": "北京", "days": 2},
+                "description": "weather stale then refresh",
+                "depends_on": [],
+            }
+        ]
+
+    agent = build_travel_agent(
+        llm=FakeGeneralLLM(),
+        tools=[get_weather],
+        system_prompt=TRAVEL_AGENT_SYSTEM_PROMPT,
+        planner_hooks={"general": stale_plan},
+    )
+    result = await agent.ainvoke(
+        create_initial_state(
+            user_message="请给我北京天气",
+            session_id="stale-refresh-success-session",
+            system_message=TRAVEL_AGENT_SYSTEM_PROMPT,
+        )
+    )
+
+    final_tool_result = result.get("tool_results", {}).get("s1:get_weather", {})
+    verify_result = result.get("verify_result", {}) or {}
+
+    assert calls["count"] == 2
+    assert calls["refresh_flags"] == [False, True]
+    assert result.get("verify_retry_count") == 1
+    assert verify_result.get("passed") is True
+    assert final_tool_result.get("is_stale") is False
+    assert final_tool_result.get("refresh_attempted") is True
+    assert final_tool_result.get("refresh_success") is True
+
+
+@pytest.mark.asyncio
+async def test_stale_weather_refresh_failed_returns_degradation_note():
+    calls = {"count": 0, "refresh_flags": []}
+
+    @tool
+    async def get_weather(city: str, days: int = 3, refresh: bool = False) -> dict:
+        """Get weather."""
+        calls["count"] += 1
+        calls["refresh_flags"].append(bool(refresh))
+        return {
+            "report": f"weather:{city}:{days}:stale",
+            "_meta": {
+                "source": "weather_provider:test",
+                "fetched_at": datetime.now().isoformat(),
+                "ttl_seconds": 1800,
+                "is_stale": True,
+                "refresh_attempted": bool(refresh),
+                "refresh_success": False,
+            },
+        }
+
+    def stale_plan(_entities: dict) -> list[dict]:
+        return [
+            {
+                "step": 1,
+                "step_id": "s1",
+                "tool": "get_weather",
+                "params": {"city": "北京", "days": 2},
+                "description": "weather remains stale",
+                "depends_on": [],
+            }
+        ]
+
+    agent = build_travel_agent(
+        llm=FakeGeneralLLM(),
+        tools=[get_weather],
+        system_prompt=TRAVEL_AGENT_SYSTEM_PROMPT,
+        planner_hooks={"general": stale_plan},
+    )
+    result = await agent.ainvoke(
+        create_initial_state(
+            user_message="请给我北京天气",
+            session_id="stale-refresh-failed-session",
+            system_message=TRAVEL_AGENT_SYSTEM_PROMPT,
+        )
+    )
+
+    final_tool_result = result.get("tool_results", {}).get("s1:get_weather", {})
+    verify_result = result.get("verify_result", {}) or {}
+    issue_types = {
+        str(item.get("issue_type") or "")
+        for item in verify_result.get("issues", [])
+        if isinstance(item, dict)
+    }
+    answer = str(result.get("answer") or "")
+
+    assert calls["count"] == 2
+    assert calls["refresh_flags"] == [False, True]
+    assert result.get("verify_retry_count") == 1
+    assert verify_result.get("passed") is False
+    assert "stale_refresh_failed" in issue_types
+    assert final_tool_result.get("refresh_attempted") is True
+    assert final_tool_result.get("refresh_success") is False
+    assert ("可能过期的数据" in answer) or ("时效偏差" in answer)

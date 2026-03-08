@@ -54,6 +54,9 @@ SSE 事件（`type`）：
 - `plan_id`
 - `execution_stats`
 
+高风险问答约束（`budget/价格/政策/签证/退改`）：
+- 最终答案正文会强制包含证据段，显式给出 `source` 与 `fetched_at`。
+
 `GET /api/health/tools` 关键字段：
 - `slo`（`status/timeout_rate/failure_rate/fallback_rate/thresholds/total_requests`）
 - `intent_aggregate`（`{intent: {total, timeout_rate, failure_rate, fallback_rate}}`）

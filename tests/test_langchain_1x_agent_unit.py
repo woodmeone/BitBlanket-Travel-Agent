@@ -9,6 +9,7 @@ from agent.src.graph.builder import (
     _resolve_stream_events_version,
 )
 from agent.src.graph.nodes import AgentNodes, _resolve_parallelism_default
+from agent.src.graph.prompt_templates import build_answer_prompt
 
 
 def test_extract_text_from_chunk_supports_content_blocks():
@@ -107,3 +108,16 @@ def test_travel_agent_invoke_falls_back_to_async_invoke():
     assert result == {"answer": "ok"}
     assert dummy_graph.sync_calls == 1
     assert dummy_graph.async_calls == 1
+
+
+def test_build_answer_prompt_requires_evidence_when_high_risk():
+    prompt = build_answer_prompt(
+        user_question="给我北京三天预算",
+        context="tool context",
+        tools_used=["calculate_budget"],
+        intent="budget",
+        evidence_required=True,
+    )
+    assert "source" in prompt
+    assert "fetched_at" in prompt
+    assert "必须在答案末尾追加" in prompt
