@@ -29,6 +29,25 @@ cd frontend
 npm run test:run
 ```
 
+## 失败回放（checkpoint）
+
+用于回放失败会话并生成报告。默认模式会执行真实 replay（调用 Agent + LLM）。
+
+```bash
+python scripts/agent_replay.py --session-id <session_id> --db data/langgraph_checkpoints.sqlite3
+```
+
+仅导出 checkpoint 快照（不执行 replay）：
+
+```bash
+python scripts/agent_replay.py --session-id <session_id> --db data/langgraph_checkpoints.sqlite3 --dry-run
+```
+
+默认输出目录：`docs/benchmarks/`，文件名形如：
+
+- `agent_replay_<session>_<timestamp>.json`
+- `agent_replay_<session>_<timestamp>.md`
+
 ## 常见问题
 
 1. `Connection refused`: 先启动 `python run_api.py`

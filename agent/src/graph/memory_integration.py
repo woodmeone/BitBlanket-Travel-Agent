@@ -13,6 +13,7 @@ import os
 import asyncio
 import re
 import threading
+import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -97,6 +98,8 @@ class AgentMemoryManager:
 
     PROFILE_SCHEMA_VERSION = 2
     SOURCE_PRIORITY = {"inferred": 1, "recent_inferred": 2, "explicit": 3}
+    DECAY_HALF_LIFE_HOURS = 72.0
+    MIN_DECAY_CONFIDENCE = 0.25
 
     async def add_message(self, session_id: str, role: str, content: str) -> None:
         async with self._lock:
@@ -189,12 +192,14 @@ class AgentMemoryManager:
         candidates = self.get_recent_messages_sync(session_id, max(self.max_history * 2, max_messages))
         query_tokens = self._tokenize(user_message)
 
-        ranked: List[tuple[int, int, MemoryMessage]] = []
+        ranked: List[tuple[float, int, MemoryMessage]] = []
         for idx, msg in enumerate(candidates):
             msg_tokens = self._tokenize(msg.content)
             overlap = len(query_tokens & msg_tokens) if query_tokens else 0
             recency_boost = idx  # preserve latest messages under tie
-            ranked.append((overlap, recency_boost, msg))
+            decay = self._time_decay_factor(msg.timestamp)
+            score = float(overlap * 2) + float(recency_boost * 0.05) + decay
+            ranked.append((score, recency_boost, msg))
 
         ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
         selected = [item[2] for item in ranked[: max(2, max_messages)]]
@@ -209,6 +214,16 @@ class AgentMemoryManager:
                     content="用户长期偏好:\n" + json.dumps(profile, ensure_ascii=False, indent=2),
                 )
             )
+            pending = profile.get("pending_clarifications", [])
+            if pending:
+                prompts = [str(item.get("prompt", "")).strip() for item in pending[:2] if isinstance(item, dict)]
+                prompts = [item for item in prompts if item]
+                if prompts:
+                    context.append(
+                        SystemMessage(
+                            content="偏好冲突待澄清:\n- " + "\n- ".join(prompts),
+                        )
+                    )
 
         for msg in selected:
             if msg.role == "assistant":
@@ -249,10 +264,13 @@ class AgentMemoryManager:
                 "updated_at": profile.get("updated_at"),
             }
             for key, item in profile.get("attributes", {}).items():
-                flattened[key] = item.get("value")
+                decayed_conf = self._decayed_confidence(item if isinstance(item, dict) else {})
+                if decayed_conf >= self.MIN_DECAY_CONFIDENCE and isinstance(item, dict):
+                    flattened[key] = item.get("value")
             flattened["interests"] = sorted(profile.get("interests", []))
             flattened["avoid_preferences"] = sorted(profile.get("avoid_preferences", []))
-            flattened["_meta"] = profile.get("attributes", {})
+            flattened["pending_clarifications"] = profile.get("pending_clarifications", [])
+            flattened["_meta"] = self._attributes_with_decay(profile.get("attributes", {}))
             return flattened
 
     async def get_profile(self, session_id: str) -> Dict[str, Any]:
@@ -484,6 +502,16 @@ class AgentMemoryManager:
             }
             return
 
+        conflict = self._detect_preference_conflict(
+            key=key,
+            existing=existing if isinstance(existing, dict) else {},
+            new_value=value,
+            new_source=source,
+        )
+        if conflict is not None:
+            self._record_conflict(profile, key=key, conflict=conflict, now=now)
+            return
+
         existing_priority = self.SOURCE_PRIORITY.get(existing.get("source", "inferred"), 1)
         new_priority = self.SOURCE_PRIORITY.get(source, 1)
         existing_conf = float(existing.get("confidence", 0))
@@ -508,6 +536,8 @@ class AgentMemoryManager:
             "attributes": {},
             "interests": [],
             "avoid_preferences": [],
+            "conflict_log": [],
+            "pending_clarifications": [],
         }
 
     def _normalize_profile(self, profile: Any) -> Dict[str, Any]:
@@ -522,6 +552,8 @@ class AgentMemoryManager:
                 "attributes": dict(profile.get("attributes", {})),
                 "interests": list(profile.get("interests", [])),
                 "avoid_preferences": list(profile.get("avoid_preferences", [])),
+                "conflict_log": list(profile.get("conflict_log", [])),
+                "pending_clarifications": list(profile.get("pending_clarifications", [])),
             }
             return normalized
 
@@ -539,7 +571,127 @@ class AgentMemoryManager:
         migrated["interests"] = list(profile.get("interests", []))
         migrated["avoid_preferences"] = list(profile.get("avoid_preferences", []))
         migrated["updated_at"] = profile.get("updated_at", datetime.now().isoformat())
+        migrated["conflict_log"] = list(profile.get("conflict_log", []))
+        migrated["pending_clarifications"] = list(profile.get("pending_clarifications", []))
         return migrated
+
+    @staticmethod
+    def _to_number(value: Any) -> Optional[float]:
+        if value is None:
+            return None
+        try:
+            text = str(value).strip().lower().replace(",", "")
+            text = text.replace("cny", "").replace("rmb", "").replace("元", "")
+            return float(text)
+        except Exception:
+            return None
+
+    def _detect_preference_conflict(
+        self,
+        key: str,
+        existing: Dict[str, Any],
+        new_value: Any,
+        new_source: str,
+    ) -> Optional[Dict[str, Any]]:
+        old_value = existing.get("value")
+        if old_value is None:
+            return None
+        if key == "budget_hint":
+            old_num = self._to_number(old_value)
+            new_num = self._to_number(new_value)
+            if old_num and new_num:
+                ratio = max(old_num, new_num) / max(1.0, min(old_num, new_num))
+                if ratio >= 2.0 and abs(old_num - new_num) >= 3000:
+                    return {
+                        "type": "budget_conflict",
+                        "old_value": old_value,
+                        "new_value": new_value,
+                        "severity": "high",
+                        "prompt": f"你之前预算偏好是 {old_value}，这次是 {new_value}。本次按哪个预算执行？",
+                        "new_source": new_source,
+                    }
+        if key == "days_hint":
+            old_num = self._to_number(old_value)
+            new_num = self._to_number(new_value)
+            if old_num is not None and new_num is not None and abs(old_num - new_num) >= 3:
+                return {
+                    "type": "days_conflict",
+                    "old_value": old_value,
+                    "new_value": new_value,
+                    "severity": "medium",
+                    "prompt": f"你之前常用天数是 {int(old_num)} 天，这次是 {int(new_num)} 天。按哪一个规划？",
+                    "new_source": new_source,
+                }
+        if key == "people_hint":
+            old_num = self._to_number(old_value)
+            new_num = self._to_number(new_value)
+            if old_num is not None and new_num is not None and abs(old_num - new_num) >= 2:
+                return {
+                    "type": "people_conflict",
+                    "old_value": old_value,
+                    "new_value": new_value,
+                    "severity": "medium",
+                    "prompt": f"你之前出行人数偏好是 {int(old_num)} 人，这次是 {int(new_num)} 人。本次按哪个人数？",
+                    "new_source": new_source,
+                }
+        if key == "season_hint" and str(old_value).strip() != str(new_value).strip():
+            return {
+                "type": "season_conflict",
+                "old_value": old_value,
+                "new_value": new_value,
+                "severity": "low",
+                "prompt": f"你之前季节偏好是 {old_value}，这次是 {new_value}。本次按哪个季节建议？",
+                "new_source": new_source,
+            }
+        return None
+
+    def _record_conflict(self, profile: Dict[str, Any], key: str, conflict: Dict[str, Any], now: str) -> None:
+        entry = {
+            "key": key,
+            "type": conflict.get("type"),
+            "old_value": conflict.get("old_value"),
+            "new_value": conflict.get("new_value"),
+            "severity": conflict.get("severity", "medium"),
+            "prompt": conflict.get("prompt"),
+            "created_at": now,
+        }
+        conflict_log = profile.setdefault("conflict_log", [])
+        conflict_log.append(entry)
+        if len(conflict_log) > 50:
+            del conflict_log[:-50]
+
+        pending = profile.setdefault("pending_clarifications", [])
+        same_key_items = [item for item in pending if isinstance(item, dict) and item.get("key") == key]
+        if not same_key_items:
+            pending.append(entry)
+        if len(pending) > 10:
+            del pending[:-10]
+
+    @staticmethod
+    def _time_decay_factor(timestamp: str) -> float:
+        try:
+            ts = datetime.fromisoformat(timestamp)
+            age_hours = max(0.0, (datetime.now() - ts).total_seconds() / 3600.0)
+            return math.pow(0.5, age_hours / AgentMemoryManager.DECAY_HALF_LIFE_HOURS)
+        except Exception:
+            return 0.5
+
+    def _decayed_confidence(self, attr: Dict[str, Any]) -> float:
+        base = float(attr.get("confidence", 0.0) or 0.0)
+        updated_at = str(attr.get("updated_at") or "")
+        decay = self._time_decay_factor(updated_at) if updated_at else 0.6
+        return max(0.0, min(1.0, base * decay))
+
+    def _attributes_with_decay(self, attrs: Dict[str, Any]) -> Dict[str, Any]:
+        output: Dict[str, Any] = {}
+        for key, item in attrs.items():
+            if not isinstance(item, dict):
+                continue
+            output[key] = {
+                **item,
+                "decayed_confidence": round(self._decayed_confidence(item), 4),
+            }
+        return output
 
     @staticmethod
     def _tokenize(text: str) -> set[str]:
@@ -568,18 +720,26 @@ class AgentStateWithMemory:
             "messages": messages,
             "intent": None,
             "intent_detail": None,
+            "strategy": None,
+            "strategy_detail": None,
             "routing": None,
             "plan_id": None,
             "plan_explanation": None,
             "plan": None,
             "current_step": 0,
+            "execution_round": 0,
             "parallelism": None,
             "max_parallelism": None,
             "execution_state": None,
             "execution_stats": None,
             "execution_summary": None,
             "execution_trace": [],
+            "execution_budget": None,
+            "fused_tool_results": None,
             "early_stop_reason": None,
+            "verify_retry_count": 0,
+            "verify_result": None,
+            "self_check_result": None,
             "tools_used": [],
             "tool_results": {},
             "answer": None,

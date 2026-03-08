@@ -1,7 +1,9 @@
 ﻿from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import threading
 from typing import Any, AsyncGenerator, Callable, Optional
 
 from langchain_core.runnables import Runnable
@@ -50,6 +52,14 @@ def _resolve_stream_events_version() -> str:
     return get_runtime_config().stream_events_version
 
 
+def _is_answer_complete(answer: str) -> bool:
+    text = str(answer or "").strip()
+    if len(text) < 8:
+        return False
+    tail = text[-1]
+    return tail in {"。", ".", "！", "!", "？", "?"}
+
+
 class TravelAgentGraph:
     """LangGraph wrapper for travel-agent orchestration."""
 
@@ -60,27 +70,30 @@ class TravelAgentGraph:
         system_prompt: str = TRAVEL_AGENT_SYSTEM_PROMPT,
         planner_hooks: Optional[dict[str, Callable[[dict], list[dict]]]] = None,
         checkpointer: Any = None,
+        routing_llm: Optional[Runnable] = None,
     ):
         self.llm = llm
         self.tools = tools
         self.system_prompt = system_prompt
-        self.nodes = AgentNodes(llm, tools, system_prompt, planner_hooks=planner_hooks)
+        self.nodes = AgentNodes(llm, tools, system_prompt, planner_hooks=planner_hooks, routing_llm=routing_llm)
         self.checkpointer = checkpointer
         self._graph: Optional[StateGraph] = None
 
     def build(self) -> StateGraph:
         graph = StateGraph(AgentState)
         graph.add_node("intent", self.nodes.intent_node)
-        graph.add_node("router", self.nodes.router_node)
+        graph.add_node("strategy", self.nodes.strategy_node)
         graph.add_node("plan", self.nodes.plan_node)
         graph.add_node("execute", self.nodes.execute_node)
+        graph.add_node("verify", self.nodes.verify_node)
         graph.add_node("answer", self.nodes.answer_node)
         graph.add_node("direct_answer", self.nodes.direct_answer_node)
+        graph.add_node("self_check", self.nodes.self_check_node)
 
         graph.set_entry_point("intent")
-        graph.add_edge("intent", "router")
+        graph.add_edge("intent", "strategy")
         graph.add_conditional_edges(
-            "router",
+            "strategy",
             self.nodes.routing_decision,
             {"plan": "plan", "direct": "direct_answer"},
         )
@@ -88,10 +101,16 @@ class TravelAgentGraph:
         graph.add_conditional_edges(
             "execute",
             self.nodes.should_continue,
+            {"execute": "execute", "answer": "verify"},
+        )
+        graph.add_conditional_edges(
+            "verify",
+            self.nodes.verify_decision,
             {"execute": "execute", "answer": "answer"},
         )
-        graph.add_edge("answer", END)
-        graph.add_edge("direct_answer", END)
+        graph.add_edge("answer", "self_check")
+        graph.add_edge("direct_answer", "self_check")
+        graph.add_edge("self_check", END)
 
         compile_kwargs = {}
         if self.checkpointer is not None:
@@ -115,7 +134,14 @@ class TravelAgentGraph:
 
     def invoke(self, state: dict) -> dict:
         config = self._build_thread_config(state)
-        return self.graph.invoke(state, config=config if config else None)
+        resolved_config = config if config else None
+        try:
+            return self.graph.invoke(state, config=resolved_config)
+        except TypeError as exc:
+            if "No synchronous function provided" not in str(exc):
+                raise
+            logger.info("[Graph Builder] Falling back to async invoke due to async-only node execution")
+            return self._run_ainvoke_sync(state, resolved_config)
 
     async def ainvoke(self, state: dict) -> dict:
         config = self._build_thread_config(state)
@@ -135,6 +161,29 @@ class TravelAgentGraph:
         ):
             yield event
 
+    def _run_ainvoke_sync(self, state: dict, config: dict | None) -> dict:
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(self.graph.ainvoke(state, config=config))
+
+        result_holder: dict[str, Any] = {}
+        error_holder: dict[str, Exception] = {}
+
+        def _runner() -> None:
+            try:
+                result_holder["result"] = asyncio.run(self.graph.ainvoke(state, config=config))
+            except Exception as inner_exc:  # pragma: no cover - defensive bridge
+                error_holder["error"] = inner_exc
+
+        thread = threading.Thread(target=_runner, name="travel-agent-ainvoke-bridge", daemon=True)
+        thread.start()
+        thread.join()
+
+        if "error" in error_holder:
+            raise error_holder["error"]
+        return dict(result_holder.get("result") or {})
+
 
 def build_travel_agent(
     llm: Runnable,
@@ -142,8 +191,16 @@ def build_travel_agent(
     system_prompt: str = TRAVEL_AGENT_SYSTEM_PROMPT,
     planner_hooks: Optional[dict[str, Callable[[dict], list[dict]]]] = None,
     checkpointer: Any = None,
+    routing_llm: Optional[Runnable] = None,
 ) -> TravelAgentGraph:
-    return TravelAgentGraph(llm, tools, system_prompt, planner_hooks=planner_hooks, checkpointer=checkpointer)
+    return TravelAgentGraph(
+        llm,
+        tools,
+        system_prompt,
+        planner_hooks=planner_hooks,
+        checkpointer=checkpointer,
+        routing_llm=routing_llm,
+    )
 
 
 def _create_default_checkpointer():
@@ -190,12 +247,14 @@ async def run_travel_agent(
     session_id: str = "default",
     system_prompt: str | None = None,
     run_id: str | None = None,
+    routing_llm: Runnable | None = None,
 ) -> dict:
     agent = build_travel_agent(
         llm,
         tools,
         system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
         checkpointer=_create_default_checkpointer(),
+        routing_llm=routing_llm,
     )
     initial_state = create_initial_state(
         user_message=user_message,
@@ -224,12 +283,14 @@ async def run_travel_agent_streaming(
     on_token: Callable | None = None,
     on_tool_start: Callable | None = None,
     on_tool_end: Callable | None = None,
+    routing_llm: Runnable | None = None,
 ) -> dict:
     agent = build_travel_agent(
         llm,
         tools,
         system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
         checkpointer=_create_default_checkpointer(),
+        routing_llm=routing_llm,
     )
     initial_state = create_initial_state(
         user_message=user_message,
@@ -278,6 +339,7 @@ async def run_travel_agent_with_memory(
     on_tool_end: Callable | None = None,
     persist_memory: bool = True,
     run_id: str | None = None,
+    routing_llm: Runnable | None = None,
 ) -> dict:
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
@@ -298,6 +360,7 @@ async def run_travel_agent_with_memory(
         tools,
         system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
         checkpointer=_create_default_checkpointer(),
+        routing_llm=routing_llm,
     )
 
     answer = ""
@@ -343,6 +406,7 @@ async def run_travel_agent_streaming_with_memory(
     system_prompt: str | None = None,
     persist_memory: bool = True,
     run_id: str | None = None,
+    routing_llm: Runnable | None = None,
 ):
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
@@ -363,24 +427,55 @@ async def run_travel_agent_streaming_with_memory(
         tools,
         system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
         checkpointer=_create_default_checkpointer(),
+        routing_llm=routing_llm,
     )
 
     answer = ""
     tools_used: list[str] = []
     final_state: dict[str, Any] = {}
+    stage = "parse"
+    progress = 5
 
     try:
+        yield {"type": "stage", "stage": stage, "progress": progress, "label": "解析需求"}
         async for event in agent.astream_events(initial_state):
             event_type = event.get("event")
 
             if event_type == "on_node_start":
                 node_name = event.get("name", "")
                 if node_name == "intent":
+                    stage = "parse"
+                    progress = 10
+                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "解析需求"}
                     yield {"type": "reasoning", "content": "分析用户意图..."}
+                elif node_name == "strategy":
+                    stage = "parse"
+                    progress = 18
+                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "选择策略"}
+                    yield {"type": "reasoning", "content": "选择 ReAct 子策略..."}
                 elif node_name == "plan":
+                    stage = "query"
+                    progress = 25
+                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "生成计划"}
                     yield {"type": "reasoning", "content": "制定执行计划..."}
                 elif node_name == "execute":
+                    stage = "query"
+                    progress = 45
+                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "查询数据"}
                     yield {"type": "reasoning", "content": "执行工具..."}
+                elif node_name in {"answer", "direct_answer"}:
+                    stage = "generate"
+                    progress = 80
+                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "生成方案"}
+                elif node_name == "verify":
+                    stage = "generate"
+                    progress = 72
+                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "验证结果一致性"}
+                    yield {"type": "reasoning", "content": "校验价格/政策/日期一致性..."}
+                elif node_name == "self_check":
+                    stage = "finalize"
+                    progress = 95
+                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "自检答案完整性"}
 
             elif event_type == "on_chat_model_stream":
                 content = _extract_text_from_chunk((event.get("data") or {}).get("chunk"))
@@ -391,7 +486,9 @@ async def run_travel_agent_streaming_with_memory(
             elif event_type == "on_tool_start":
                 tool_name = event.get("name", "")
                 tools_used.append(tool_name)
-                yield {"type": "tool_start", "tool": tool_name}
+                progress = min(75, progress + 5)
+                yield {"type": "stage", "stage": "query", "progress": progress, "label": f"查询数据: {tool_name}"}
+                yield {"type": "tool_start", "tool": tool_name, "progress": progress}
 
             elif event_type == "on_tool_end":
                 tool_name = event.get("name", "")
@@ -400,6 +497,7 @@ async def run_travel_agent_streaming_with_memory(
                     "type": "tool_end",
                     "tool": tool_name,
                     "result": str(result)[:TOOL_RESULT_PREVIEW_LIMIT],
+                    "progress": progress,
                 }
             elif event_type == "on_chain_end":
                 output = (event.get("data") or {}).get("output")
@@ -421,9 +519,18 @@ async def run_travel_agent_streaming_with_memory(
 
     execution_stats = final_state.get("execution_stats", {})
     plan_id = final_state.get("plan_id")
+    intent = final_state.get("intent")
     if not execution_stats and isinstance(final_state, dict):
         execution_stats = final_state.get("execution_stats", {})
 
+    if not _is_answer_complete(answer):
+        fallback_text = "已完成主要步骤，但当前回复可能不完整。请告诉我你希望我优先补充预算、行程还是酒店。"
+        if answer:
+            answer = f"{answer.rstrip()} {fallback_text}"
+        else:
+            answer = fallback_text
+
+    yield {"type": "stage", "stage": "finalize", "progress": 100, "label": "完整性检查"}
     yield {
         "type": "done",
         "answer": answer,
@@ -431,6 +538,7 @@ async def run_travel_agent_streaming_with_memory(
         "session_id": session_id,
         "run_id": run_id,
         "plan_id": plan_id,
+        "intent": intent,
         "execution_stats": execution_stats,
     }
 
@@ -442,6 +550,7 @@ def generate_plan_preview_with_memory(
     session_id: str = "default",
     memory_manager=None,
     system_prompt: str | None = None,
+    routing_llm: Runnable | None = None,
 ) -> dict:
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
@@ -455,7 +564,7 @@ def generate_plan_preview_with_memory(
         system_prompt=system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
     )
 
-    nodes = AgentNodes(llm, tools, system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT)
+    nodes = AgentNodes(llm, tools, system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT, routing_llm=routing_llm)
     intent_state = dict(initial_state)
     intent_state.update(nodes.intent_node(intent_state))
     plan_state = dict(intent_state)
@@ -466,6 +575,8 @@ def generate_plan_preview_with_memory(
         "intent": plan_state.get("intent"),
         "intent_detail": plan_state.get("intent_detail", {}),
         "plan_explanation": plan_state.get("plan_explanation"),
+        "validation_status": plan_state.get("validation_status", "pass"),
+        "validation_errors": plan_state.get("validation_errors", []),
         "plan": plan_state.get("plan", []),
     }
 
