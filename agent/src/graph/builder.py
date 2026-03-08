@@ -487,6 +487,7 @@ async def run_travel_agent_streaming_with_memory(
 
     execution_stats = final_state.get("execution_stats", {})
     plan_id = final_state.get("plan_id")
+    intent = final_state.get("intent")
     if not execution_stats and isinstance(final_state, dict):
         execution_stats = final_state.get("execution_stats", {})
 
@@ -505,6 +506,7 @@ async def run_travel_agent_streaming_with_memory(
         "session_id": session_id,
         "run_id": run_id,
         "plan_id": plan_id,
+        "intent": intent,
         "execution_stats": execution_stats,
     }
 
