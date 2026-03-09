@@ -1,8 +1,33 @@
 ﻿# ShuaiTravelAgent
 
+![Next.js](https://img.shields.io/badge/Next.js-16-111111?logo=next.js)
+![React](https://img.shields.io/badge/React-19-149ECA?logo=react)
+![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi)
+![LangGraph](https://img.shields.io/badge/LangGraph-Agent-4B5563)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript)
+![Docs](https://img.shields.io/badge/Docs-Updated-2563EB)
+
 ShuaiTravelAgent 是一个面向真实旅行决策场景的 AI 旅行助手项目，覆盖“问问题 -> 生成方案 -> 调整预算/约束 -> 对比方案 -> 导出分享”的完整链路。
 
 它不是只输出一段长文本，而是尽量把旅行建议整理成可继续操作的结构化结果：每日行程卡、预算联动、候选城市探索、对比模式、冲突检测、导出图片与分享链接。
+
+## 目录
+
+- [快速演示](#快速演示)
+- [产品预览](#产品预览)
+- [当前核心能力](#当前核心能力)
+- [技术栈](#技术栈)
+- [项目结构](#项目结构)
+- [本地访问地址](#本地访问地址)
+- [快速开始](#快速开始)
+- [常用接口](#常用接口)
+- [测试与质量](#测试与质量)
+- [文档导航](#文档导航)
+- [适合继续优化的方向](#适合继续优化的方向)
+
+## 快速演示
+
+![Quick Demo](docs/assets/readme-demo.gif)
 
 ## 产品预览
 
