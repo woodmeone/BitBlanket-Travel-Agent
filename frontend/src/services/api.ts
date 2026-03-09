@@ -10,7 +10,12 @@ import {
   LLMHealthResponse,
   PlanPreview,
   RegionListResponse,
+  RoutePreviewRequest,
+  RoutePreviewResponse,
   SessionInfo,
+  ShareCreateRequest,
+  ShareCreateResponse,
+  ShareDetailResponse,
   SetModelRequest,
   SetModelResponse,
   StreamStageEvent,
@@ -173,6 +178,21 @@ class APIService {
 
   async getCityDetail(cityId: string): Promise<CityDetail> {
     const response = await axios.get(`${API_PREFIX}/cities/${cityId}`);
+    return response.data;
+  }
+
+  async getRoutePreview(payload: RoutePreviewRequest): Promise<RoutePreviewResponse> {
+    const response = await axios.post(`${API_PREFIX}/map/route-preview`, payload);
+    return response.data;
+  }
+
+  async createShareLink(payload: ShareCreateRequest): Promise<ShareCreateResponse> {
+    const response = await axios.post(`${API_PREFIX}/share-links`, payload);
+    return response.data;
+  }
+
+  async getShareDetail(shareId: string): Promise<ShareDetailResponse> {
+    const response = await axios.get(`${API_PREFIX}/share-links/${encodeURIComponent(shareId)}`);
     return response.data;
   }
 

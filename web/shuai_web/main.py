@@ -15,7 +15,15 @@ from shuai_web.app_meta import APP_NAME, APP_VERSION
 from shuai_web.bootstrap import ensure_project_paths
 from shuai_web.config.runtime import get_model_config_manager, get_server_config
 from shuai_web.middleware import RequestLoggingMiddleware, RateLimitMiddleware, TimeoutMiddleware
-from shuai_web.routes import api_docs_router, city_router, health_router, model_router, session_router
+from shuai_web.routes import (
+    api_docs_router,
+    city_router,
+    health_router,
+    map_router,
+    model_router,
+    session_router,
+    share_router,
+)
 from shuai_web.routes.chat import router as chat_router
 
 logger = logging.getLogger(__name__)
@@ -81,6 +89,8 @@ def create_app() -> FastAPI:
     app.include_router(chat_router, prefix="/api", tags=["chat"])
     app.include_router(model_router, prefix="/api", tags=["model"])
     app.include_router(city_router, prefix="/api", tags=["city"])
+    app.include_router(map_router, prefix="/api", tags=["map"])
+    app.include_router(share_router, prefix="/api", tags=["share"])
     app.include_router(api_docs_router)
 
     @app.get("/")

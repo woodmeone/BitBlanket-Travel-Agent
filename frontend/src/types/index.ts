@@ -156,3 +156,44 @@ export interface ToolIntentsHealthResponse {
   total_requests: number;
   intent_aggregate: Record<string, Record<string, unknown>>;
 }
+
+export interface RoutePreviewRequest {
+  spots: string[];
+  city?: string;
+  provider?: 'auto' | 'amap';
+}
+
+export interface RoutePoint {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+export interface RoutePreviewResponse {
+  success: boolean;
+  provider: 'amap';
+  points: RoutePoint[];
+  distance_m: number;
+  duration_s: number;
+  static_map_url: string;
+  route_polyline: [number, number][];
+}
+
+export interface ShareCreateRequest {
+  title?: string;
+  content: string;
+}
+
+export interface ShareCreateResponse {
+  success: boolean;
+  share_id: string;
+  share_url: string;
+}
+
+export interface ShareDetailResponse {
+  success: boolean;
+  share_id: string;
+  title?: string;
+  content: string;
+  created_at: string;
+}
