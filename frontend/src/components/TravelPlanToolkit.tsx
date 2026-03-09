@@ -10,6 +10,7 @@ import {
   Progress,
   Slider,
   Space,
+  Statistic,
   Table,
   Tabs,
   Tag,
@@ -20,8 +21,11 @@ import {
   CheckSquareOutlined,
   CompassOutlined,
   EnvironmentOutlined,
+  HeartFilled,
+  HeartOutlined,
   FileImageOutlined,
   FundOutlined,
+  InfoCircleOutlined,
   ReloadOutlined,
   ShareAltOutlined,
   ThunderboltOutlined,
@@ -33,15 +37,17 @@ import {
   applyConflictFixes,
   buildChecklist,
   buildConfidenceSummary,
+  buildPracticalInfoCards,
   buildReminders,
   buildRoutePoints,
+  buildSpotDecisionInfos,
   detectDayConflicts,
   getBudgetProjection,
   parseDayPlanCards,
   parsePlanVariants,
   reorderByDistance,
 } from '@/utils/travelPlan';
-import type { DayPlanCard, ItineraryConflict, PlanVariant } from '@/utils/travelPlan';
+import type { DayPlanCard, ItineraryConflict, PlanVariant, PracticalInfoCard, SpotDecisionInfo } from '@/utils/travelPlan';
 
 interface TravelPlanToolkitProps {
   messageId: string;
@@ -64,6 +70,12 @@ interface CompareRow {
   key: string;
   metric: string;
   values: Record<string, string>;
+}
+
+interface QuickRefineAction {
+  key: string;
+  label: string;
+  prompt: string;
 }
 
 function normalizeTipText(tip: string): string {
@@ -235,6 +247,24 @@ function formatDistance(distanceM: number | undefined): string {
   return `${(distanceM / 1000).toFixed(1)} km`;
 }
 
+function riskColor(severity: ItineraryConflict['severity']): string {
+  if (severity === 'high') return '#dc2626';
+  if (severity === 'medium') return '#d97706';
+  return '#b45309';
+}
+
+function practicalToneStyle(tone: PracticalInfoCard['tone']): { background: string; border: string; color: string } {
+  if (tone === 'good') return { background: '#ecfdf5', border: '#a7f3d0', color: '#065f46' };
+  if (tone === 'warn') return { background: '#fff7ed', border: '#fed7aa', color: '#9a3412' };
+  return { background: '#f8fafc', border: '#cbd5e1', color: '#334155' };
+}
+
+function looksLikeItineraryContent(content: string, cards: DayPlanCard[]): boolean {
+  if (cards.length >= 2) return true;
+  if (/(上午|下午|晚上|预算|小贴士|tips|day\s*\d+|第.{1,4}天|方案|路线|景点)/i.test(content)) return true;
+  return false;
+}
+
 const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, content, diagnostics, onContinuePrompt }) => {
   const { message } = App.useApp();
   const exportRef = useRef<HTMLDivElement | null>(null);
@@ -244,12 +274,14 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
   const checklist = useMemo(() => buildChecklist(content), [content]);
   const reminders = useMemo(() => buildReminders(), []);
   const confidence = useMemo(() => buildConfidenceSummary(diagnostics), [diagnostics]);
+  const practicalInfo = useMemo(() => buildPracticalInfoCards(content), [content]);
 
   const [cards, setCards] = useState<DayPlanCard[]>(baseCards);
   const [budgetMode, setBudgetMode] = useState<BudgetMode>('balanced');
   const [completedChecklist, setCompletedChecklist] = useState<Record<string, boolean>>({});
   const [expandedPeriods, setExpandedPeriods] = useState<Record<string, boolean>>({});
   const [expandedTips, setExpandedTips] = useState<Record<string, boolean>>({});
+  const [favoriteSpots, setFavoriteSpots] = useState<Record<string, SpotDecisionInfo>>({});
   const [routeByDay, setRouteByDay] = useState<Record<string, RoutePreviewResponse | undefined>>({});
   const [routeLoadingDay, setRouteLoadingDay] = useState<string | null>(null);
 
@@ -260,10 +292,13 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
     setRouteByDay({});
   }, [baseCards]);
 
-  if (cards.length === 0) return null;
+  if (cards.length === 0 || !looksLikeItineraryContent(content, baseCards)) return null;
 
   const totalBaseBudget = cards.reduce((sum, day) => sum + day.baseBudget, 0);
   const budgetProjection = getBudgetProjection(totalBaseBudget / cards.length, cards.length, modeToSliderValue(budgetMode));
+  const familyBudget = Math.round(budgetProjection.totalBudget * 2.4);
+  const childFriendlyBudget = Math.round(budgetProjection.totalBudget * 1.7);
+  const favoriteSpotList = Object.values(favoriteSpots);
 
   const conflictMap = new Map<string, ItineraryConflict[]>();
   cards.forEach((day) => {
@@ -354,6 +389,26 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
     }
   };
 
+  const runQuickRefine = (action: QuickRefineAction) => {
+    if (!onContinuePrompt) {
+      message.info('当前会话不支持继续优化。');
+      return;
+    }
+    onContinuePrompt(action.prompt);
+    message.success(`已填入“${action.label}”优化指令`);
+  };
+
+  const toggleFavoriteSpot = (spot: SpotDecisionInfo) => {
+    setFavoriteSpots((prev) => {
+      if (prev[spot.name]) {
+        const next = { ...prev };
+        delete next[spot.name];
+        return next;
+      }
+      return { ...prev, [spot.name]: spot };
+    });
+  };
+
   const compareColumns: ColumnsType<CompareRow> = [
     {
       title: '对比项',
@@ -398,6 +453,13 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
         })
       ),
     },
+  ];
+
+  const quickRefineActions: QuickRefineAction[] = [
+    { key: 'cheaper', label: '换成更省钱', prompt: '请基于当前方案改成更省钱版本，优先保留核心体验，减少高价项目，并重算预算。' },
+    { key: 'easy', label: '少走路版', prompt: '请基于当前方案改成少走路版本，压缩跨区移动，增加打车衔接和休息点。' },
+    { key: 'rainy', label: '下雨天重排', prompt: '请把当前方案改成下雨天可执行版本，优先室内点位，并替换不适合雨天的安排。' },
+    { key: 'family', label: '加亲子备选', prompt: '请在当前方案基础上增加亲子友好备选点和午休/室内 fallback。' },
   ];
 
   const handleChooseVariant = (variant: PlanVariant) => {
@@ -448,6 +510,35 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
             <Tag color="purple">交通：{Math.round(budgetProjection.trafficShare * 100)}%</Tag>
           </div>
 
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+              gap: 10,
+            }}
+          >
+            <Card size="small" styles={{ body: { padding: 10 } }}>
+              <Statistic title="人均预估" value={budgetProjection.totalBudget} prefix="¥" styles={{ content: { fontSize: 18 } }} />
+            </Card>
+            <Card size="small" styles={{ body: { padding: 10 } }}>
+              <Statistic title="家庭总价" value={familyBudget} prefix="¥" styles={{ content: { fontSize: 18 } }} />
+            </Card>
+            <Card size="small" styles={{ body: { padding: 10 } }}>
+              <Statistic title="亲子轻量版" value={childFriendlyBudget} prefix="¥" styles={{ content: { fontSize: 18 } }} />
+            </Card>
+            <Card size="small" styles={{ body: { padding: 10 } }}>
+              <Statistic title="日均预算" value={budgetProjection.perDayBudget} prefix="¥" styles={{ content: { fontSize: 18 } }} />
+            </Card>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {quickRefineActions.map((action) => (
+              <Button key={action.key} size="small" onClick={() => runQuickRefine(action)}>
+                {action.label}
+              </Button>
+            ))}
+          </div>
+
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <span style={{ fontSize: 13, color: '#334155' }}>结果可信度</span>
@@ -470,6 +561,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
       {cards.map((day) => {
         const route = routeByDay[day.dayLabel];
         const conflicts = conflictMap.get(day.dayLabel) || [];
+        const decisionInfos = buildSpotDecisionInfos(day.spots);
         const compactedTips = compactTips(day.tips);
         const tipsExpanded = expandedTips[day.dayLabel] ?? false;
         const visibleTips = tipsExpanded ? compactedTips : compactedTips.slice(0, 2);
@@ -478,6 +570,26 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
         return (
           <Card key={`${messageId}-${day.dayLabel}`} size="small" title={day.dayLabel}>
             <div style={{ display: 'grid', gap: 10 }}>
+              {conflicts.length > 0 && (
+                <div
+                  style={{
+                    display: 'grid',
+                    gap: 8,
+                    background: 'linear-gradient(135deg, #fff7ed 0%, #fffbeb 100%)',
+                    border: '1px solid #fed7aa',
+                    borderRadius: 12,
+                    padding: 10,
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#9a3412' }}>本日风险提醒</div>
+                  {conflicts.slice(0, 2).map((conflict) => (
+                    <div key={`${day.dayLabel}-risk-${conflict.id}`} style={{ fontSize: 12, color: riskColor(conflict.severity) }}>
+                      {conflict.title}：{conflict.suggestion}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div style={{ display: 'grid', gap: 8 }}>
                 <PeriodTimeline
                   period="morning"
@@ -531,6 +643,50 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
                   alt={`${day.dayLabel} route`}
                   style={{ width: '100%', borderRadius: 10, border: '1px solid #e2e8f0' }}
                 />
+              )}
+
+              {decisionInfos.length > 0 && (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#1f2937' }}>景点决策卡</div>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                      gap: 10,
+                    }}
+                  >
+                    {decisionInfos.map((spot) => {
+                      const active = Boolean(favoriteSpots[spot.name]);
+                      return (
+                        <div
+                          key={`${day.dayLabel}-${spot.name}`}
+                          style={{
+                            border: '1px solid #dbe4ee',
+                            borderRadius: 12,
+                            padding: 12,
+                            background: active ? 'linear-gradient(135deg, #fff7ed 0%, #ffffff 100%)' : '#ffffff',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                            <div style={{ fontWeight: 700, color: '#1f2937' }}>{spot.name}</div>
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={active ? <HeartFilled style={{ color: '#f97316' }} /> : <HeartOutlined />}
+                              onClick={() => toggleFavoriteSpot(spot)}
+                            />
+                          </div>
+                          <div style={{ display: 'grid', gap: 4, fontSize: 12, color: '#475569' }}>
+                            <div>停留：{spot.stayDuration}</div>
+                            <div>最佳到达：{spot.bestArrival}</div>
+                            <div>适合：{spot.audience}</div>
+                            <div>花费感知：{spot.costHint}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
 
               {conflicts.length > 0 && (
@@ -617,6 +773,81 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
     </div>
   );
 
+  const favoritesTab = (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <Tag color={favoriteSpotList.length > 0 ? 'gold' : 'default'}>候选景点 {favoriteSpotList.length}</Tag>
+        {favoriteSpotList.length > 0 && onContinuePrompt && (
+          <Button
+            size="small"
+            onClick={() =>
+              runQuickRefine({
+                key: 'favorites-build',
+                label: '根据候选池重做',
+                prompt: `请优先基于以下候选景点重新生成一版更精炼的旅行方案，并保留清晰时间轴：${favoriteSpotList
+                  .map((item) => item.name)
+                  .join('、')}`,
+              })
+            }
+          >
+            用候选池重做方案
+          </Button>
+        )}
+      </div>
+      {favoriteSpotList.length === 0 ? (
+        <div style={{ fontSize: 13, color: '#64748b' }}>先在“景点决策卡”里收藏你想保留的点位，这里会自动汇总。</div>
+      ) : (
+        favoriteSpotList.map((spot) => (
+          <Card key={`favorite-${spot.name}`} size="small">
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+              <div style={{ display: 'grid', gap: 4 }}>
+                <div style={{ fontWeight: 700 }}>{spot.name}</div>
+                <div style={{ fontSize: 12, color: '#475569' }}>
+                  {spot.stayDuration} | {spot.bestArrival} | {spot.audience}
+                </div>
+              </div>
+              <Button size="small" icon={<HeartFilled style={{ color: '#f97316' }} />} onClick={() => toggleFavoriteSpot(spot)}>
+                移出候选
+              </Button>
+            </div>
+          </Card>
+        ))
+      )}
+    </div>
+  );
+
+  const practicalTab = (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 10,
+      }}
+    >
+      {practicalInfo.map((item) => {
+        const tone = practicalToneStyle(item.tone);
+        return (
+          <div
+            key={`${messageId}-practical-${item.id}`}
+            style={{
+              borderRadius: 14,
+              padding: 14,
+              background: tone.background,
+              border: `1px solid ${tone.border}`,
+              color: tone.color,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <InfoCircleOutlined />
+              <div style={{ fontWeight: 700 }}>{item.title}</div>
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.7 }}>{item.value}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   const remindersTab = (
     <div style={{ display: 'grid', gap: 10 }}>
       {reminders.map((item) => (
@@ -674,6 +905,8 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
     { key: 'itinerary', label: '每日行程', children: itineraryTab, icon: <CompassOutlined /> },
     { key: 'compare', label: '多方案对比', children: compareTab, icon: <FundOutlined /> },
     { key: 'conflicts', label: '冲突检测', children: conflictsTab, icon: <ReloadOutlined /> },
+    { key: 'favorites', label: '候选池', children: favoritesTab, icon: <HeartOutlined /> },
+    { key: 'practical', label: '实用信息', children: practicalTab, icon: <InfoCircleOutlined /> },
     { key: 'checklist', label: '执行清单', children: checklistTab, icon: <CheckSquareOutlined /> },
     { key: 'reminders', label: '出发提醒', children: remindersTab, icon: <ReloadOutlined /> },
   ];

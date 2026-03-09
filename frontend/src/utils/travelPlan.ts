@@ -48,6 +48,21 @@ export interface ConfidenceSummary {
   risks: string[];
 }
 
+export interface SpotDecisionInfo {
+  name: string;
+  stayDuration: string;
+  bestArrival: string;
+  audience: string;
+  costHint: string;
+}
+
+export interface PracticalInfoCard {
+  id: string;
+  title: string;
+  value: string;
+  tone: 'neutral' | 'warn' | 'good';
+}
+
 export interface ItineraryConflict {
   id: string;
   type: 'time_conflict' | 'long_distance' | 'closing_risk';
@@ -330,6 +345,98 @@ export function buildReminders(): ReminderItem[] {
     { id: 't3', phase: 'T-3', title: 'Pack and verify route', detail: 'Pack by weather and verify each day transfer points.' },
     { id: 't1', phase: 'T-1', title: 'Final check', detail: 'Re-check tickets, orders, payment and departure time.' },
   ];
+}
+
+function inferSpotDuration(name: string): string {
+  if (/(迪士尼|欢乐谷|环球|乐园|度假区)/i.test(name)) return '4-8h';
+  if (/(博物馆|美术馆|展|纪念馆|科技馆|图书馆|museum|gallery)/i.test(name)) return '1.5-3h';
+  if (/(古镇|街|步行街|里|坊|夜市|市集)/i.test(name)) return '1-2h';
+  if (/(公园|湿地|湖|山|海滩|岛|植物园|动物园)/i.test(name)) return '2-4h';
+  if (/(寺|庙|宫|塔|教堂|故居|古城|城墙|府)/i.test(name)) return '1-2h';
+  return '1-2h';
+}
+
+function inferBestArrival(name: string): string {
+  if (/(夜市|外滩|江边|灯光|夜景|酒吧|秀)/i.test(name)) return '17:30-20:00';
+  if (/(博物馆|美术馆|纪念馆|展|museum|gallery)/i.test(name)) return '09:30-11:30';
+  if (/(公园|海边|湖|山|古镇|步行街)/i.test(name)) return '08:30-10:30 / 16:00后';
+  if (/(乐园|迪士尼|环球|动物园)/i.test(name)) return '开园前后';
+  return '10:00-12:00';
+}
+
+function inferAudience(name: string): string {
+  if (/(迪士尼|动物园|海洋馆|乐园|科技馆)/i.test(name)) return '亲子/第一次来';
+  if (/(博物馆|美术馆|纪念馆|展)/i.test(name)) return '文化爱好者/雨天友好';
+  if (/(步行街|古镇|夜市|外滩|江边|街区)/i.test(name)) return '情侣/轻松逛';
+  if (/(公园|湖|海滩|湿地|植物园)/i.test(name)) return '少压力散步/拍照';
+  return '大众友好';
+}
+
+function inferSpotCost(name: string): string {
+  if (/(迪士尼|环球|乐园|演出|索道)/i.test(name)) return '较高';
+  if (/(博物馆|公园|古镇|街区|步行街|外滩)/i.test(name)) return '低到中';
+  return '中等';
+}
+
+export function buildSpotDecisionInfos(spots: string[]): SpotDecisionInfo[] {
+  return dedupeStrings(spots)
+    .slice(0, 6)
+    .map((name) => ({
+      name,
+      stayDuration: inferSpotDuration(name),
+      bestArrival: inferBestArrival(name),
+      audience: inferAudience(name),
+      costHint: inferSpotCost(name),
+    }));
+}
+
+export function buildPracticalInfoCards(content: string): PracticalInfoCard[] {
+  const cards: PracticalInfoCard[] = [
+    {
+      id: 'weather',
+      title: '天气与穿衣',
+      value: /冬|降温|风大/i.test(content) ? '建议分层穿搭，外层准备防风外套。' : '出发前一天再确认天气，优先准备轻便分层穿搭。',
+      tone: 'neutral',
+    },
+    {
+      id: 'transport',
+      title: '交通建议',
+      value: /无车|地铁|公交/i.test(content) ? '优先地铁+步行，跨区移动尽量集中到同一天。' : '热门时段建议地铁优先，晚间返程可预留打车预算。',
+      tone: 'good',
+    },
+    {
+      id: 'documents',
+      title: '证件准备',
+      value: '身份证、预订凭证、酒店订单截图建议提前整理到一个相册。',
+      tone: 'neutral',
+    },
+    {
+      id: 'queue',
+      title: '排队高峰',
+      value: /周末|节假日/i.test(content) ? '高峰时段更容易排队，热门景点尽量前置到上午。' : '午后到傍晚通常人流更高，热门点位建议错峰。',
+      tone: 'warn',
+    },
+  ];
+
+  if (/(亲子|儿童)/i.test(content)) {
+    cards.push({
+      id: 'family',
+      title: '亲子补充',
+      value: '给孩子预留午休和临时室内备选，不要把全天排得过满。',
+      tone: 'good',
+    });
+  }
+
+  if (/(老人|长辈|少走路)/i.test(content)) {
+    cards.push({
+      id: 'senior',
+      title: '体力管理',
+      value: '优先连片景点和可随时打车撤退的区域，控制连续步行时长。',
+      tone: 'warn',
+    });
+  }
+
+  return cards;
 }
 
 export function buildConfidenceSummary(diagnostics?: MessageDiagnostics): ConfidenceSummary {
