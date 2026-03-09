@@ -484,6 +484,13 @@ const ChatArea: React.FC = () => {
     setActiveView('chat');
   };
 
+  const handleContinueRefine = (prompt: string) => {
+    setInputValue(prompt);
+    setChatMode('plan');
+    setActiveView('chat');
+    message.info('已填入细化指令，按回车可继续生成。');
+  };
+
   return (
     <div
       className="chat-input-area"
@@ -530,6 +537,7 @@ const ChatArea: React.FC = () => {
               currentTool={currentTool}
               reasoningExpanded={reasoningExpanded}
               onToggleReasoning={toggleReasoning}
+              onContinuePrompt={handleContinueRefine}
             />
 
             {messages.length === 0 && !waitingForResponse && !isStreaming && (

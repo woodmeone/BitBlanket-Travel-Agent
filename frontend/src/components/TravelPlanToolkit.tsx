@@ -1,47 +1,57 @@
-'use client';
+﻿'use client';
 
-import React, { useMemo, useState } from 'react';
-import { App, Button, Card, Checkbox, Divider, Progress, Slider, Space, Tabs, Tag, Tooltip } from 'antd';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  App,
+  Button,
+  Card,
+  Checkbox,
+  Divider,
+  Progress,
+  Slider,
+  Space,
+  Table,
+  Tabs,
+  Tag,
+  Tooltip,
+} from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import {
   CheckSquareOutlined,
   CompassOutlined,
   EnvironmentOutlined,
-  FilePdfOutlined,
+  FileImageOutlined,
   FundOutlined,
   ReloadOutlined,
   ShareAltOutlined,
-  StarOutlined,
-  StarFilled,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import html2canvas from 'html2canvas';
-import type { Message } from '@/types';
+import type { Message, RoutePreviewResponse } from '@/types';
 import { apiService } from '@/services/api';
 import {
+  applyConflictFixes,
   buildChecklist,
   buildConfidenceSummary,
   buildReminders,
+  buildRoutePoints,
+  detectDayConflicts,
   getBudgetProjection,
   parseDayPlanCards,
   parsePlanVariants,
   reorderByDistance,
 } from '@/utils/travelPlan';
+import type { DayPlanCard, ItineraryConflict, PlanVariant } from '@/utils/travelPlan';
 
 interface TravelPlanToolkitProps {
   messageId: string;
   content: string;
   diagnostics?: Message['diagnostics'];
+  onContinuePrompt?: (prompt: string) => void;
 }
 
 type BudgetMode = 'saving' | 'balanced' | 'comfort';
 type PeriodType = 'morning' | 'afternoon' | 'evening';
-
-interface PeriodTimelineProps {
-  period: PeriodType;
-  rawText: string;
-  dayKey: string;
-  expandedPeriods: Record<string, boolean>;
-  onToggle: (periodKey: string) => void;
-}
 
 interface TimelineItem {
   timeLabel: string | null;
@@ -50,51 +60,103 @@ interface TimelineItem {
   originalIndex: number;
 }
 
+interface CompareRow {
+  key: string;
+  metric: string;
+  values: Record<string, string>;
+}
+
+function normalizeTipText(tip: string): string {
+  return tip
+    .replace(/^\s*小贴士[:：]?\s*/i, '')
+    .replace(/^\s*当日小贴士[:：]?\s*/i, '')
+    .replace(/^\s*⚠️?\s*提示[:：]?\s*/i, '')
+    .replace(/^\s*⚠️?\s*注意事项[:：]?\s*/i, '')
+    .replace(/(?<!\d)\s*[:：]{2,}\s*(?!\d)/g, '：')
+    .replace(/(?<!\d)\s*[:：]\s*(?!\d)/g, '：')
+    .replace(/^[：:\-\s]+/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function compactTips(tips: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const raw of tips) {
+    const normalized = normalizeTipText(raw);
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) continue;
+    seen.add(key);
+    result.push(normalized);
+  }
+  return result;
+}
+
+function sliderToMode(value: number): BudgetMode {
+  if (value <= 33) return 'saving';
+  if (value >= 67) return 'comfort';
+  return 'balanced';
+}
+
+function modeToSliderValue(mode: BudgetMode): number {
+  if (mode === 'saving') return 10;
+  if (mode === 'comfort') return 90;
+  return 50;
+}
+
+function periodMeta(period: PeriodType): { title: string; color: string } {
+  if (period === 'morning') return { title: '上午', color: '#0ea5e9' };
+  if (period === 'afternoon') return { title: '下午', color: '#f59e0b' };
+  return { title: '晚上', color: '#8b5cf6' };
+}
+
 function splitTimelineItems(rawText: string): TimelineItem[] {
   const normalized = rawText
+    .replace(/\r\n?/g, '\n')
     .replace(/\s+/g, ' ')
-    .replace(/[，,]\s*(?=\d{1,2}[:：]\d{2})/g, '；')
-    .replace(/[。]/g, '；')
-    .replace(/->|→/g, '；');
+    .replace(/[；;。]/g, '；')
+    .replace(/\s*(->|→)\s*/g, '；')
+    .replace(/\|/g, '；');
 
   return normalized
-    .split(/[；;]/)
+    .split('；')
     .map((item) => item.trim())
-    .filter((item) => item.length > 0)
-    .filter((item) => !/^上午|^下午|^晚上/.test(item))
+    .filter(Boolean)
+    .filter((item) => !/^(上午|下午|晚上)\b/.test(item))
     .map((item, index) => {
       const timeMatch = item.match(/(?:^|\s)(\d{1,2}[:：]\d{2})(?:\s|$)/);
-      if (!timeMatch) return { timeLabel: null, content: item, timeMinutes: null, originalIndex: index };
-      const timeLabel = timeMatch[1].replace('：', ':');
-      const content = item.replace(timeMatch[1], '').replace(/^\s*[-:：]?\s*/, '').trim();
-      const [hourStr, minuteStr] = timeLabel.split(':');
+      if (!timeMatch) {
+        return { timeLabel: null, content: item, timeMinutes: null, originalIndex: index };
+      }
+
+      const normalizedTime = timeMatch[1].replace('：', ':');
+      const [hourStr, minuteStr] = normalizedTime.split(':');
       const hour = Number(hourStr);
       const minute = Number(minuteStr);
-      const isValidHour = Number.isFinite(hour) && hour >= 0 && hour <= 23;
-      const isValidMinute = Number.isFinite(minute) && minute >= 0 && minute <= 59;
-      const timeMinutes = isValidHour && isValidMinute ? hour * 60 + minute : null;
+      const isValid = Number.isFinite(hour) && Number.isFinite(minute) && hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
+
       return {
-        timeLabel,
-        content: content || item,
-        timeMinutes,
+        timeLabel: normalizedTime,
+        content: item.replace(timeMatch[1], '').replace(/^\s*[-:：]?\s*/, '').trim() || item,
+        timeMinutes: isValid ? hour * 60 + minute : null,
         originalIndex: index,
       };
     })
-    .sort((left, right) => {
-      if (left.timeMinutes !== null && right.timeMinutes !== null) return left.timeMinutes - right.timeMinutes;
-      if (left.timeMinutes !== null) return -1;
-      if (right.timeMinutes !== null) return 1;
-      return left.originalIndex - right.originalIndex;
+    .sort((a, b) => {
+      if (a.timeMinutes !== null && b.timeMinutes !== null) return a.timeMinutes - b.timeMinutes;
+      if (a.timeMinutes !== null) return -1;
+      if (b.timeMinutes !== null) return 1;
+      return a.originalIndex - b.originalIndex;
     });
 }
 
-function periodMeta(period: PeriodType): { title: string; dotColor: string } {
-  if (period === 'morning') return { title: '上午', dotColor: '#0ea5e9' };
-  if (period === 'afternoon') return { title: '下午', dotColor: '#f59e0b' };
-  return { title: '晚上', dotColor: '#8b5cf6' };
-}
-
-const PeriodTimeline: React.FC<PeriodTimelineProps> = ({ period, rawText, dayKey, expandedPeriods, onToggle }) => {
+const PeriodTimeline: React.FC<{
+  period: PeriodType;
+  rawText: string;
+  dayKey: string;
+  expandedPeriods: Record<string, boolean>;
+  onToggle: (periodKey: string) => void;
+}> = ({ period, rawText, dayKey, expandedPeriods, onToggle }) => {
   const items = splitTimelineItems(rawText);
   const key = `${dayKey}-${period}`;
   const isExpanded = expandedPeriods[key] ?? false;
@@ -121,7 +183,7 @@ const PeriodTimeline: React.FC<PeriodTimelineProps> = ({ period, rawText, dayKey
                   width: 8,
                   height: 8,
                   borderRadius: '50%',
-                  background: meta.dotColor,
+                  background: meta.color,
                   display: 'inline-block',
                 }}
               />
@@ -168,467 +230,462 @@ const PeriodTimeline: React.FC<PeriodTimelineProps> = ({ period, rawText, dayKey
   );
 };
 
-function modeToSliderValue(mode: BudgetMode): number {
-  if (mode === 'saving') return 10;
-  if (mode === 'comfort') return 90;
-  return 50;
+function formatDistance(distanceM: number | undefined): string {
+  if (!distanceM || distanceM <= 0) return '-';
+  return `${(distanceM / 1000).toFixed(1)} km`;
 }
 
-function sliderValueToMode(value: number): BudgetMode {
-  if (value <= 33) return 'saving';
-  if (value >= 67) return 'comfort';
-  return 'balanced';
-}
-
-const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, content, diagnostics }) => {
+const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, content, diagnostics, onContinuePrompt }) => {
   const { message } = App.useApp();
-  const dayCards = useMemo(() => parseDayPlanCards(content), [content]);
-  const planVariants = useMemo(() => parsePlanVariants(content), [content]);
-  const reminders = useMemo(() => buildReminders(), []);
+  const exportRef = useRef<HTMLDivElement | null>(null);
+
+  const baseCards = useMemo(() => parseDayPlanCards(content), [content]);
+  const variants = useMemo(() => parsePlanVariants(content), [content]);
   const checklist = useMemo(() => buildChecklist(content), [content]);
+  const reminders = useMemo(() => buildReminders(), []);
   const confidence = useMemo(() => buildConfidenceSummary(diagnostics), [diagnostics]);
+
+  const [cards, setCards] = useState<DayPlanCard[]>(baseCards);
   const [budgetMode, setBudgetMode] = useState<BudgetMode>('balanced');
-  const [budgetSlider, setBudgetSlider] = useState<number>(50);
-  const [favorite, setFavorite] = useState(false);
-  const [checkedItems, setCheckedItems] = useState<string[]>([]);
-  const [distanceSortedDays, setDistanceSortedDays] = useState<Record<string, boolean>>({});
+  const [completedChecklist, setCompletedChecklist] = useState<Record<string, boolean>>({});
   const [expandedPeriods, setExpandedPeriods] = useState<Record<string, boolean>>({});
-  const [routePreviews, setRoutePreviews] = useState<
-    Record<
-      string,
-      {
-        loading: boolean;
-        error?: string;
-        provider?: 'amap';
-        staticMapUrl?: string;
-        distanceM?: number;
-        durationS?: number;
-        points?: Array<{ name: string; lat: number; lng: number }>;
-      }
-    >
-  >({});
+  const [expandedTips, setExpandedTips] = useState<Record<string, boolean>>({});
+  const [routeByDay, setRouteByDay] = useState<Record<string, RoutePreviewResponse | undefined>>({});
+  const [routeLoadingDay, setRouteLoadingDay] = useState<string | null>(null);
 
-  if (dayCards.length === 0 && planVariants.length === 0) return null;
+  useEffect(() => {
+    setCards(baseCards);
+    setExpandedPeriods({});
+    setExpandedTips({});
+    setRouteByDay({});
+  }, [baseCards]);
 
-  const baseDailyBudget = Math.round(dayCards.reduce((sum, day) => sum + day.baseBudget, 0) / dayCards.length);
-  const budgetProjection = getBudgetProjection(baseDailyBudget, dayCards.length || 1, budgetSlider);
+  if (cards.length === 0) return null;
 
-  const modeLabelMap: Record<BudgetMode, string> = {
-    saving: '省钱',
-    balanced: '均衡',
-    comfort: '舒适',
-  };
+  const totalBaseBudget = cards.reduce((sum, day) => sum + day.baseBudget, 0);
+  const budgetProjection = getBudgetProjection(totalBaseBudget / cards.length, cards.length, modeToSliderValue(budgetMode));
 
-  const handleReorderRoute = (dayKey: string) => {
-    setDistanceSortedDays((prev) => ({ ...prev, [dayKey]: !prev[dayKey] }));
-  };
-  const handleTogglePeriodExpand = (periodKey: string) => {
+  const conflictMap = new Map<string, ItineraryConflict[]>();
+  cards.forEach((day) => {
+    const distanceM = routeByDay[day.dayLabel]?.distance_m;
+    conflictMap.set(day.dayLabel, detectDayConflicts(day, distanceM));
+  });
+
+  const totalConflicts = Array.from(conflictMap.values()).reduce((sum, list) => sum + list.length, 0);
+
+  const togglePeriod = (periodKey: string) => {
     setExpandedPeriods((prev) => ({ ...prev, [periodKey]: !prev[periodKey] }));
   };
 
-  const handleToggleFavorite = () => {
-    setFavorite((prev) => !prev);
-    message.success(favorite ? '已取消收藏此方案卡片' : '已收藏此方案卡片');
-  };
-
-  const handleExport = async () => {
-    const element = document.getElementById(`travel-plan-toolkit-${messageId}`);
-    if (!element) {
-      message.error('未找到可导出的方案区域');
+  const handleFetchRoute = async (day: DayPlanCard) => {
+    if (day.spots.length < 2) {
+      message.warning('当天景点少于 2 个，无法生成路线。');
       return;
     }
 
     try {
-      const canvas = await html2canvas(element, {
+      setRouteLoadingDay(day.dayLabel);
+      const result = await apiService.getRoutePreview({ spots: day.spots.slice(0, 12), provider: 'amap' });
+      setRouteByDay((prev) => ({ ...prev, [day.dayLabel]: result }));
+      message.success(`已获取 ${day.dayLabel} 真实路线`);
+    } catch (error) {
+      message.error(`路线获取失败：${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setRouteLoadingDay(null);
+    }
+  };
+
+  const handleReorderByDistance = (day: DayPlanCard) => {
+    const route = routeByDay[day.dayLabel];
+
+    let orderedSpots = day.spots;
+    if (route?.points?.length) {
+      orderedSpots = route.points.map((point) => point.name);
+    } else {
+      const points = reorderByDistance(buildRoutePoints(day.spots));
+      orderedSpots = points.map((point) => point.name);
+    }
+
+    setCards((prev) => prev.map((item) => (item.dayLabel === day.dayLabel ? { ...item, spots: orderedSpots } : item)));
+    message.success(`${day.dayLabel} 已按距离重排`);
+  };
+
+  const handleOneClickFix = (day: DayPlanCard) => {
+    const conflicts = conflictMap.get(day.dayLabel) || [];
+    if (conflicts.length === 0) {
+      message.info('当前无冲突，无需修复。');
+      return;
+    }
+
+    const fixed = applyConflictFixes(day, conflicts);
+    setCards((prev) => prev.map((item) => (item.dayLabel === day.dayLabel ? fixed : item)));
+    message.success(`${day.dayLabel} 已应用修复建议`);
+  };
+
+  const handleExportImage = async () => {
+    if (!exportRef.current) return;
+    try {
+      const canvas = await html2canvas(exportRef.current, {
         scale: 2,
-        useCORS: true,
         backgroundColor: '#ffffff',
+        useCORS: true,
       });
       const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.href = dataUrl;
-      link.download = `travel-plan-${messageId}.png`;
+      link.download = `travel-plan-${new Date().toISOString().slice(0, 10)}.png`;
       link.click();
-      message.success('长图已导出为 PNG');
+      message.success('已导出长图');
     } catch (error) {
-      message.error(`导出失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      message.error(`导出失败：${error instanceof Error ? error.message : '未知错误'}`);
     }
   };
 
   const handleShare = async () => {
     try {
-      const share = await apiService.createShareLink({
-        title: dayCards[0]?.dayLabel || '旅行方案',
+      const result = await apiService.createShareLink({
+        title: '旅行方案',
         content,
       });
-
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: '旅行方案分享',
-            text: '我整理了一份旅行方案，点链接查看：',
-            url: share.share_url,
-          });
-          return;
-        } catch {
-          // fallback to clipboard
-        }
-      }
-
-      await navigator.clipboard.writeText(share.share_url);
-      message.success('短链已复制，可直接发给同行人。');
+      await navigator.clipboard.writeText(result.share_url);
+      message.success('分享短链已复制到剪贴板');
     } catch (error) {
-      message.error(`生成短链失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      message.error(`分享失败：${error instanceof Error ? error.message : '未知错误'}`);
     }
   };
 
-  React.useEffect(() => {
-    if (process.env.NODE_ENV === 'test') return;
+  const compareColumns: ColumnsType<CompareRow> = [
+    {
+      title: '对比项',
+      dataIndex: 'metric',
+      key: 'metric',
+      width: 120,
+      fixed: 'left',
+    },
+    ...variants.map((variant) => ({
+      title: variant.title,
+      dataIndex: ['values', variant.id],
+      key: variant.id,
+      render: (_: string, row: CompareRow) => row.values[variant.id] || '-',
+    })),
+  ];
 
-    let cancelled = false;
-    const loadRoutePreview = async () => {
-      const pendingState = dayCards.reduce(
-        (acc, _day, index) => ({ ...acc, [`${messageId}-day-${index}`]: { loading: true } }),
-        {} as Record<string, { loading: boolean; error?: string }>
-      );
-      setRoutePreviews(pendingState);
-
-      const entries = await Promise.all(
-        dayCards.map(async (day, index) => {
-          const key = `${messageId}-day-${index}`;
-          if (!day.spots || day.spots.length < 2) return [key, { loading: false, error: '点位不足，无法规划路线' }];
-          try {
-            const response = await apiService.getRoutePreview({
-              spots: day.spots.slice(0, 6),
-              provider: 'auto',
-            });
-            return [
-              key,
-              {
-                loading: false,
-                provider: response.provider,
-                staticMapUrl: response.static_map_url,
-                distanceM: response.distance_m,
-                durationS: response.duration_s,
-                points: response.points,
-              },
-            ];
-          } catch (error) {
-            return [
-              key,
-              { loading: false, error: error instanceof Error ? error.message : '地图服务不可用' },
-            ];
-          }
+  const compareRows: CompareRow[] = [
+    {
+      key: 'positioning',
+      metric: '方案定位',
+      values: Object.fromEntries(variants.map((variant) => [variant.id, variant.title])),
+    },
+    {
+      key: 'highlights',
+      metric: '核心亮点',
+      values: Object.fromEntries(
+        variants.map((variant) => {
+          const lines = variant.content.split('\n').map((line) => line.trim()).filter(Boolean);
+          return [variant.id, lines.slice(0, 3).join('；') || '-'];
         })
-      );
-
-      if (cancelled) return;
-      setRoutePreviews(Object.fromEntries(entries));
-    };
-
-    loadRoutePreview();
-    return () => {
-      cancelled = true;
-    };
-  }, [dayCards, messageId]);
-
-  const getSortedPoints = (dayKey: string) => {
-    const routeInfo = routePreviews[dayKey];
-    const points = routeInfo?.points || [];
-    if (!distanceSortedDays[dayKey]) return points;
-    return reorderByDistance(points);
-  };
-
-  const tabItems = [
-    {
-      key: 'cards',
-      label: (
-        <span>
-          <CompassOutlined /> 每日卡片
-        </span>
-      ),
-      children: (
-        <Space orientation="vertical" size={12} style={{ width: '100%' }}>
-          {dayCards.map((day, index) => {
-            const dayKey = `${messageId}-day-${index}`;
-            const routeInfo = routePreviews[dayKey];
-            const routePoints = getSortedPoints(dayKey);
-            const distanceKm = routeInfo?.distanceM ? (routeInfo.distanceM / 1000).toFixed(1) : '--';
-            const durationMinutes = routeInfo?.durationS ? Math.round(routeInfo.durationS / 60) : '--';
-
-            return (
-              <Card
-                key={dayKey}
-                size="small"
-                title={day.dayLabel}
-                extra={
-                  <Button size="small" icon={<ReloadOutlined />} onClick={() => handleReorderRoute(dayKey)}>
-                    按距离重排
-                  </Button>
-                }
-              >
-                <div style={{ display: 'grid', gap: 10, fontSize: 13 }}>
-                  <PeriodTimeline
-                    period="morning"
-                    rawText={day.morning}
-                    dayKey={dayKey}
-                    expandedPeriods={expandedPeriods}
-                    onToggle={handleTogglePeriodExpand}
-                  />
-                  <PeriodTimeline
-                    period="afternoon"
-                    rawText={day.afternoon}
-                    dayKey={dayKey}
-                    expandedPeriods={expandedPeriods}
-                    onToggle={handleTogglePeriodExpand}
-                  />
-                  <PeriodTimeline
-                    period="evening"
-                    rawText={day.evening}
-                    dayKey={dayKey}
-                    expandedPeriods={expandedPeriods}
-                    onToggle={handleTogglePeriodExpand}
-                  />
-                  <Tag color="gold">预算参考：￥{day.baseBudget}/天</Tag>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {day.tips.map((tip) => (
-                      <Tag key={`${dayKey}-${tip}`} color="cyan">
-                        小贴士：{tip}
-                      </Tag>
-                    ))}
-                  </div>
-                </div>
-
-                {routePoints.length > 0 && (
-                  <>
-                    <Divider style={{ margin: '10px 0' }} />
-                    <div style={{ fontSize: 12, color: '#475569', marginBottom: 6 }}>
-                      <EnvironmentOutlined style={{ marginRight: 4 }} />
-                      点位与路线预览（真实距离）
-                    </div>
-                    <div style={{ fontSize: 12, color: '#334155', marginBottom: 6 }}>
-                      服务商：{routeInfo?.provider || '--'} | 全程约 {distanceKm} km | 预计 {durationMinutes} 分钟
-                    </div>
-                    {routeInfo?.staticMapUrl && (
-                      <img
-                        src={routeInfo.staticMapUrl}
-                        alt={`${day.dayLabel} 路线地图`}
-                        style={{
-                          width: '100%',
-                          borderRadius: 10,
-                          border: '1px solid #dbeafe',
-                          marginBottom: 8,
-                        }}
-                      />
-                    )}
-                    {routeInfo?.loading && <div style={{ fontSize: 12, color: '#64748b' }}>地图加载中...</div>}
-                    {routeInfo?.error && <div style={{ fontSize: 12, color: '#dc2626' }}>{routeInfo.error}</div>}
-                    <div style={{ display: 'grid', gap: 4 }}>
-                      {routePoints.map((point, pointIndex) => (
-                        <div key={`${dayKey}-${point.name}`} style={{ fontSize: 12, color: '#334155' }}>
-                          {pointIndex + 1}. {point.name} ({point.lat}, {point.lng})
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </Card>
-            );
-          })}
-        </Space>
       ),
     },
     {
-      key: 'budget',
-      label: (
-        <span>
-          <FundOutlined /> 预算滑杆
-        </span>
-      ),
-      children: (
-        <Card size="small">
-          <Space orientation="vertical" style={{ width: '100%' }} size={12}>
-            <div style={{ fontSize: 13, color: '#334155' }}>
-              当前预算模式：
-              <Tag color={budgetMode === 'saving' ? 'green' : budgetMode === 'comfort' ? 'orange' : 'blue'}>
-                {modeLabelMap[budgetMode]}
-              </Tag>
-            </div>
-
-            <Slider
-              value={budgetSlider}
-              marks={{ 0: '省钱', 50: '均衡', 100: '舒适' }}
-              onChange={(value) => {
-                const nextValue = Number(value);
-                setBudgetSlider(nextValue);
-                setBudgetMode(sliderValueToMode(nextValue));
-              }}
-            />
-
-            <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
-              <div>总预算：￥{budgetProjection.totalBudget}</div>
-              <div>日均预算：￥{budgetProjection.perDayBudget}</div>
-              <div>
-                住宿/餐饮/交通占比：{Math.round(budgetProjection.hotelShare * 100)}% /
-                {Math.round(budgetProjection.foodShare * 100)}% / {Math.round(budgetProjection.trafficShare * 100)}%
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button
-                size="small"
-                onClick={() => {
-                  const value = modeToSliderValue('saving');
-                  setBudgetSlider(value);
-                  setBudgetMode('saving');
-                }}
-              >
-                省钱版
-              </Button>
-              <Button
-                size="small"
-                onClick={() => {
-                  const value = modeToSliderValue('balanced');
-                  setBudgetSlider(value);
-                  setBudgetMode('balanced');
-                }}
-              >
-                均衡版
-              </Button>
-              <Button
-                size="small"
-                onClick={() => {
-                  const value = modeToSliderValue('comfort');
-                  setBudgetSlider(value);
-                  setBudgetMode('comfort');
-                }}
-              >
-                舒适版
-              </Button>
-            </div>
-          </Space>
-        </Card>
-      ),
-    },
-    {
-      key: 'compare',
-      label: '比较模式',
-      children: (
-        <Card size="small">
-          {planVariants.length >= 2 ? (
-            <Tabs
-              size="small"
-              items={planVariants.map((variant) => ({
-                key: variant.id,
-                label: variant.title,
-                children: <div style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>{variant.content}</div>,
-              }))}
-            />
-          ) : (
-            <div style={{ fontSize: 13, color: '#64748b' }}>
-              当前回答仅识别到 1 套方案。可在输入时开启“比较模式”，一次生成 2-3 套方案直接对比。
-            </div>
-          )}
-        </Card>
-      ),
-    },
-    {
-      key: 'checklist',
-      label: (
-        <span>
-          <CheckSquareOutlined /> 执行清单
-        </span>
-      ),
-      children: (
-        <Card size="small">
-          <Space orientation="vertical" style={{ width: '100%' }} size={8}>
-            <Checkbox.Group
-              value={checkedItems}
-              onChange={(values) => setCheckedItems(values as string[])}
-              style={{ display: 'grid', gap: 8 }}
-            >
-              {checklist.map((item) => (
-                <Checkbox value={item.id} key={item.id}>
-                  {item.label}
-                </Checkbox>
-              ))}
-            </Checkbox.Group>
-            <div style={{ fontSize: 12, color: '#64748b' }}>
-              进度：{checkedItems.length}/{checklist.length}
-            </div>
-          </Space>
-        </Card>
-      ),
-    },
-    {
-      key: 'timeline',
-      label: '时间线提醒',
-      children: (
-        <Card size="small">
-          <Space orientation="vertical" style={{ width: '100%' }} size={8}>
-            {reminders.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  border: '1px solid #e2e8f0',
-                  borderRadius: 8,
-                  padding: '8px 10px',
-                  fontSize: 13,
-                }}
-              >
-                <Tag color="blue">{item.phase}</Tag>
-                <strong>{item.title}</strong>
-                <div style={{ marginTop: 4, color: '#64748b' }}>{item.detail}</div>
-              </div>
-            ))}
-          </Space>
-        </Card>
+      key: 'suitable',
+      metric: '适合人群',
+      values: Object.fromEntries(
+        variants.map((variant) => {
+          const lower = variant.title.toLowerCase();
+          if (lower.includes('省')) return [variant.id, '预算优先 / 行程紧凑'];
+          if (lower.includes('舒') || lower.includes('轻松')) return [variant.id, '体验优先 / 节奏轻松'];
+          return [variant.id, '综合平衡 / 首次出行'];
+        })
       ),
     },
   ];
 
-  return (
-    <div style={{ marginTop: 12 }} id={`travel-plan-toolkit-${messageId}`}>
-      <Card
-        size="small"
-        title="行程增强工具"
-        extra={
-          <Space>
-            <Tooltip title={favorite ? '取消收藏' : '收藏方案'}>
-              <Button
-                size="small"
-                icon={favorite ? <StarFilled style={{ color: '#f59e0b' }} /> : <StarOutlined />}
-                onClick={handleToggleFavorite}
-              />
-            </Tooltip>
-            <Tooltip title="导出 PDF">
-              <Button size="small" icon={<FilePdfOutlined />} onClick={handleExport} />
-            </Tooltip>
-            <Tooltip title="分享方案">
-              <Button size="small" icon={<ShareAltOutlined />} onClick={handleShare} />
-            </Tooltip>
-          </Space>
-        }
-      >
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 13, color: '#334155' }}>结果可信度</span>
-            <Tag color={confidence.level === '高' ? 'green' : confidence.level === '中' ? 'gold' : 'red'}>
-              {confidence.level}
-            </Tag>
+  const handleChooseVariant = (variant: PlanVariant) => {
+    if (!onContinuePrompt) {
+      message.info('当前会话不支持一键继续细化。');
+      return;
+    }
+
+    const prompt = `请基于“${variant.title}”继续细化：\n1) 输出每日详细时间轴（含时刻）\n2) 补充交通衔接与预计时长\n3) 补充每段预算与备选方案\n\n原方案：\n${variant.content}`;
+    onContinuePrompt(prompt);
+    message.success(`已选择 ${variant.title}，可继续细化`);
+  };
+
+  const itineraryTab = (
+    <div ref={exportRef} style={{ display: 'grid', gap: 12 }}>
+      <Card size="small">
+        <div style={{ display: 'grid', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <Space>
+              <FundOutlined style={{ color: '#0f766e' }} />
+              <span style={{ fontSize: 13, color: '#334155' }}>预算档位</span>
+              <Tag color={budgetMode === 'saving' ? 'blue' : budgetMode === 'balanced' ? 'gold' : 'green'}>
+                {budgetMode === 'saving' ? '省钱' : budgetMode === 'balanced' ? '均衡' : '舒适'}
+              </Tag>
+            </Space>
+            <Space>
+              <Tooltip title="导出图片长图">
+                <Button size="small" icon={<FileImageOutlined />} onClick={handleExportImage} />
+              </Tooltip>
+              <Tooltip title="生成可分享短链">
+                <Button size="small" icon={<ShareAltOutlined />} onClick={handleShare} />
+              </Tooltip>
+            </Space>
           </div>
-          <Progress percent={confidence.score} size="small" />
-          <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
-            {confidence.risks.map((risk, index) => (
-              <div key={`${messageId}-risk-${index}`} style={{ fontSize: 12, color: '#92400e' }}>
-                风险提示：{risk}
-              </div>
-            ))}
+
+          <Slider
+            min={0}
+            max={100}
+            value={modeToSliderValue(budgetMode)}
+            marks={{ 10: '省钱', 50: '均衡', 90: '舒适' }}
+            onChange={(value) => setBudgetMode(sliderToMode(Array.isArray(value) ? value[0] : value))}
+          />
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Tag color="blue">总预算：¥{budgetProjection.totalBudget}</Tag>
+            <Tag color="cyan">住宿：{Math.round(budgetProjection.hotelShare * 100)}%</Tag>
+            <Tag color="orange">餐饮：{Math.round(budgetProjection.foodShare * 100)}%</Tag>
+            <Tag color="purple">交通：{Math.round(budgetProjection.trafficShare * 100)}%</Tag>
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: 13, color: '#334155' }}>结果可信度</span>
+              <Tag color={confidence.level === 'high' ? 'green' : confidence.level === 'medium' ? 'gold' : 'red'}>
+                {confidence.level}
+              </Tag>
+            </div>
+            <Progress percent={confidence.score} size="small" />
+            <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
+              {confidence.risks.map((risk, index) => (
+                <div key={`${messageId}-risk-${index}`} style={{ fontSize: 12, color: '#92400e' }}>
+                  风险提示：{risk}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-        <Tabs size="small" items={tabItems} />
       </Card>
+
+      {cards.map((day) => {
+        const route = routeByDay[day.dayLabel];
+        const conflicts = conflictMap.get(day.dayLabel) || [];
+        const compactedTips = compactTips(day.tips);
+        const tipsExpanded = expandedTips[day.dayLabel] ?? false;
+        const visibleTips = tipsExpanded ? compactedTips : compactedTips.slice(0, 2);
+        const hiddenTipCount = compactedTips.length - visibleTips.length;
+
+        return (
+          <Card key={`${messageId}-${day.dayLabel}`} size="small" title={day.dayLabel}>
+            <div style={{ display: 'grid', gap: 10 }}>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <PeriodTimeline
+                  period="morning"
+                  rawText={day.morning}
+                  dayKey={day.dayLabel}
+                  expandedPeriods={expandedPeriods}
+                  onToggle={togglePeriod}
+                />
+                <PeriodTimeline
+                  period="afternoon"
+                  rawText={day.afternoon}
+                  dayKey={day.dayLabel}
+                  expandedPeriods={expandedPeriods}
+                  onToggle={togglePeriod}
+                />
+                <PeriodTimeline
+                  period="evening"
+                  rawText={day.evening}
+                  dayKey={day.dayLabel}
+                  expandedPeriods={expandedPeriods}
+                  onToggle={togglePeriod}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Tag color="blue">当日预算：¥{day.baseBudget}</Tag>
+                <Tag color="processing">景点数：{day.spots.length}</Tag>
+                <Tag color="purple">路线距离：{formatDistance(route?.distance_m)}</Tag>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Button
+                  size="small"
+                  icon={<EnvironmentOutlined />}
+                  loading={routeLoadingDay === day.dayLabel}
+                  onClick={() => handleFetchRoute(day)}
+                >
+                  真实路线
+                </Button>
+                <Button size="small" icon={<CompassOutlined />} onClick={() => handleReorderByDistance(day)}>
+                  按距离重排
+                </Button>
+                <Button size="small" icon={<ThunderboltOutlined />} onClick={() => handleOneClickFix(day)}>
+                  一键修复冲突
+                </Button>
+              </div>
+
+              {route?.static_map_url && (
+                <img
+                  src={route.static_map_url}
+                  alt={`${day.dayLabel} route`}
+                  style={{ width: '100%', borderRadius: 10, border: '1px solid #e2e8f0' }}
+                />
+              )}
+
+              {conflicts.length > 0 && (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {conflicts.map((conflict) => (
+                    <div
+                      key={`${day.dayLabel}-${conflict.id}`}
+                      style={{
+                        fontSize: 12,
+                        color: '#7c2d12',
+                        background: '#fff7ed',
+                        border: '1px solid #fed7aa',
+                        borderRadius: 8,
+                        padding: '6px 8px',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600 }}>{conflict.title}</div>
+                      <div>{conflict.description}</div>
+                      <div>建议：{conflict.suggestion}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {compactedTips.length > 0 && (
+                <div style={{ display: 'grid', gap: 4 }}>
+                  {visibleTips.map((tip, index) => (
+                    <div key={`${day.dayLabel}-tip-${index}`} style={{ fontSize: 12, color: '#0f766e' }}>
+                      小贴士：{tip}
+                    </div>
+                  ))}
+                  {hiddenTipCount > 0 && (
+                    <Button
+                      type="link"
+                      size="small"
+                      style={{ width: 'fit-content', padding: 0 }}
+                      onClick={() =>
+                        setExpandedTips((prev) => ({
+                          ...prev,
+                          [day.dayLabel]: !tipsExpanded,
+                        }))
+                      }
+                    >
+                      {tipsExpanded ? '收起' : `展开更多（+${hiddenTipCount}）`}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+        );
+      })}
     </div>
+  );
+
+  const compareTab =
+    variants.length < 2 ? (
+      <div style={{ fontSize: 13, color: '#64748b' }}>未检测到 2 套以上可比较方案，尝试在提问中加入“省钱版 vs 轻松版”。</div>
+    ) : (
+      <div style={{ display: 'grid', gap: 12 }}>
+        <Table size="small" pagination={false} rowKey="key" columns={compareColumns} dataSource={compareRows} scroll={{ x: 720 }} />
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {variants.map((variant) => (
+            <Button key={variant.id} onClick={() => handleChooseVariant(variant)}>
+              选中“{variant.title}”继续细化
+            </Button>
+          ))}
+        </div>
+      </div>
+    );
+
+  const checklistTab = (
+    <div style={{ display: 'grid', gap: 8 }}>
+      {checklist.map((item) => (
+        <Checkbox
+          key={`${messageId}-${item.id}`}
+          checked={Boolean(completedChecklist[item.id])}
+          onChange={(event) => setCompletedChecklist((prev) => ({ ...prev, [item.id]: event.target.checked }))}
+        >
+          {item.label}
+        </Checkbox>
+      ))}
+    </div>
+  );
+
+  const remindersTab = (
+    <div style={{ display: 'grid', gap: 10 }}>
+      {reminders.map((item) => (
+        <Card key={`${messageId}-${item.id}`} size="small">
+          <Space direction="vertical" size={2}>
+            <Tag color="blue">{item.phase}</Tag>
+            <div style={{ fontWeight: 600 }}>{item.title}</div>
+            <div style={{ fontSize: 13, color: '#475569' }}>{item.detail}</div>
+          </Space>
+        </Card>
+      ))}
+    </div>
+  );
+
+  const conflictsTab = (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <Tag color={totalConflicts > 0 ? 'orange' : 'green'}>
+        {totalConflicts > 0 ? `检测到 ${totalConflicts} 个冲突风险` : '未检测到明显冲突'}
+      </Tag>
+      {cards.map((day) => {
+        const conflicts = conflictMap.get(day.dayLabel) || [];
+        if (conflicts.length === 0) {
+          return (
+            <Card key={`${messageId}-conflict-${day.dayLabel}`} size="small" title={day.dayLabel}>
+              <span style={{ fontSize: 13, color: '#16a34a' }}>无冲突</span>
+            </Card>
+          );
+        }
+
+        return (
+          <Card key={`${messageId}-conflict-${day.dayLabel}`} size="small" title={day.dayLabel}>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {conflicts.map((conflict) => (
+                <div key={conflict.id}>
+                  <Tag color={conflict.severity === 'high' ? 'red' : conflict.severity === 'medium' ? 'orange' : 'gold'}>
+                    {conflict.type}
+                  </Tag>
+                  <div style={{ fontWeight: 600, marginTop: 2 }}>{conflict.title}</div>
+                  <div style={{ fontSize: 13, color: '#475569' }}>{conflict.description}</div>
+                  <div style={{ fontSize: 12, color: '#7c3aed' }}>建议：{conflict.suggestion}</div>
+                </div>
+              ))}
+              <Divider style={{ margin: '6px 0' }} />
+              <Button size="small" icon={<ReloadOutlined />} onClick={() => handleOneClickFix(day)}>
+                一键修复此日
+              </Button>
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+
+  const tabItems = [
+    { key: 'itinerary', label: '每日行程', children: itineraryTab, icon: <CompassOutlined /> },
+    { key: 'compare', label: '多方案对比', children: compareTab, icon: <FundOutlined /> },
+    { key: 'conflicts', label: '冲突检测', children: conflictsTab, icon: <ReloadOutlined /> },
+    { key: 'checklist', label: '执行清单', children: checklistTab, icon: <CheckSquareOutlined /> },
+    { key: 'reminders', label: '出发提醒', children: remindersTab, icon: <ReloadOutlined /> },
+  ];
+
+  return (
+    <Card
+      size="small"
+      style={{ marginTop: 12, borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc' }}
+      styles={{ body: { padding: 12 } }}
+    >
+      <Tabs size="small" items={tabItems} />
+    </Card>
   );
 };
 

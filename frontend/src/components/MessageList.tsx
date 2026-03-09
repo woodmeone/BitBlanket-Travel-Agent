@@ -26,6 +26,7 @@ interface Props {
   currentTool?: string | null;
   reasoningExpanded?: Record<string, boolean>;
   onToggleReasoning?: (messageId: string) => void;
+  onContinuePrompt?: (prompt: string) => void;
 }
 
 function normalizeInlinePseudoTables(input: string): string {
@@ -299,11 +300,13 @@ const MessageItem = memo(function MessageItem({
   messageId,
   reasoningExpanded,
   onToggleReasoning,
+  onContinuePrompt,
 }: {
   msg: Message;
   messageId: string;
   reasoningExpanded: Record<string, boolean>;
   onToggleReasoning: (messageId: string) => void;
+  onContinuePrompt?: (prompt: string) => void;
 }) {
   const isUser = msg.role === 'user';
   const isExpanded = reasoningExpanded[messageId] ?? false;
@@ -381,7 +384,12 @@ const MessageItem = memo(function MessageItem({
           </div>
 
           {!isUser && (
-            <TravelPlanToolkit messageId={messageId} content={msg.content} diagnostics={msg.diagnostics} />
+            <TravelPlanToolkit
+              messageId={messageId}
+              content={msg.content}
+              diagnostics={msg.diagnostics}
+              onContinuePrompt={onContinuePrompt}
+            />
           )}
 
           {!isUser && <DiagnosticsPanel diagnostics={msg.diagnostics} />}
@@ -596,6 +604,7 @@ const MessageList: React.FC<Props> = ({
   currentTool = null,
   reasoningExpanded = {},
   onToggleReasoning,
+  onContinuePrompt,
 }) => {
   const toggleHandler = onToggleReasoning || (() => {});
 
@@ -611,10 +620,11 @@ const MessageList: React.FC<Props> = ({
             messageId={messageId}
             reasoningExpanded={reasoningExpanded}
             onToggleReasoning={toggleHandler}
+            onContinuePrompt={onContinuePrompt}
           />
         );
       }),
-    [messages, reasoningExpanded, toggleHandler]
+    [messages, reasoningExpanded, toggleHandler, onContinuePrompt]
   );
 
   const shouldShowStreamingDialog =

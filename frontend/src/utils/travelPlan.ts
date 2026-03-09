@@ -1,4 +1,4 @@
-import type { MessageDiagnostics } from '@/types';
+﻿import type { MessageDiagnostics } from '@/types';
 
 export interface DayPlanCard {
   dayLabel: string;
@@ -44,20 +44,35 @@ export interface ReminderItem {
 
 export interface ConfidenceSummary {
   score: number;
-  level: '高' | '中' | '低';
+  level: 'high' | 'medium' | 'low';
   risks: string[];
 }
 
+export interface ItineraryConflict {
+  id: string;
+  type: 'time_conflict' | 'long_distance' | 'closing_risk';
+  severity: 'low' | 'medium' | 'high';
+  title: string;
+  description: string;
+  suggestion: string;
+}
+
+interface TimeEntry {
+  raw: string;
+  timeMinutes: number | null;
+  content: string;
+}
+
 const PERIOD_PATTERNS: Record<'morning' | 'afternoon' | 'evening', RegExp> = {
-  morning: /(上午|早上|晨间|morning)/i,
-  afternoon: /(下午|午后|afternoon)/i,
-  evening: /(晚上|夜间|傍晚|evening|night)/i,
+  morning: /(?:\u4e0a\u5348|\u65e9\u4e0a|morning)/i,
+  afternoon: /(?:\u4e0b\u5348|afternoon)/i,
+  evening: /(?:\u665a\u4e0a|\u591c\u95f4|evening|night)/i,
 };
 
-const DAY_HEADING_REGEX = /^(#{1,6}\s*)?(Day\s*\d+|D\d+|第[一二三四五六七八九十百0-9]+天)/i;
+const DAY_HEADING_REGEX = /^(#{1,6}\s*)?(Day\s*\d+|D\d+|\u7b2c[\u4e00-\u9fff0-9]+\u5929)/i;
 
 function normalizeLine(line: string): string {
-  return line.replace(/^\s*[-*+\d.、]+\s*/, '').trim();
+  return line.replace(/^\s*[-*+\d.\u3001]+\s*/, '').trim();
 }
 
 function stripMarkdownNoise(input: string): string {
@@ -78,18 +93,6 @@ function cleanForDisplay(input: string): string {
     .trim();
 }
 
-function extractMoneyCandidates(content: string): number[] {
-  const values = new Set<number>();
-  const regex = /(￥|¥|RMB|预算|人均|总计|约)\s*([0-9]{2,6})/gi;
-  let match = regex.exec(content);
-  while (match) {
-    const value = Number(match[2]);
-    if (Number.isFinite(value) && value > 0) values.add(value);
-    match = regex.exec(content);
-  }
-  return Array.from(values.values());
-}
-
 function dedupeStrings(items: string[]): string[] {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -100,9 +103,21 @@ function dedupeStrings(items: string[]): string[] {
   });
 }
 
+function extractMoneyCandidates(content: string): number[] {
+  const values = new Set<number>();
+  const regex = /(¥|￥|RMB|CNY|\u9884\u7b97|\u4eba\u5747|\u603b\u8ba1|\u7ea6)\s*([0-9]{2,6})/gi;
+  let match = regex.exec(content);
+  while (match) {
+    const value = Number(match[2]);
+    if (Number.isFinite(value) && value > 0) values.add(value);
+    match = regex.exec(content);
+  }
+  return Array.from(values.values());
+}
+
 function splitDayBlocks(content: string): string[] {
   const normalizedContent = content.replace(
-    /([；;。]\s*)(#{1,6}\s*)?(Day\s*\d+|D\d+|第[一二三四五六七八九十百0-9]+天)/gi,
+    /([；;。]\s*)(#{1,6}\s*)?(Day\s*\d+|D\d+|\u7b2c[\u4e00-\u9fff0-9]+\u5929)/gi,
     (_match, p1, _p2, p3) => `${p1}\n${p3}`
   );
   const lines = normalizedContent.split('\n');
@@ -112,7 +127,6 @@ function splitDayBlocks(content: string): string[] {
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line) continue;
-
     if (DAY_HEADING_REGEX.test(line) && currentBlock.length > 0) {
       blocks.push(currentBlock);
       currentBlock = [line];
@@ -133,13 +147,12 @@ function pickDayLabel(block: string, fallbackIndex: number): string {
 
 function collectTips(lines: string[]): string[] {
   const tips = lines
-    .filter((line) => /(小贴士|tips|提示|注意|建议)/i.test(line))
+    .filter((line) => /(?:\u5c0f\u8d34\u58eb|tips|\u63d0\u793a|\u6ce8\u610f|\u5efa\u8bae)/i.test(line))
     .map((line) =>
-      cleanForDisplay(normalizeLine(line).replace(/^(小贴士|Tips?|提示|注意|建议)[:：]?\s*/i, ''))
+      cleanForDisplay(normalizeLine(line).replace(/^(?:\u5c0f\u8d34\u58eb|Tips?|\u63d0\u793a|\u6ce8\u610f|\u5efa\u8bae)[:：]?\s*/i, ''))
     )
     .filter((line) => line.length >= 4)
-    .filter((line) => !/^(第[一二三四五六七八九十百0-9]+天|day\s*\d+)/i.test(line))
-    .filter((line) => !/^(住宿建议|旅行小贴士|注意事项)$/i.test(line));
+    .filter((line) => !/^(?:Day\s*\d+|\u7b2c[\u4e00-\u9fff0-9]+\u5929)$/i.test(line));
   return dedupeStrings(tips).slice(0, 6);
 }
 
@@ -148,9 +161,9 @@ function collectSpots(lines: string[]): string[] {
   for (const line of lines) {
     const normalized = cleanForDisplay(normalizeLine(line));
     if (!normalized) continue;
-    if (/(预算|费用|门票|交通|住宿|餐饮|建议|小贴士|tips)/i.test(normalized)) continue;
-    const splitByPunctuation = normalized.split(/[，。；：,;>→]/).map((item) => item.trim());
-    for (const token of splitByPunctuation) {
+    if (/(?:\u9884\u7b97|\u8d39\u7528|\u95e8\u7968|\u4ea4\u901a|\u4f4f\u5bbf|\u9910\u996e|\u5efa\u8bae|\u5c0f\u8d34\u58eb|tips)/i.test(normalized)) continue;
+    const tokens = normalized.split(/[，。；：,;>→]/).map((item) => item.trim());
+    for (const token of tokens) {
       if (token.length >= 2 && token.length <= 24 && !/\d{2,}/.test(token)) spots.push(token);
     }
   }
@@ -165,21 +178,15 @@ function parsePeriodText(blockLines: string[], period: 'morning' | 'afternoon' |
   const capture: string[] = [normalizeLine(directLine)];
   for (let i = directIndex + 1; i < blockLines.length; i += 1) {
     const line = blockLines[i];
-    if (
-      PERIOD_PATTERNS.morning.test(line) ||
-      PERIOD_PATTERNS.afternoon.test(line) ||
-      PERIOD_PATTERNS.evening.test(line)
-    ) {
-      break;
-    }
+    if (PERIOD_PATTERNS.morning.test(line) || PERIOD_PATTERNS.afternoon.test(line) || PERIOD_PATTERNS.evening.test(line)) break;
     capture.push(normalizeLine(line));
   }
 
   return cleanForDisplay(
     capture
-    .filter(Boolean)
-    .join('；')
-    .replace(/^(上午|早上|晨间|morning|下午|午后|afternoon|晚上|夜间|傍晚|evening|night)[:：]?\s*/i, '')
+      .filter(Boolean)
+      .join('；')
+      .replace(/^(?:\u4e0a\u5348|\u65e9\u4e0a|morning|\u4e0b\u5348|afternoon|\u665a\u4e0a|\u591c\u95f4|evening|night)[:：]?\s*/i, '')
   );
 }
 
@@ -201,10 +208,10 @@ export function parseDayPlanCards(content: string): DayPlanCard[] {
 
     return {
       dayLabel: pickDayLabel(block, index),
-      morning: morning || '自由安排或按兴趣补充景点',
-      afternoon: afternoon || '建议安排核心景点与午餐',
-      evening: evening || '轻松散步、夜景或特色餐厅',
-      tips: tips.length > 0 ? tips : ['尽量提前预约热门景点和餐厅'],
+      morning: morning || 'Free arrangement or one core attraction',
+      afternoon: afternoon || 'Core attraction and meal window',
+      evening: evening || 'Night view or relaxed dinner',
+      tips: tips.length > 0 ? tips : ['Book popular attractions and restaurants early.'],
       baseBudget: blockMoney[0] || fallbackBudget,
       spots,
     };
@@ -212,7 +219,7 @@ export function parseDayPlanCards(content: string): DayPlanCard[] {
 }
 
 export function parsePlanVariants(content: string): PlanVariant[] {
-  const markers = content.match(/(方案\s*[A-C]|省钱版|均衡版|舒适版|轻松版)/gi);
+  const markers = content.match(/(方案\s*[A-C]|省钱版|均衡版|舒适版|轻松版|Plan\s*[A-C])/gi);
   if (!markers || markers.length < 2) return [];
 
   const lines = content.split('\n');
@@ -221,14 +228,10 @@ export function parsePlanVariants(content: string): PlanVariant[] {
   let currentLines: string[] = [];
 
   for (const line of lines) {
-    const marker = line.match(/(方案\s*[A-C]|省钱版|均衡版|舒适版|轻松版)/i)?.[0] || '';
+    const marker = line.match(/(方案\s*[A-C]|省钱版|均衡版|舒适版|轻松版|Plan\s*[A-C])/i)?.[0] || '';
     if (marker) {
       if (currentTitle && currentLines.length > 0) {
-        variants.push({
-          id: `${variants.length + 1}`,
-          title: currentTitle,
-          content: currentLines.join('\n').trim(),
-        });
+        variants.push({ id: `${variants.length + 1}`, title: currentTitle, content: currentLines.join('\n').trim() });
       }
       currentTitle = marker;
       currentLines = [line];
@@ -238,11 +241,7 @@ export function parsePlanVariants(content: string): PlanVariant[] {
   }
 
   if (currentTitle && currentLines.length > 0) {
-    variants.push({
-      id: `${variants.length + 1}`,
-      title: currentTitle,
-      content: currentLines.join('\n').trim(),
-    });
+    variants.push({ id: `${variants.length + 1}`, title: currentTitle, content: currentLines.join('\n').trim() });
   }
 
   return variants.slice(0, 3);
@@ -258,13 +257,7 @@ export function getBudgetProjection(baseDailyBudget: number, days: number, slide
   const perDayBudget = Math.round(baseDailyBudget * factor);
   const totalBudget = perDayBudget * Math.max(days, 1);
 
-  return {
-    totalBudget,
-    perDayBudget,
-    hotelShare,
-    foodShare,
-    trafficShare,
-  };
+  return { totalBudget, perDayBudget, hotelShare, foodShare, trafficShare };
 }
 
 function hashToCoordinate(input: string, min: number, max: number): number {
@@ -316,44 +309,26 @@ export function reorderByDistance(points: RoutePoint[]): RoutePoint[] {
 
 export function buildChecklist(content: string): ChecklistItem[] {
   const candidates: string[] = [
-    '预订往返交通（机票/高铁）',
-    '确认酒店与入住时间',
-    '准备证件（身份证/护照）',
-    '规划市内交通与导航',
-    '检查目的地天气与穿搭',
-    '整理常用药品与充电设备',
+    'Book intercity transportation',
+    'Confirm hotel and check-in policy',
+    'Prepare required IDs/documents',
+    'Plan city transport and navigation',
+    'Check weather and packing list',
+    'Prepare medicine and chargers',
   ];
 
-  if (/签证|visa/i.test(content)) candidates.push('核对签证/入境材料');
-  if (/亲子|儿童/i.test(content)) candidates.push('准备儿童用品与应急物品');
-  if (/老人|长辈/i.test(content)) candidates.push('准备慢行路线与休息点');
+  if (/visa/i.test(content)) candidates.push('Verify visa/entry requirements');
+  if (/(?:亲子|儿童)/i.test(content)) candidates.push('Prepare child-friendly supplies');
+  if (/(?:老人|长辈)/i.test(content)) candidates.push('Prepare low-walk fallback options');
 
-  return dedupeStrings(candidates).map((label, index) => ({
-    id: `todo-${index + 1}`,
-    label,
-  }));
+  return dedupeStrings(candidates).map((label, index) => ({ id: `todo-${index + 1}`, label }));
 }
 
 export function buildReminders(): ReminderItem[] {
   return [
-    {
-      id: 't7',
-      phase: 'T-7',
-      title: '确认核心预订',
-      detail: '锁定机票/酒店，检查退改规则和证件有效期。',
-    },
-    {
-      id: 't3',
-      phase: 'T-3',
-      title: '整理行李与路线',
-      detail: '按天气准备衣物，确认每日集合点与交通衔接。',
-    },
-    {
-      id: 't1',
-      phase: 'T-1',
-      title: '最终核对',
-      detail: '检查车票、酒店订单、支付方式和出发时间提醒。',
-    },
+    { id: 't7', phase: 'T-7', title: 'Confirm bookings', detail: 'Lock transport/hotel and verify cancellation rules.' },
+    { id: 't3', phase: 'T-3', title: 'Pack and verify route', detail: 'Pack by weather and verify each day transfer points.' },
+    { id: 't1', phase: 'T-1', title: 'Final check', detail: 'Re-check tickets, orders, payment and departure time.' },
   ];
 }
 
@@ -361,8 +336,8 @@ export function buildConfidenceSummary(diagnostics?: MessageDiagnostics): Confid
   if (!diagnostics) {
     return {
       score: 55,
-      level: '中',
-      risks: ['暂无后端验证元数据，建议对关键价格与营业时间再确认一次。'],
+      level: 'medium',
+      risks: ['No verification metadata available. Re-check key prices and opening times.'],
     };
   }
 
@@ -372,24 +347,152 @@ export function buildConfidenceSummary(diagnostics?: MessageDiagnostics): Confid
   if (diagnostics.verificationPassed === true) score += 18;
   if (diagnostics.verificationPassed === false) {
     score -= 18;
-    risks.push('结果校验未通过，存在信息偏差风险。');
+    risks.push('Verification failed. Some details may be inaccurate.');
   }
 
   const staleCount = Number(diagnostics.staleResultCount || 0);
   if (staleCount > 0) {
     score -= Math.min(20, staleCount * 6);
-    risks.push(`检测到 ${staleCount} 条可能过期信息，建议复核营业时间/票价。`);
+    risks.push(`Found ${staleCount} potentially stale items. Re-check schedule and pricing.`);
   }
 
   const fallback = Number(diagnostics.fallbackSteps || 0);
   if (fallback > 0) {
     score -= Math.min(12, fallback * 3);
-    risks.push(`发生 ${fallback} 次备源切换，部分细节可能来自降级结果。`);
+    risks.push(`Fallback switched ${fallback} times. Some fields may be downgraded.`);
   }
 
   score = Math.max(20, Math.min(98, score));
-  const level: '高' | '中' | '低' = score >= 80 ? '高' : score >= 60 ? '中' : '低';
-
-  if (risks.length === 0) risks.push('风险较低，仍建议对实时票务和天气做出发前复核。');
+  const level: 'high' | 'medium' | 'low' = score >= 80 ? 'high' : score >= 60 ? 'medium' : 'low';
+  if (risks.length === 0) risks.push('Low risk, but still re-check real-time weather and ticket inventory.');
   return { score, level, risks };
+}
+
+function parseTimeEntries(text: string): TimeEntry[] {
+  return text
+    .split(/[；;。]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((raw) => {
+      const timeMatch = raw.match(/(\d{1,2})[:：](\d{2})/);
+      if (!timeMatch) return { raw, timeMinutes: null, content: raw };
+      const hour = Number(timeMatch[1]);
+      const minute = Number(timeMatch[2]);
+      const isValid = Number.isFinite(hour) && Number.isFinite(minute) && hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
+      return {
+        raw,
+        timeMinutes: isValid ? hour * 60 + minute : null,
+        content: raw.replace(timeMatch[0], '').replace(/^\s*[-:：]?\s*/, '').trim(),
+      };
+    });
+}
+
+function formatTime(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60).toString().padStart(2, '0');
+  const m = (totalMinutes % 60).toString().padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+export function detectDayConflicts(day: DayPlanCard, distanceM?: number): ItineraryConflict[] {
+  const conflicts: ItineraryConflict[] = [];
+  const periods = [
+    { key: 'morning', label: 'Morning', text: day.morning },
+    { key: 'afternoon', label: 'Afternoon', text: day.afternoon },
+    { key: 'evening', label: 'Evening', text: day.evening },
+  ] as const;
+
+  periods.forEach((period) => {
+    const entries = parseTimeEntries(period.text).filter((item) => item.timeMinutes !== null);
+    for (let index = 1; index < entries.length; index += 1) {
+      const prev = entries[index - 1];
+      const curr = entries[index];
+      if ((curr.timeMinutes ?? 0) <= (prev.timeMinutes ?? 0)) {
+        conflicts.push({
+          id: `${period.key}-time-${index}`,
+          type: 'time_conflict',
+          severity: 'high',
+          title: `${period.label} time conflict`,
+          description: `Detected timeline overlap or reverse order (${prev.raw} -> ${curr.raw}).`,
+          suggestion: 'Sort by time and leave at least 30 minutes buffer between items.',
+        });
+        break;
+      }
+    }
+  });
+
+  if (distanceM && distanceM > 30000) {
+    conflicts.push({
+      id: 'distance-long',
+      type: 'long_distance',
+      severity: distanceM > 50000 ? 'high' : 'medium',
+      title: 'Route too long',
+      description: `Daily route is about ${(distanceM / 1000).toFixed(1)} km.`,
+      suggestion: 'Split into two days or remove 1-2 far points.',
+    });
+  }
+
+  const eveningEntries = parseTimeEntries(day.evening);
+  const closingKeywords = /(博物馆|美术馆|纪念馆|景区|公园|寺|塔|宫|图书馆|museum|park|gallery)/i;
+  const closeRiskEntry = eveningEntries.find((entry) => (entry.timeMinutes ?? 0) >= 1110 && closingKeywords.test(entry.content));
+  if (closeRiskEntry) {
+    conflicts.push({
+      id: 'closing-risk-evening',
+      type: 'closing_risk',
+      severity: 'medium',
+      title: 'Potential closing-time risk',
+      description: `Late visit may hit closing window: ${closeRiskEntry.raw}`,
+      suggestion: 'Move this point to afternoon; keep evening for night-view or dining.',
+    });
+  }
+
+  return conflicts;
+}
+
+export function applyConflictFixes(day: DayPlanCard, conflicts: ItineraryConflict[]): DayPlanCard {
+  if (conflicts.length === 0) return day;
+
+  function normalizePeriod(text: string): string {
+    const entries = parseTimeEntries(text);
+    const timed = entries
+      .filter((entry) => entry.timeMinutes !== null)
+      .sort((a, b) => (a.timeMinutes ?? 0) - (b.timeMinutes ?? 0));
+    const untimed = entries.filter((entry) => entry.timeMinutes === null);
+
+    let cursor = -1;
+    const normalizedTimed = timed.map((entry) => {
+      const nextValue = Math.max(entry.timeMinutes ?? 0, cursor + 30);
+      cursor = nextValue;
+      return `${formatTime(nextValue)} ${entry.content}`.trim();
+    });
+
+    return [...normalizedTimed, ...untimed.map((entry) => entry.content)].filter(Boolean).join('；');
+  }
+
+  let nextMorning = day.morning;
+  let nextAfternoon = day.afternoon;
+  let nextEvening = day.evening;
+  const nextTips = [...day.tips];
+
+  if (conflicts.some((item) => item.type === 'time_conflict')) {
+    nextMorning = normalizePeriod(nextMorning);
+    nextAfternoon = normalizePeriod(nextAfternoon);
+    nextEvening = normalizePeriod(nextEvening);
+    nextTips.unshift('Auto-fix: timeline sorted by time with safety buffers.');
+  }
+
+  if (conflicts.some((item) => item.type === 'long_distance')) {
+    nextTips.unshift('Suggestion: reduce far points or split this day.');
+  }
+
+  if (conflicts.some((item) => item.type === 'closing_risk')) {
+    nextTips.unshift('Suggestion: move closing-risk places to afternoon.');
+  }
+
+  return {
+    ...day,
+    morning: nextMorning,
+    afternoon: nextAfternoon,
+    evening: nextEvening,
+    tips: dedupeStrings(nextTips).slice(0, 8),
+  };
 }
