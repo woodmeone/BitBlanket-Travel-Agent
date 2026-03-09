@@ -7,7 +7,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
-from src.config.runtime import get_model_config_manager
+from shuai_web.config.runtime import get_model_config_manager
 from .errors import raise_api_error
 
 router = APIRouter()

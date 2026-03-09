@@ -40,11 +40,11 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["."]
 markers = [
     "integration: marks tests as integration tests that require API keys",
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["agent.*"]
+where = ["."]
+include = ["travel_agent*"]

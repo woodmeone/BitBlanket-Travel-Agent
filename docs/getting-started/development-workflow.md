@@ -3,7 +3,7 @@
 ## 日常开发顺序
 
 1. 激活环境: `.\.venv\Scripts\activate`
-2. 启动 API: `python run_api.py`
+2. 启动 API: `.\.venv\Scripts\python.exe -m uvicorn shuai_web.main:app --host 0.0.0.0 --port 38000 --app-dir web`
 3. 启动前端: `cd frontend && npm run dev`
 4. 修改代码后执行对应测试
 
@@ -17,7 +17,7 @@ python -m pytest tests/ -v
 cd frontend && npm run test:run
 
 # Agent 测试
-cd agent && set PYTHONPATH=src && python -m pytest tests/ -v
+cd agent && python -m pytest tests/ -v
 ```
 
 ## 推荐提交前检查

@@ -1,14 +1,8 @@
-/**
- * Shared domain type contracts used across components and services.
- * Defines API payloads, message models, and session metadata types.
- */
-
-// 类型定义
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
-  reasoning?: string;  // AI思考过程（可选）
+  reasoning?: string;
   diagnostics?: MessageDiagnostics;
 }
 
@@ -17,27 +11,51 @@ export interface MessageDiagnostics {
   verificationPassed?: boolean | null;
   staleResultCount?: number;
   fallbackSteps?: number;
+  planId?: string | null;
+  executionStats?: Record<string, unknown>;
+}
+
+export interface PlanPreviewStep {
+  id?: string;
+  title?: string;
+  description?: string;
+  tool?: string;
+  [key: string]: unknown;
+}
+
+export interface PlanPreview {
+  planId?: string | null;
+  intent?: string | null;
+  explanation?: string | null;
+  validationStatus?: string | null;
+  validationErrors?: string[];
+  steps: PlanPreviewStep[];
+}
+
+export interface StreamStageEvent {
+  stage?: string;
+  label?: string;
+  progress?: number | null;
 }
 
 export interface SessionInfo {
   session_id: string;
   message_count: number;
   last_active: string;
-  name?: string;  // 会话名称（可选）
-  model_id?: string;  // 会话使用的模型ID（可选）
+  name?: string;
+  model_id?: string;
 }
 
 export interface AppConfig {
   apiBase: string;
 }
 
-// 对话模式类型
 export type ChatMode = 'direct' | 'react' | 'plan';
 
 export interface ChatRequest {
   message: string;
   session_id: string;
-  mode?: ChatMode;  // 对话模式（可选）
+  mode?: ChatMode;
 }
 
 export interface ChatResponse {
@@ -47,7 +65,6 @@ export interface ChatResponse {
   session_id?: string;
 }
 
-// 模型信息
 export interface ModelInfo {
   model_id: string;
   name: string;
@@ -55,26 +72,87 @@ export interface ModelInfo {
   model: string;
 }
 
-// 可用模型响应
 export interface AvailableModelsResponse {
   success: boolean;
   models: ModelInfo[];
 }
 
-// 设置模型请求
 export interface SetModelRequest {
   model_id: string;
 }
 
-// 设置模型响应
 export interface SetModelResponse {
   success: boolean;
-  message: string;
+  message?: string;
   model_id: string;
 }
 
-// 获取会话模型响应
 export interface GetSessionModelResponse {
   success: boolean;
   model_id: string;
+}
+
+export interface CityAttraction {
+  name: string;
+  type: string;
+  duration: string;
+  ticket: number;
+}
+
+export interface CitySummary {
+  id: string;
+  name: string;
+  region: string;
+  tags: string[];
+}
+
+export interface CityDetail extends CitySummary {
+  description: string;
+  attractions: CityAttraction[];
+  avg_budget_per_day: number;
+  best_seasons: string[];
+}
+
+export interface CityListResponse {
+  cities: CitySummary[];
+}
+
+export interface RegionListResponse {
+  regions: string[];
+}
+
+export interface TagListResponse {
+  tags: string[];
+}
+
+export interface HealthResponse {
+  status: string;
+  version: string;
+  timestamp: string;
+  services: Record<string, string>;
+}
+
+export interface LLMHealthResponse {
+  status: 'ok' | 'not initialized';
+  llm_adapter: boolean;
+  tools_count: number;
+  memory_enabled: boolean;
+}
+
+export interface ToolsHealthResponse {
+  status: 'ok' | 'not initialized';
+  initialized: boolean;
+  configured_tools_count: number;
+  circuit_open_count: number;
+  slo: Record<string, unknown>;
+  intent_aggregate: Record<string, Record<string, unknown>>;
+  window_minutes: number;
+  diagnostics: Record<string, unknown>;
+}
+
+export interface ToolIntentsHealthResponse {
+  status: 'ok' | 'not initialized';
+  window_minutes: number;
+  total_requests: number;
+  intent_aggregate: Record<string, Record<string, unknown>>;
 }

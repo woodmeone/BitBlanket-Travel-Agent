@@ -8,13 +8,13 @@ from __future__ import annotations
 import asyncio
 from types import SimpleNamespace
 
-from agent.src.graph.builder import (
+from agent.travel_agent.graph.builder import (
     TravelAgentGraph,
     _extract_text_from_chunk,
     _resolve_stream_events_version,
 )
-from agent.src.graph.nodes import AgentNodes, _resolve_parallelism_default
-from agent.src.graph.prompt_templates import build_answer_prompt
+from agent.travel_agent.graph.nodes import AgentNodes, _resolve_parallelism_default
+from agent.travel_agent.graph.prompt_templates import build_answer_prompt
 
 
 def test_extract_text_from_chunk_supports_content_blocks():

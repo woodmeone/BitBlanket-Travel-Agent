@@ -19,11 +19,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from agent.src.graph.builder import build_travel_agent
-from agent.src.graph.persistent_checkpointer import PersistentSqliteSaver
-from agent.src.graph.state import TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_state
-from agent.src.llm.langchain_adapter import create_from_yaml_config
-from agent.src.tools.travel_tools import get_travel_tools
+from agent.travel_agent.graph.builder import build_travel_agent
+from agent.travel_agent.graph.persistent_checkpointer import PersistentSqliteSaver
+from agent.travel_agent.graph.state import TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_state
+from agent.travel_agent.llm.langchain_adapter import create_from_yaml_config
+from agent.travel_agent.tools.travel_tools import get_travel_tools
 
 
 def _build_config(session_id: str, checkpoint_ns: str, checkpoint_id: str | None = None) -> dict[str, Any]:

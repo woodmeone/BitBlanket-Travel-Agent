@@ -18,7 +18,6 @@ pytest tests/ -v
 
 ```bash
 cd agent
-set PYTHONPATH=src
 python -m pytest tests/ -v
 ```
 
@@ -62,6 +61,6 @@ python scripts/agent_replay.py --session-id <session_id> --db data/langgraph_che
 
 ## 常见问题
 
-1. `Connection refused`: 先启动 `python run_api.py`
+1. `Connection refused`: 先启动 `.\.venv\Scripts\python.exe -m uvicorn shuai_web.main:app --host 0.0.0.0 --port 38000 --app-dir web`
 2. `ModuleNotFoundError`: 检查 Python 环境与依赖
 3. SSE 测试失败: 先确认 `/api/chat/stream` 可访问

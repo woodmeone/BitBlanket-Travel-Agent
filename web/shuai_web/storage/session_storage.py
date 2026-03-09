@@ -50,10 +50,27 @@
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 import json
 import os
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _parse_iso_as_utc(value: Any) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 class SessionStorage(ABC):
@@ -161,7 +178,7 @@ class MemorySessionStorage(SessionStorage):
             session_id: str 会话ID
             data: Dict[str, Any] 会话数据
         """
-        data['last_active'] = datetime.now().isoformat()
+        data['last_active'] = _utc_now_iso()
         self._sessions[session_id] = data
 
     async def load(self, session_id: str) -> Optional[Dict[str, Any]]:
@@ -212,12 +229,12 @@ class MemorySessionStorage(SessionStorage):
         Returns:
             int: 删除的会话数量
         """
-        current_time = datetime.now()
+        current_time = datetime.now(timezone.utc)
         expired_ids = []
 
         for session_id, data in self._sessions.items():
-            last_active = datetime.fromisoformat(data['last_active'])
-            if (current_time - last_active).total_seconds() > max_age_seconds:
+            last_active = _parse_iso_as_utc(data.get('last_active'))
+            if last_active and (current_time - last_active).total_seconds() > max_age_seconds:
                 expired_ids.append(session_id)
 
         for session_id in expired_ids:
@@ -287,7 +304,7 @@ class FileSessionStorage(SessionStorage):
             data: Dict[str, Any] 会话数据
         """
         async with self._lock:
-            data['last_active'] = datetime.now().isoformat()
+            data['last_active'] = _utc_now_iso()
             self._sessions[session_id] = data
             await asyncio.to_thread(self._save_to_file)
 
@@ -342,12 +359,12 @@ class FileSessionStorage(SessionStorage):
             int: 删除的会话数量
         """
         async with self._lock:
-            current_time = datetime.now()
+            current_time = datetime.now(timezone.utc)
             expired_ids = []
 
             for session_id, data in self._sessions.items():
-                last_active = datetime.fromisoformat(data['last_active'])
-                if (current_time - last_active).total_seconds() > max_age_seconds:
+                last_active = _parse_iso_as_utc(data.get('last_active'))
+                if last_active and (current_time - last_active).total_seconds() > max_age_seconds:
                     expired_ids.append(session_id)
 
             for session_id in expired_ids:

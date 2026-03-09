@@ -9,9 +9,9 @@ from pathlib import Path
 
 from langchain_core.messages import AIMessage
 
-from agent.src.graph.builder import build_travel_agent
-from agent.src.graph.persistent_checkpointer import PersistentSqliteSaver
-from agent.src.graph.state import TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_state
+from agent.travel_agent.graph.builder import build_travel_agent
+from agent.travel_agent.graph.persistent_checkpointer import PersistentSqliteSaver
+from agent.travel_agent.graph.state import TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_state
 
 
 class _StructuredIntentLLM:

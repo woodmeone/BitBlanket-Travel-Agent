@@ -90,8 +90,8 @@ frontend/build/
 next-env.d.ts
 
 # gRPC generated files
-agent/src/**/*.pb.py
-agent/src/**/*.pb2.py
+agent/travel_agent/**/*.pb.py
+agent/travel_agent/**/*.pb2.py
 
 # Windows special files
 nul

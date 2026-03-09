@@ -1,18 +1,8 @@
 'use client';
 
-/**
- * Mode switcher for direct, ReAct, and planning conversation strategies.
- * Maps UI labels to backend mode identifiers.
- */
-
-
 import React from 'react';
-import { Select, Tooltip, Badge } from 'antd';
-import {
-  ThunderboltOutlined,
-  BulbOutlined,
-  FileTextOutlined
-} from '@ant-design/icons';
+import { Badge, Select, Tooltip } from 'antd';
+import { BulbOutlined, FileTextOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { ChatMode } from '@/types';
 
 interface ChatModeSelectorProps {
@@ -24,74 +14,52 @@ interface ChatModeSelectorProps {
 const modeOptions = [
   {
     value: 'direct',
-    label: '直接模式',
+    label: '直答模式',
     icon: <ThunderboltOutlined />,
-    description: '快速响应，简单对话',
-    color: '#52c41a'
+    description: '速度最快，直接返回答案',
+    color: '#52c41a',
   },
   {
     value: 'react',
-    label: 'ReAct模式',
+    label: 'ReAct 模式',
     icon: <BulbOutlined />,
-    description: '推理+行动，深度思考',
-    color: '#1890ff'
+    description: '推理 + 工具调用，适合复杂旅行问题',
+    color: '#1890ff',
   },
   {
     value: 'plan',
-    label: '规划模式',
+    label: 'Plan 模式',
     icon: <FileTextOutlined />,
-    description: '先规划，后执行',
-    color: '#722ed1'
-  }
-];
+    description: '先展示计划，再分步执行',
+    color: '#722ed1',
+  },
+] as const;
 
-const ChatModeSelector: React.FC<ChatModeSelectorProps> = ({
-  value = 'react',
-  onChange,
-  disabled = false
-}) => {
+const ChatModeSelector: React.FC<ChatModeSelectorProps> = ({ value = 'react', onChange, disabled = false }) => {
+  const activeMode = modeOptions.find((item) => item.value === value);
+
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px'
-    }}>
-      <span style={{
-        fontSize: '12px',
-        color: '#999',
-        whiteSpace: 'nowrap'
-      }}>
-        对话模式:
-      </span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <span style={{ fontSize: '12px', color: '#999', whiteSpace: 'nowrap' }}>对话模式:</span>
       <Select
         value={value}
         onChange={onChange}
         disabled={disabled}
-        style={{ width: 140 }}
+        style={{ width: 170 }}
         size="small"
-        options={modeOptions.map(option => ({
+        options={modeOptions.map((option) => ({
           value: option.value,
           label: (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <span style={{ color: option.color }}>
-                {option.icon}
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: option.color }}>{option.icon}</span>
               <span>{option.label}</span>
             </div>
           ),
-          title: option.description
+          title: option.description,
         }))}
       />
-      <Tooltip title={modeOptions.find(m => m.value === value)?.description}>
-        <Badge
-          color={modeOptions.find(m => m.value === value)?.color}
-          text=""
-          style={{ cursor: 'help' }}
-        />
+      <Tooltip title={activeMode?.description}>
+        <Badge color={activeMode?.color} text="" style={{ cursor: 'help' }} />
       </Tooltip>
     </div>
   );

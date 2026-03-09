@@ -15,13 +15,13 @@ ShuaiTravelAgent/
 
 ## 关键模块
 
-### agent/src
+### agent/travel_agent
 
 - `graph/`: 状态图构建与节点执行
 - `llm/`: 模型适配层
 - `tools/`: 旅行工具定义与调用
 
-### web/src
+### web/shuai_web
 
 - `main.py`: FastAPI 应用入口
 - `routes/`: API 路由

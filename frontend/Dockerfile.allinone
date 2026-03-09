@@ -12,9 +12,10 @@ RUN npm ci
 COPY . .
 
 # Build Python backend
-COPY ../src /app/src
+COPY ../web /app/web
+COPY ../agent /app/agent
+COPY ../config /app/config
 COPY ../requirements.txt /app/
-COPY ../run_api.py /app/
 WORKDIR /app
 RUN pip install --no-cache-dir -r requirements.txt
 WORKDIR /app/frontend
@@ -23,4 +24,4 @@ WORKDIR /app/frontend
 EXPOSE 3000 8000
 
 # Start both services
-CMD ["sh", "-c", "npm run dev & python /app/run_api.py"]
+CMD ["sh", "-c", "npm run dev & python -m uvicorn shuai_web.main:app --host 0.0.0.0 --port 38000 --app-dir /app/web"]

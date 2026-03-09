@@ -11,12 +11,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.app_meta import APP_NAME, APP_VERSION
-from src.bootstrap import ensure_project_paths
-from src.config.runtime import get_model_config_manager, get_server_config
-from src.middleware import RequestLoggingMiddleware, RateLimitMiddleware, TimeoutMiddleware
-from src.routes import api_docs_router, city_router, health_router, model_router, session_router
-from src.routes.chat import router as chat_router
+from shuai_web.app_meta import APP_NAME, APP_VERSION
+from shuai_web.bootstrap import ensure_project_paths
+from shuai_web.config.runtime import get_model_config_manager, get_server_config
+from shuai_web.middleware import RequestLoggingMiddleware, RateLimitMiddleware, TimeoutMiddleware
+from shuai_web.routes import api_docs_router, city_router, health_router, model_router, session_router
+from shuai_web.routes.chat import router as chat_router
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ def create_app() -> FastAPI:
 
     # Initialize dependency container.
     try:
-        from src.dependencies.container import get_container
+        from shuai_web.dependencies.container import get_container
 
         get_container()
         logger.info("Dependency container initialized")
@@ -120,7 +120,7 @@ def main(host: str = "0.0.0.0", port: int = 38000, debug: bool = False) -> None:
         logger.warning("Failed to load server config; falling back to defaults: %s", exc)
 
     uvicorn.run(
-        "main:app",
+        "shuai_web.main:app",
         host=host,
         port=port,
         reload=debug,

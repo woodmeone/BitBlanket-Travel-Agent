@@ -14,7 +14,7 @@ from ..repositories.session_repository_impl import SessionRepositoryImpl
 from ..services.chat_service import ChatService
 from ..services.session_service import SessionService
 from ..storage.session_storage import FileSessionStorage
-from agent.src.graph.memory_integration import get_agent_memory_manager
+from agent.travel_agent.graph.memory_integration import get_agent_memory_manager
 
 _storage: Optional[FileSessionStorage] = None
 _repository: Optional[SessionRepositoryImpl] = None
@@ -60,9 +60,9 @@ def provide_chat_service() -> ChatService:
 
 def provide_travel_agent():
     """Build one travel agent instance using configured LLM and tools."""
-    from agent.src.llm.langchain_adapter import create_from_yaml_config
-    from agent.src.tools.travel_tools import get_travel_tools
-    from agent.src.graph.builder import build_travel_agent
+    from agent.travel_agent.llm.langchain_adapter import create_from_yaml_config
+    from agent.travel_agent.tools.travel_tools import get_travel_tools
+    from agent.travel_agent.graph.builder import build_travel_agent
 
     config_path = get_llm_config_path()
     llm_adapter = create_from_yaml_config(config_path)

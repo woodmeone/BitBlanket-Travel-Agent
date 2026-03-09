@@ -1,4 +1,4 @@
-﻿# ShuaiTravelAgent Agent Guide
+# ShuaiTravelAgent Agent Guide
 
 ## Project Overview
 
@@ -24,7 +24,7 @@ ShuaiTravelAgent is an AI travel assistant project built with:
 ## Current Route Structure
 
 ```text
-web/src/routes/
+web/shuai_web/routes/
 ├── api_docs.py
 ├── chat.py
 ├── city.py

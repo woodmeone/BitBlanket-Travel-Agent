@@ -6,8 +6,8 @@ import pytest
 from langchain_core.messages import AIMessage
 from langchain_core.tools import tool
 
-from agent.src.graph.builder import build_travel_agent
-from agent.src.graph.state import TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_state
+from agent.travel_agent.graph.builder import build_travel_agent
+from agent.travel_agent.graph.state import TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_state
 
 
 class _StructuredIntentLLM:

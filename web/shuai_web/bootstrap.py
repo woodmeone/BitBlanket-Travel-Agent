@@ -13,7 +13,7 @@ def ensure_project_paths() -> None:
     """Ensure project and agent source paths are importable.
 
     Keep the repository root importable so package imports like
-    `agent.src...` and `config...` remain stable across entrypoints.
+    `agent.travel_agent...` and `config...` remain stable across entrypoints.
     """
     root = str(PROJECT_ROOT)
     if root not in sys.path:

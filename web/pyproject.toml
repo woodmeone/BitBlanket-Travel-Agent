@@ -26,8 +26,8 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["."]
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["web.*"]
+where = ["."]
+include = ["shuai_web*"]

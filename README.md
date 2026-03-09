@@ -62,7 +62,7 @@ Browser
 - `context/AppContext.tsx`：全局状态（会话、模型、消息、流式状态）
 - `services/api.ts`：REST + SSE 客户端，含重连、超时、中断控制
 
-### 3.2 Web API 模块设计（`web/src`）
+### 3.2 Web API 模块设计（`web/shuai_web`）
 
 - `routes/chat.py`：`/api/chat/stream`，SSE 入口
 - `services/chat_service.py`：聊天编排核心（模式路由、SSE 事件输出、持久化）
@@ -71,7 +71,7 @@ Browser
 - `routes/city.py` + `services/city_service.py`：城市/景点数据查询
 - `routes/health.py`：健康、工具健康、意图聚合指标
 
-### 3.3 Agent 模块设计（`agent/src`）
+### 3.3 Agent 模块设计（`agent/travel_agent`）
 
 - `graph/builder.py`：LangGraph 构建与流式事件桥接
 - `graph/nodes.py`：意图识别、策略路由、计划生成、执行与验证逻辑
@@ -174,15 +174,17 @@ copy config\llm_config.yaml.example config\llm_config.yaml
 
 ### 5.4 启动
 
+终端 1（启动 API）：
+
 ```bash
-start_all.bat
+.\.venv\Scripts\python.exe -m uvicorn shuai_web.main:app --host 0.0.0.0 --port 38000 --app-dir web
 ```
 
-或分开启动：
+终端 2（启动前端）：
 
 ```bash
-start_api.bat
-start_frontend.bat
+cd frontend
+npm run dev
 ```
 
 ### 5.5 常见操作流程

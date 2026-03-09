@@ -5,8 +5,8 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from src.bootstrap import PROJECT_ROOT, ensure_project_paths
-from src.config.config_manager import ConfigManager
+from shuai_web.bootstrap import PROJECT_ROOT, ensure_project_paths
+from shuai_web.config.config_manager import ConfigManager
 
 ensure_project_paths()
 

@@ -1,24 +1,29 @@
-/**
- * HTTP and SSE client wrapper for backend chat/session/model endpoints.
- * Normalizes transport errors and stream lifecycle callbacks for UI components.
- */
-
 import axios from 'axios';
 import {
-  SessionInfo,
+  AvailableModelsResponse,
   ChatRequest,
   ChatResponse,
-  AvailableModelsResponse,
+  CityDetail,
+  CityListResponse,
+  GetSessionModelResponse,
+  HealthResponse,
+  LLMHealthResponse,
+  PlanPreview,
+  RegionListResponse,
+  SessionInfo,
   SetModelRequest,
   SetModelResponse,
-  GetSessionModelResponse
+  StreamStageEvent,
+  TagListResponse,
+  ToolIntentsHealthResponse,
+  ToolsHealthResponse,
 } from '@/types';
 import { logger } from '@/utils/logger';
 
-const API_BASE = (typeof window !== 'undefined' && window.ENV?.NEXT_PUBLIC_API_BASE)
-  || process.env.NEXT_PUBLIC_API_BASE
-  || 'http://localhost:38000';
-
+const API_BASE =
+  (typeof window !== 'undefined' && window.ENV?.NEXT_PUBLIC_API_BASE) ||
+  process.env.NEXT_PUBLIC_API_BASE ||
+  'http://localhost:38000';
 const API_PREFIX = `${API_BASE}/api`;
 
 export enum SSEConnectionStatus {
@@ -27,21 +32,7 @@ export enum SSEConnectionStatus {
   STREAMING = 'streaming',
   RECONNECTING = 'reconnecting',
   ERROR = 'error',
-  DISCONNECTED = 'disconnected'
-}
-
-export enum SSEEventType {
-  SESSION_ID = 'session_id',
-  REASONING_START = 'reasoning_start',
-  REASONING_CHUNK = 'reasoning_chunk',
-  REASONING_END = 'reasoning_end',
-  ANSWER_START = 'answer_start',
-  CHUNK = 'chunk',
-  ERROR = 'error',
-  DONE = 'done',
-  HEARTBEAT = 'heartbeat',
-  METADATA = 'metadata',
-  REASONING_TIMESTAMP = 'reasoning_timestamp'
+  DISCONNECTED = 'disconnected',
 }
 
 export interface StreamMetadata {
@@ -53,9 +44,15 @@ export interface StreamMetadata {
   verificationPassed: boolean | null;
   staleResultCount: number;
   fallbackSteps: number;
+  planId?: string | null;
+  executionStats?: Record<string, unknown>;
+  runId?: string;
 }
 
 type StreamCallbacks = {
+  onSessionId?: (sessionId: string) => void;
+  onStage?: (stage: StreamStageEvent) => void;
+  onPlanPreview?: (preview: PlanPreview) => void;
   onChunk: (content: string) => void;
   onReasoning: (content: string) => void;
   onReasoningStart: () => void;
@@ -85,20 +82,8 @@ class APIService {
     return `${request.session_id || 'new'}:${request.message.slice(0, 50)}`;
   }
 
-  cancelRequest(key: string): boolean {
-    const controller = this.pendingRequests.get(key);
-    if (!controller) {
-      return false;
-    }
-    controller.abort();
-    this.pendingRequests.delete(key);
-    return true;
-  }
-
   cancelAllRequests(): void {
-    for (const controller of this.pendingRequests.values()) {
-      controller.abort();
-    }
+    for (const controller of this.pendingRequests.values()) controller.abort();
     this.pendingRequests.clear();
   }
 
@@ -106,8 +91,23 @@ class APIService {
     return this.baseReconnectDelay * Math.pow(2, attempt - 1);
   }
 
-  async checkHealth(): Promise<{ status: string; agent: string; version: string }> {
+  async checkHealth(): Promise<HealthResponse> {
     const response = await axios.get(`${API_PREFIX}/health`);
+    return response.data;
+  }
+
+  async checkLLMHealth(): Promise<LLMHealthResponse> {
+    const response = await axios.get(`${API_PREFIX}/health/llm`);
+    return response.data;
+  }
+
+  async checkToolsHealth(): Promise<ToolsHealthResponse> {
+    const response = await axios.get(`${API_PREFIX}/health/tools`);
+    return response.data;
+  }
+
+  async checkToolsIntentsHealth(): Promise<ToolIntentsHealthResponse> {
+    const response = await axios.get(`${API_PREFIX}/health/tools/intents`);
     return response.data;
   }
 
@@ -127,13 +127,11 @@ class APIService {
   }
 
   async clearChat(sessionId: string): Promise<ChatResponse> {
-    const response = await axios.post(`${API_PREFIX}/clear`, null, {
-      params: { session_id: sessionId }
-    });
+    const response = await axios.post(`${API_PREFIX}/clear`, null, { params: { session_id: sessionId } });
     return response.data;
   }
 
-  async updateSessionName(sessionId: string, name: string): Promise<{ success: boolean; message: string }> {
+  async updateSessionName(sessionId: string, name: string): Promise<{ success: boolean; message?: string }> {
     const response = await axios.put(`${API_PREFIX}/session/${sessionId}/name`, { name });
     return response.data;
   }
@@ -144,10 +142,7 @@ class APIService {
   }
 
   async setSessionModel(sessionId: string, modelId: string): Promise<SetModelResponse> {
-    const response = await axios.put(
-      `${API_PREFIX}/session/${sessionId}/model`,
-      { model_id: modelId } as SetModelRequest
-    );
+    const response = await axios.put(`${API_PREFIX}/session/${sessionId}/model`, { model_id: modelId } as SetModelRequest);
     return response.data;
   }
 
@@ -156,16 +151,40 @@ class APIService {
     return response.data;
   }
 
+  async getRegions(): Promise<RegionListResponse> {
+    const response = await axios.get(`${API_PREFIX}/regions`);
+    return response.data;
+  }
+
+  async getTags(): Promise<TagListResponse> {
+    const response = await axios.get(`${API_PREFIX}/tags`);
+    return response.data;
+  }
+
+  async getCities(params?: { region?: string; tags?: string[] }): Promise<CityListResponse> {
+    const response = await axios.get(`${API_PREFIX}/cities`, {
+      params: {
+        region: params?.region || undefined,
+        tags: params?.tags && params.tags.length > 0 ? params.tags.join(',') : undefined,
+      },
+    });
+    return response.data;
+  }
+
+  async getCityDetail(cityId: string): Promise<CityDetail> {
+    const response = await axios.get(`${API_PREFIX}/cities/${cityId}`);
+    return response.data;
+  }
+
   async fetchStreamChat(request: ChatRequest, callbacks: StreamCallbacks): Promise<void> {
     const requestKey = this.getRequestKey(request);
     if (this.pendingRequests.has(requestKey)) {
-      callbacks.onError('请求已在处理中');
+      callbacks.onError('请求正在处理中，请稍候');
       return;
     }
 
     const controller = new AbortController();
     this.pendingRequests.set(requestKey, controller);
-
     await this.executeStreamRequest(request, callbacks, controller, requestKey);
   }
 
@@ -174,7 +193,7 @@ class APIService {
     callbacks: StreamCallbacks,
     controller: AbortController,
     requestKey: string,
-    attempt: number = 1
+    attempt = 1
   ): Promise<void> {
     if (attempt > 1) {
       this.connectionStatus = SSEConnectionStatus.RECONNECTING;
@@ -193,9 +212,7 @@ class APIService {
     try {
       const response = await fetch(`${API_PREFIX}/chat/stream`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
         signal: controller.signal,
       });
@@ -207,7 +224,7 @@ class APIService {
       if (!response.ok) {
         const errorText = await response.text();
         this.connectionStatus = SSEConnectionStatus.ERROR;
-        callbacks.onError(`HTTP error! status: ${response.status} - ${errorText}`);
+        callbacks.onError(`HTTP error ${response.status}: ${errorText}`);
         this.pendingRequests.delete(requestKey);
         return;
       }
@@ -215,20 +232,17 @@ class APIService {
       const reader = response.body?.getReader();
       if (!reader) {
         this.connectionStatus = SSEConnectionStatus.ERROR;
-        callbacks.onError('无法读取响应流');
+        callbacks.onError('无法读取流式响应');
         this.pendingRequests.delete(requestKey);
         return;
       }
 
       const decoder = new TextDecoder();
       let buffer = '';
-
       let streamEnded = false;
 
       while (true) {
-        if (controller.signal.aborted) {
-          break;
-        }
+        if (controller.signal.aborted) break;
         if (callbacks.onStop && callbacks.onStop()) {
           await reader.cancel();
           break;
@@ -236,13 +250,9 @@ class APIService {
 
         const { done, value } = await reader.read();
         if (done) {
-          if (buffer.trim()) {
-            streamEnded = this.handleSSELine(buffer, callbacks, requestKey) || streamEnded;
-          }
+          if (buffer.trim()) streamEnded = this.handleSSELine(buffer, callbacks, requestKey) || streamEnded;
           this.connectionStatus = SSEConnectionStatus.IDLE;
-          if (!streamEnded) {
-            callbacks.onComplete();
-          }
+          if (!streamEnded) callbacks.onComplete();
           break;
         }
 
@@ -257,14 +267,10 @@ class APIService {
             break;
           }
         }
-
-        if (streamEnded) {
-          break;
-        }
+        if (streamEnded) break;
       }
 
       this.pendingRequests.delete(requestKey);
-
     } catch (error: unknown) {
       clearTimeout(timeoutId);
       this.pendingRequests.delete(requestKey);
@@ -278,9 +284,7 @@ class APIService {
       if (attempt < this.maxReconnectAttempts) {
         this.connectionStatus = SSEConnectionStatus.RECONNECTING;
         callbacks.onConnectionChange?.(this.connectionStatus);
-
-        const delay = this.getReconnectDelay(attempt);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, this.getReconnectDelay(attempt)));
         return this.executeStreamRequest(request, callbacks, controller, requestKey, attempt + 1);
       }
 
@@ -291,14 +295,10 @@ class APIService {
 
   private handleSSELine(line: string, callbacks: StreamCallbacks, requestKey: string): boolean {
     const trimmed = line.replace(/\r$/, '').trim();
-    if (!trimmed.startsWith('data:')) {
-      return false;
-    }
+    if (!trimmed.startsWith('data:')) return false;
 
     const dataStr = trimmed.slice(5).trim();
-    if (!dataStr) {
-      return false;
-    }
+    if (!dataStr) return false;
 
     if (dataStr === '[DONE]') {
       this.connectionStatus = SSEConnectionStatus.IDLE;
@@ -308,60 +308,107 @@ class APIService {
     }
 
     try {
-      const data = JSON.parse(dataStr);
-      const dataType = data.type;
+      const data = JSON.parse(dataStr) as Record<string, unknown>;
+      const dataType = String(data.type || '');
 
-      if (dataType === 'heartbeat') {
+      if (dataType === 'heartbeat') return false;
+      if (dataType === 'session_id' && typeof data.session_id === 'string') {
+        callbacks.onSessionId?.(data.session_id);
         return false;
-      } else if (dataType === 'metadata' || dataType === 'reasoning_metadata') {
+      }
+      if (dataType === 'stage') {
+        callbacks.onStage?.({
+          stage: typeof data.stage === 'string' ? data.stage : undefined,
+          label: typeof data.label === 'string' ? data.label : undefined,
+          progress: data.progress === undefined ? null : Number(data.progress),
+        });
+        return false;
+      }
+      if (dataType === 'plan_preview') {
+        callbacks.onPlanPreview?.({
+          planId: typeof data.plan_id === 'string' ? data.plan_id : null,
+          intent: typeof data.intent === 'string' ? data.intent : null,
+          explanation: typeof data.explanation === 'string' ? data.explanation : null,
+          validationStatus: typeof data.validation_status === 'string' ? data.validation_status : null,
+          validationErrors: Array.isArray(data.validation_errors) ? (data.validation_errors as string[]) : [],
+          steps: Array.isArray(data.steps) ? (data.steps as Array<Record<string, unknown>>) : [],
+        });
+        return false;
+      }
+      if (dataType === 'metadata' || dataType === 'reasoning_metadata') {
         callbacks.onMetadata({
-          totalSteps: data.total_steps || 0,
-          toolsUsed: data.tools_used || [],
-          hasReasoning: data.has_reasoning || false,
-          reasoningLength: data.reasoning_length || 0,
-          answerLength: data.answer_length || 0,
+          totalSteps: Number(data.total_steps || 0),
+          toolsUsed: Array.isArray(data.tools_used) ? (data.tools_used as string[]) : [],
+          hasReasoning: Boolean(data.has_reasoning),
+          reasoningLength: Number(data.reasoning_length || 0),
+          answerLength: Number(data.answer_length || 0),
           verificationPassed: data.verification_passed === undefined ? null : Boolean(data.verification_passed),
           staleResultCount: Number(data.stale_result_count || 0),
           fallbackSteps: Number(data.fallback_steps || 0),
+          planId: typeof data.plan_id === 'string' ? data.plan_id : null,
+          executionStats:
+            data.execution_stats && typeof data.execution_stats === 'object'
+              ? (data.execution_stats as Record<string, unknown>)
+              : undefined,
+          runId: typeof data.run_id === 'string' ? data.run_id : '',
         });
-        if (dataType === 'reasoning_metadata' && data.has_reasoning) {
-          callbacks.onReasoningStart();
-        }
-      } else if (dataType === 'reasoning_start') {
+        if (dataType === 'reasoning_metadata' && Boolean(data.has_reasoning)) callbacks.onReasoningStart();
+        return false;
+      }
+      if (dataType === 'reasoning_start') {
         callbacks.onReasoningStart();
-      } else if (dataType === 'reasoning_timestamp' && data.timestamp) {
+        return false;
+      }
+      if (dataType === 'reasoning_timestamp' && typeof data.timestamp === 'string') {
         callbacks.onReasoningTimestamp(data.timestamp);
-      } else if (dataType === 'reasoning_chunk' && data.content) {
+        return false;
+      }
+      if (dataType === 'reasoning_chunk' && typeof data.content === 'string') {
         callbacks.onReasoning(data.content);
-      } else if (dataType === 'reasoning_end') {
+        return false;
+      }
+      if (dataType === 'reasoning_end') {
         callbacks.onReasoningEnd();
-      } else if (dataType === 'answer_start') {
+        return false;
+      }
+      if (dataType === 'answer_start') {
         callbacks.onAnswerStart();
-      } else if (dataType === 'tool_start' && data.tool) {
+        return false;
+      }
+      if (dataType === 'tool_start' && typeof data.tool === 'string') {
         callbacks.onToolStart?.(data.tool);
-      } else if (dataType === 'tool_end' && data.tool) {
-        callbacks.onToolEnd?.(data.tool, data.result || '');
-      } else if (dataType === 'chunk' && data.content) {
+        return false;
+      }
+      if (dataType === 'tool_end' && typeof data.tool === 'string') {
+        callbacks.onToolEnd?.(data.tool, typeof data.result === 'string' ? data.result : '');
+        return false;
+      }
+      if (dataType === 'chunk' && typeof data.content === 'string') {
         callbacks.onChunk(data.content);
-      } else if (dataType === 'error' && data.content) {
+        return false;
+      }
+      if (dataType === 'error' && typeof data.content === 'string') {
         this.connectionStatus = SSEConnectionStatus.ERROR;
         callbacks.onError(data.content);
         this.pendingRequests.delete(requestKey);
-      } else if (dataType === 'done') {
+        return false;
+      }
+      if (dataType === 'done') {
         this.connectionStatus = SSEConnectionStatus.IDLE;
         callbacks.onComplete();
         this.pendingRequests.delete(requestKey);
         return true;
-      } else if (data.chunk) {
-        callbacks.onChunk(data.chunk);
-      } else if (data.error) {
+      }
+      if (typeof data.chunk === 'string') callbacks.onChunk(data.chunk);
+      if (typeof data.error === 'string') {
         this.connectionStatus = SSEConnectionStatus.ERROR;
         callbacks.onError(data.error);
         this.pendingRequests.delete(requestKey);
       }
     } catch {
-      // Ignore malformed SSE chunks and continue.
+      // Ignore malformed SSE chunks.
     }
+
     return false;
   }
 }

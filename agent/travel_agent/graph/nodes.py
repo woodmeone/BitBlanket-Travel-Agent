@@ -1,4 +1,4 @@
-"""Core graph nodes implementing intent, planning, tooling, and answer stages."""
+﻿"""Core graph nodes implementing intent, planning, tooling, and answer stages."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import re
 import time
 import uuid
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Literal, Optional
 
 from pydantic import BaseModel, ValidationError
@@ -176,7 +176,7 @@ class ToolOrchestrator:
 
         budget_stop_reason = None
         if not selected and any(item.get("_skip_code") == "ROUND_TOOL_BUDGET_EXCEEDED" for item in skipped):
-            budget_stop_reason = f"每轮工具预算已达上限({max_tools})，执行降级"
+            budget_stop_reason = f"本轮工具预算已达上限({max_tools})，将执行降级策略。"
         return ToolOrchestratorDecision(selected=selected, skipped=skipped, budget_stop_reason=budget_stop_reason)
 
 class StrategyResult(BaseModel):
@@ -310,6 +310,9 @@ class AgentNodes:
         }
 
     def _build_intent_structured_llm(self) -> Optional[Runnable]:
+        if self._should_disable_structured_intent():
+            logger.info("[Intent Node] Structured output disabled for current routing model")
+            return None
         for method in self.runtime_config.intent_structured_methods:
             try:
                 llm_with_intent = self.routing_llm.with_structured_output(IntentResult, method=method)
@@ -321,10 +324,45 @@ class AgentNodes:
         logger.warning("Structured output unavailable; fallback to JSON parser")
         return None
 
+    def _should_disable_structured_intent(self) -> bool:
+        model_markers: list[str] = []
+        for attr in ("model", "model_name", "name"):
+            value = getattr(self.routing_llm, attr, None)
+            if value:
+                model_markers.append(str(value).lower())
+
+        model_dump = " ".join(model_markers)
+        if "minimax" in model_dump:
+            return True
+        return False
+
     @staticmethod
     def _validate_stage_output(model: type[BaseModel], payload: dict[str, Any]) -> dict[str, Any]:
         validated = model.model_validate(payload)
         return validated.model_dump()
+
+    @staticmethod
+    def _coerce_llm_content_to_text(content: Any) -> str:
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts: list[str] = []
+            for item in content:
+                if isinstance(item, str):
+                    parts.append(item)
+                    continue
+                if isinstance(item, dict):
+                    text = item.get("text")
+                    if isinstance(text, str) and text.strip():
+                        parts.append(text)
+                        continue
+                    nested = item.get("content")
+                    if isinstance(nested, str) and nested.strip():
+                        parts.append(nested)
+            merged = "".join(parts).strip()
+            if merged:
+                return merged
+        return str(content or "").strip()
 
     def intent_node(self, state: AgentState) -> AgentState:
         logger.info("[Intent Node] Analyzing user intent...")
@@ -332,39 +370,52 @@ class AgentNodes:
         messages = state["messages"]
         last_message = messages[-1] if messages else HumanMessage(content="")
 
-        intent_prompt = f"""请分析以下用户旅游咨询的意图。
+        intent_prompt = f"""请分析下面用户旅游咨询的意图。
 
 用户消息: {last_message.content}
 
-意图类别:
+可选意图:
 - recommend: 需要目的地推荐
 - attractions: 查询景点信息
 - itinerary: 需要行程规划
 - budget: 需要预算估算
 - tips: 需要旅行建议
-- general: 一般性旅游问题
+- general: 一般旅游问答
 - unclear: 意图不明确
 
-请返回 JSON 格式:
+请仅返回 JSON（不要输出多余文本）:
 {{
-    "intent": "意图类别",
-    "confidence": 0.0-1.0,
-    "entities": {{"key": "value"}},
-    "requires_tools": true/false
+  "intent": "recommend|attractions|itinerary|budget|tips|general|unclear",
+  "confidence": 0.0,
+  "entities": {{}},
+  "requires_tools": false
 }}"""
 
         try:
+            intent = "general"
+            intent_detail = {
+                "confidence": 0.5,
+                "entities": {},
+                "requires_tools": False,
+            }
+
+            structured_failed = False
             if self.llm_with_intent:
-                result = self.llm_with_intent.invoke([SystemMessage(content=intent_prompt)])
-                intent = result.intent
-                intent_detail = {
-                    "confidence": result.confidence,
-                    "entities": result.entities,
-                    "requires_tools": result.requires_tools,
-                }
-            else:
+                try:
+                    result = self.llm_with_intent.invoke([SystemMessage(content=intent_prompt)])
+                    intent = result.intent
+                    intent_detail = {
+                        "confidence": result.confidence,
+                        "entities": result.entities,
+                        "requires_tools": result.requires_tools,
+                    }
+                except Exception as exc:
+                    structured_failed = True
+                    logger.warning("[Intent Node] Structured parse failed, fallback to prompt JSON: %s", exc)
+
+            if structured_failed or not self.llm_with_intent:
                 response = self.routing_llm.invoke([SystemMessage(content=intent_prompt)])
-                parsed = self.intent_parser.invoke(response)
+                parsed = self._parse_intent_response_fallback(response, str(last_message.content or ""))
                 intent = parsed.get("intent", "general")
                 intent_detail = {
                     "confidence": parsed.get("confidence", 0.5),
@@ -390,6 +441,67 @@ class AgentNodes:
                     },
                 },
             )
+
+    def _parse_intent_response_fallback(self, response: Any, user_text: str) -> dict[str, Any]:
+        try:
+            return self.intent_parser.invoke(response)
+        except Exception as parser_exc:
+            logger.warning("[Intent Node] JSON parser fallback failed: %s", parser_exc)
+            raw_text = self._coerce_llm_content_to_text(getattr(response, "content", response))
+            extracted = self._extract_first_json_object(raw_text)
+            if extracted:
+                try:
+                    parsed = json.loads(extracted)
+                    if isinstance(parsed, dict):
+                        return parsed
+                except Exception:
+                    pass
+
+        return self._infer_intent_by_keywords(user_text)
+
+    @staticmethod
+    def _extract_first_json_object(text: str) -> str:
+        if not text:
+            return ""
+        start = text.find("{")
+        end = text.rfind("}")
+        if start < 0 or end < 0 or end <= start:
+            return ""
+        return text[start : end + 1]
+
+    @staticmethod
+    def _infer_intent_by_keywords(user_text: str) -> dict[str, Any]:
+        text = (user_text or "").lower()
+        intent = "general"
+        requires_tools = False
+        confidence = 0.55
+
+        if any(key in text for key in ["预算", "费用", "花费", "价格", "票价"]):
+            intent = "budget"
+            requires_tools = True
+            confidence = 0.8
+        elif any(key in text for key in ["行程", "路线", "几天", "安排", "攻略"]):
+            intent = "itinerary"
+            requires_tools = True
+            confidence = 0.8
+        elif any(key in text for key in ["景点", "打卡", "必去", "门票"]):
+            intent = "attractions"
+            requires_tools = True
+            confidence = 0.75
+        elif any(key in text for key in ["推荐", "去哪", "目的地"]):
+            intent = "recommend"
+            requires_tools = True
+            confidence = 0.72
+        elif any(key in text for key in ["注意", "提醒", "建议", "避坑"]):
+            intent = "tips"
+            confidence = 0.65
+
+        return {
+            "intent": intent,
+            "confidence": confidence,
+            "entities": {},
+            "requires_tools": requires_tools,
+        }
 
     def strategy_node(self, state: AgentState) -> AgentState:
         intent = state.get("intent", "general")
@@ -702,7 +814,7 @@ class AgentNodes:
             return _with_refresh({
                 "execution_round": execution_round,
                 "execution_budget": execution_budget,
-                "early_stop_reason": f"执行回合达到上限({self.runtime_config.max_execution_rounds})，提前结束",
+                "early_stop_reason": f"执行回合达到上限({self.runtime_config.max_execution_rounds})，提前结束。",
                 "execution_summary": self._build_execution_summary(stats_steps),
             })
 
@@ -860,9 +972,9 @@ class AgentNodes:
         updated_execution_state = {"completed": sorted(completed), "failed": sorted(failed), "blocked": sorted(blocked)}
         if self.runtime_config.cost_controls_enabled:
             if int(execution_budget.get("elapsed_ms", 0) or 0) >= int(execution_budget.get("max_elapsed_ms", 0) or 0):
-                early_stop_reason = early_stop_reason or f"每轮总耗时预算已达上限({execution_budget.get('max_elapsed_ms')}ms)"
+                early_stop_reason = early_stop_reason or f"姣忚疆鎬昏€楁椂棰勭畻宸茶揪涓婇檺({execution_budget.get('max_elapsed_ms')}ms)"
             if int(execution_budget.get("tokens_used", 0) or 0) >= int(execution_budget.get("max_tokens", 0) or 0):
-                early_stop_reason = early_stop_reason or f"每轮 token 预算已达上限({execution_budget.get('max_tokens')})"
+                early_stop_reason = early_stop_reason or f"姣忚疆 token 棰勭畻宸茶揪涓婇檺({execution_budget.get('max_tokens')})"
         if not early_stop_reason:
             early_stop_reason = self._compute_early_stop_reason(
                 state=state,
@@ -904,7 +1016,7 @@ class AgentNodes:
             issues.append(
                 VerifyIssue(
                     issue_type="missing_evidence",
-                    message="高风险问题缺少工具成功结果，无法验证结论",
+                    message="楂橀闄╅棶棰樼己灏戝伐鍏锋垚鍔熺粨鏋滐紝鏃犳硶楠岃瘉缁撹",
                     severity="high",
                 )
             )
@@ -944,7 +1056,7 @@ class AgentNodes:
             issues.append(
                 VerifyIssue(
                     issue_type="stale_data",
-                    message=f"存在 {stale_count} 条过期结果，建议刷新后回答",
+                    message=f"存在 {stale_count} 条过期结果，建议刷新后再回答。",
                     severity="medium",
                 )
             )
@@ -952,7 +1064,7 @@ class AgentNodes:
                 issues.append(
                     VerifyIssue(
                         issue_type="stale_refresh_failed",
-                        message="已尝试刷新过期数据但仍无法得到稳定实时结果，建议按降级策略回答并标注不确定性",
+                        message="已尝试刷新过期数据，但仍无法得到稳定实时结果，建议按降级策略回答并标注不确定性。",
                         severity="high",
                     )
                 )
@@ -960,7 +1072,7 @@ class AgentNodes:
                 issues.append(
                     VerifyIssue(
                         issue_type="stale_unrefreshable",
-                        message="存在过期结果但缺少可刷新的天气/酒店工具步骤，建议按降级策略回答",
+                        message="存在过期结果，但缺少可刷新的天气/酒店工具步骤，建议按降级策略回答。",
                         severity="medium",
                     )
                 )
@@ -975,7 +1087,12 @@ class AgentNodes:
             if not raw:
                 continue
             try:
-                fetched_dates.append(datetime.fromisoformat(str(raw).replace("Z", "+00:00")))
+                dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                else:
+                    dt = dt.astimezone(timezone.utc)
+                fetched_dates.append(dt)
             except Exception:
                 continue
         if len(fetched_dates) >= 2:
@@ -984,7 +1101,7 @@ class AgentNodes:
                 issues.append(
                     VerifyIssue(
                         issue_type="date_inconsistency",
-                        message="工具结果时间跨度过大，可能存在时效不一致",
+                        message="工具结果时间跨度过大，可能存在时效不一致。",
                         severity="medium",
                     )
                 )
@@ -993,7 +1110,7 @@ class AgentNodes:
             issues.append(
                 VerifyIssue(
                     issue_type="verification_policy_violation",
-                    message="高风险问题未开启验证策略",
+                    message="高风险问题未开启验证策略。",
                     severity="high",
                 )
             )
@@ -1093,28 +1210,28 @@ class AgentNodes:
 
         context = ""
         if plan_id:
-            context += f"\n\n## 执行计划ID:\n{plan_id}\n"
+            context += f"\n\n## 执行计划 ID:\n{plan_id}\n"
         if execution_stats.get("steps"):
-            context += "\n## 步骤执行统计:\n"
+            context += "\n## 姝ラ鎵ц缁熻:\n"
             for item in execution_stats.get("steps", []):
                 context += (
                     f"- {item.get('step_id')} {item.get('tool')} {item.get('status')}"
                     f" ({item.get('duration_ms', 0)}ms)\n"
                 )
         if execution_summary.get("total_steps", 0) > 0:
-            context += "\n## 执行汇总:\n"
+            context += "\n## 鎵ц姹囨€?\n"
             context += (
-                f"- 总步骤: {execution_summary.get('total_steps', 0)}\n"
+                f"- 鎬绘楠? {execution_summary.get('total_steps', 0)}\n"
                 f"- 成功: {execution_summary.get('success_steps', 0)}\n"
-                f"- 失败: {execution_summary.get('failed_steps', 0)}\n"
-                f"- 阻塞: {execution_summary.get('blocked_steps', 0)}\n"
-                f"- 超时: {execution_summary.get('timeout_steps', 0)}\n"
-                f"- 备源切换: {execution_summary.get('fallback_steps', 0)}\n"
+                f"- 澶辫触: {execution_summary.get('failed_steps', 0)}\n"
+                f"- 闃诲: {execution_summary.get('blocked_steps', 0)}\n"
+                f"- 瓒呮椂: {execution_summary.get('timeout_steps', 0)}\n"
+                f"- 澶囨簮鍒囨崲: {execution_summary.get('fallback_steps', 0)}\n"
                 f"- 成功率: {execution_summary.get('success_rate', 0.0):.2f}\n"
-                f"- 延迟P95: {(execution_summary.get('latency_percentiles_ms') or {}).get('p95', 0)}ms\n"
+                f"- 寤惰繜P95: {(execution_summary.get('latency_percentiles_ms') or {}).get('p95', 0)}ms\n"
             )
         if execution_budget:
-            context += "\n## 调度预算:\n"
+            context += "\n## 璋冨害棰勭畻:\n"
             context += (
                 f"- tools_used/max_tools: {execution_budget.get('tools_used', 0)}/{execution_budget.get('max_tools', 0)}\n"
                 f"- elapsed_ms/max_elapsed_ms: {execution_budget.get('elapsed_ms', 0)}/{execution_budget.get('max_elapsed_ms', 0)}\n"
@@ -1125,7 +1242,7 @@ class AgentNodes:
         if tool_results:
             fused = self._fuse_tool_results(tool_results, intent=intent)
             fused_tool_results = fused
-            context += "\n\n## 融合后工具证据:\n"
+            context += "\n\n## 融合后的工具证据\n"
             context += json.dumps(fused, ensure_ascii=False, indent=2)
 
         prompt = build_answer_prompt(
@@ -1148,18 +1265,18 @@ class AgentNodes:
         }
         stale_degraded = bool(verify_issue_types & {"stale_data", "stale_refresh_failed", "stale_unrefreshable"})
 
-        answer = response.content
+        answer = self._coerce_llm_content_to_text(response.content)
         if verify_required and not verify_passed:
             prefix = (
-                "当前结论未通过工具验证，以下为暂定建议而非确定结论。"
-                "请先补充或刷新关键数据后再做最终决策。"
+                "当前结论尚未通过工具验证，以下内容仅为暂定建议而非最终结论。"
+                "请先补充或刷新关键信息后再做最终决策。"
             )
             if stale_degraded:
                 prefix += "天气/酒店实时数据刷新未完全成功，内容可能存在时效偏差。"
             answer = f"{prefix}\n\n{answer}"
         elif stale_degraded and not verify_passed:
             answer = (
-                "以下建议基于可能过期的数据，系统已尝试刷新但未获得稳定实时结果，请谨慎参考。\n\n"
+                "以下建议可能基于过期数据，系统已尝试刷新但尚未获得稳定实时结果，请谨慎参考。\n\n"
                 + str(answer)
             )
 
@@ -1199,12 +1316,12 @@ class AgentNodes:
                 {
                     "messages": messages,
                     "answer": answer,
-                    "reasoning": "策略要求强制验证，拒绝直接确定性回答",
+                    "reasoning": "策略要求强制验证，拒绝直接给出确定性回答。",
                     "fused_tool_results": None,
                 },
             )
         if self._is_high_risk_query(str(last_message.content), str(intent)):
-            answer = "该问题涉及价格或政策等高风险信息。请切换到工具验证模式后我再给出结论。"
+            answer = "该问题涉及价格或政策等高风险信息，请切换到工具验证模式后我再给出结论。"
             messages = list(messages)
             messages.append(AIMessage(content=answer))
             return self._validate_stage_output(
@@ -1212,7 +1329,7 @@ class AgentNodes:
                 {
                     "messages": messages,
                     "answer": answer,
-                    "reasoning": "高风险问题触发强制工具验证",
+                    "reasoning": "高风险问题触发强制工具验证。",
                     "fused_tool_results": None,
                 },
             )
@@ -1223,7 +1340,7 @@ class AgentNodes:
             HumanMessage(content=prompt),
         ])
 
-        answer = response.content
+        answer = self._coerce_llm_content_to_text(response.content)
         messages = list(messages)
         messages.append(AIMessage(content=answer))
 
@@ -1261,7 +1378,7 @@ class AgentNodes:
                         "city": entities.get("city", ""),
                         "category": entities.get("category"),
                     },
-                    "description": "查询目标城市核心景点",
+                    "description": "鏌ヨ鐩爣鍩庡競鏍稿績鏅偣",
                     "depends_on": [],
                 }
             ]
@@ -1280,7 +1397,7 @@ class AgentNodes:
                     "step_id": "s2",
                     "tool": "get_weather",
                     "params": {"city": entities.get("city", ""), "days": entities.get("days", 3)},
-                    "description": "查询天气窗口",
+                    "description": "鏌ヨ澶╂皵绐楀彛",
                     "depends_on": [],
                 },
                 {
@@ -1292,7 +1409,7 @@ class AgentNodes:
                         "days": entities.get("days", 3),
                         "interests": entities.get("interests"),
                     },
-                    "description": "生成按天行程建议",
+                    "description": "鐢熸垚鎸夊ぉ琛岀▼寤鸿",
                     "depends_on": ["s1", "s2"],
                 },
             ]
@@ -1379,14 +1496,14 @@ class AgentNodes:
 
     @staticmethod
     def _default_step_for_tool(step_num: int, tool_name: str, entities: dict[str, Any], required: bool) -> Optional[dict[str, Any]]:
-        city = entities.get("city") or entities.get("destination") or "北京"
+        city = entities.get("city") or entities.get("destination") or "鍖椾含"
         days = entities.get("days", 3)
         mapping: dict[str, dict[str, Any]] = {
             "search_cities": {"params": {"query": entities.get("query") or city}, "description": "补全候选目的地"},
-            "query_attractions": {"params": {"city": city, "category": entities.get("category")}, "description": "补全景点信息"},
-            "query_hotels": {"params": {"city": city}, "description": "补全住宿信息"},
-            "get_weather": {"params": {"city": city, "days": days}, "description": "补全天气信息"},
-            "plan_itinerary": {"params": {"destination": city, "days": days, "interests": entities.get("interests")}, "description": "补全行程规划"},
+            "query_attractions": {"params": {"city": city, "category": entities.get("category")}, "description": "琛ュ叏鏅偣淇℃伅"},
+            "query_hotels": {"params": {"city": city}, "description": "琛ュ叏浣忓淇℃伅"},
+            "get_weather": {"params": {"city": city, "days": days}, "description": "琛ュ叏澶╂皵淇℃伅"},
+            "plan_itinerary": {"params": {"destination": city, "days": days, "interests": entities.get("interests")}, "description": "琛ュ叏琛岀▼瑙勫垝"},
             "calculate_budget": {
                 "params": {
                     "destination": city,
@@ -1394,9 +1511,9 @@ class AgentNodes:
                     "people": entities.get("people", 1),
                     "accommodation_level": entities.get("level", "medium"),
                 },
-                "description": "补全预算测算",
+                "description": "琛ュ叏棰勭畻娴嬬畻",
             },
-            "get_travel_tips": {"params": {"destination": city, "season": entities.get("season")}, "description": "补全出行建议"},
+            "get_travel_tips": {"params": {"destination": city, "season": entities.get("season")}, "description": "琛ュ叏鍑鸿寤鸿"},
         }
         item = mapping.get(tool_name)
         if not item:
@@ -1603,7 +1720,7 @@ class AgentNodes:
                 continue
             if item.get("success") and item.get("tool_name") == terminal_tool:
                 rate = float(execution_summary.get("success_rate", 0.0))
-                return f"核心步骤已完成（{terminal_tool}），提前结束剩余低价值步骤，当前成功率={rate:.2f}"
+                return f"核心步骤已完成（{terminal_tool}），提前结束剩余低价值步骤，当前成功率 {rate:.2f}"
 
         return None
 
@@ -1672,11 +1789,11 @@ class AgentNodes:
     def _infer_secondary_intent(primary_intent: str, user_text: str, intent_detail: dict[str, Any]) -> Optional[str]:
         text = str(user_text or "")
         entities = intent_detail.get("entities", {}) if isinstance(intent_detail, dict) else {}
-        if primary_intent != "budget" and any(token in text for token in ("预算", "花费", "费用", "价格")):
+        if primary_intent != "budget" and any(token in text for token in ("棰勭畻", "鑺辫垂", "璐圭敤", "浠锋牸")):
             return "budget"
-        if primary_intent != "itinerary" and any(token in text for token in ("行程", "路线", "安排", "几天")):
+        if primary_intent != "itinerary" and any(token in text for token in ("琛岀▼", "璺嚎", "瀹夋帓", "鍑犲ぉ")):
             return "itinerary"
-        if primary_intent != "hotel" and any(token in text for token in ("酒店", "住宿", "民宿")):
+        if primary_intent != "hotel" and any(token in text for token in ("閰掑簵", "浣忓", "姘戝")):
             return "hotel"
         if primary_intent != "attractions" and any(token in text for token in ("景点", "打卡", "门票")):
             return "attractions"
@@ -1725,7 +1842,12 @@ class AgentNodes:
             freshness = 0.2
         elif isinstance(ttl_seconds, int) and isinstance(fetched_at, str):
             try:
-                age = (datetime.now() - datetime.fromisoformat(fetched_at.replace("Z", "+00:00"))).total_seconds()
+                fetched_dt = datetime.fromisoformat(fetched_at.replace("Z", "+00:00"))
+                if fetched_dt.tzinfo is None:
+                    fetched_dt = fetched_dt.replace(tzinfo=timezone.utc)
+                else:
+                    fetched_dt = fetched_dt.astimezone(timezone.utc)
+                age = (datetime.now(timezone.utc) - fetched_dt).total_seconds()
                 freshness = max(0.1, min(1.0, 1.0 - max(0.0, age) / max(1, ttl_seconds)))
             except Exception:
                 freshness = 0.8
@@ -1894,7 +2016,7 @@ class AgentNodes:
                 entities.get("city"),
                 entities.get("destination"),
                 inferred_city,
-                default="北京",
+                default="鍖椾含",
             )
             if tool_name == "get_weather":
                 corrected["days"] = self._normalize_int(
@@ -1909,7 +2031,7 @@ class AgentNodes:
                 entities.get("destination"),
                 entities.get("city"),
                 inferred_city,
-                default="北京",
+                default="鍖椾含",
             )
             if tool_name == "plan_itinerary":
                 corrected["days"] = self._normalize_int(
@@ -2071,7 +2193,7 @@ class AgentNodes:
         for city in CITY_HINTS:
             if city and city in user_text:
                 return city
-        match = re.search(r"([一-龥]{2,6})(?:市|旅游|旅行|景点|天气)", user_text)
+        match = re.search(r"([涓€-榫{2,6})(?:甯倈鏃呮父|鏃呰|鏅偣|澶╂皵)", user_text)
         if match:
             return match.group(1)
         return ""
@@ -2371,13 +2493,13 @@ class AgentNodes:
     @staticmethod
     def _build_fallback_suggestion(tool_name: str, error_code: Optional[str]) -> str:
         if error_code == "TOOL_TIMEOUT":
-            return f"{tool_name} 超时，建议使用缓存信息或给出无实时依赖的备选方案"
+            return f"{tool_name} 超时，建议使用缓存信息或提供不依赖实时数据的备选方案"
         if error_code == "CIRCUIT_OPEN":
-            return f"{tool_name} 当前不可用，建议切换备选数据源"
+            return f"{tool_name} 当前不可用，建议切换备用数据源"
         if error_code in {"TOOL_NOT_FOUND", "TOOL_NOT_REGISTERED"}:
-            return "工具配置缺失，建议走无需工具的保守回答并提示用户补充信息"
+            return "工具配置缺失，建议使用无需工具的保守回答并提示用户补充信息"
         if error_code == "PARAM_VALIDATION_ERROR":
-            return "请求参数不完整，建议向用户补充澄清问题后重试"
+            return "请求参数不完整，建议向用户澄清并补充信息后重试"
         if error_code == "UNSAFE_TOOL_INPUT":
             return "输入触发安全策略，建议清理高风险指令后再执行"
         return f"{tool_name} 执行失败，建议降级为规则模板回答并标注不确定性"
@@ -2385,3 +2507,4 @@ class AgentNodes:
 
 def create_nodes(llm: Runnable, tools: list[Tool]) -> AgentNodes:
     return AgentNodes(llm, tools)
+

@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 from ..config.runtime import get_model_config_manager
 from ..repositories.session_repository import SessionRepository
-from agent.src.graph.memory_integration import AgentMemoryManager, get_agent_memory_manager
+from agent.travel_agent.graph.memory_integration import AgentMemoryManager, get_agent_memory_manager
 
 
 class SessionService:

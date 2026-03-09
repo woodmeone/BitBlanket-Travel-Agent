@@ -30,19 +30,19 @@ copy config\\llm_config.yaml.example config\\llm_config.yaml
 
 `config/server_config.yaml` 已在仓库中提供默认端口配置。
 
-## 4. 启动
+## 4. 手动启动
 
-### 方式 A（推荐，Windows）
+### 终端 1：启动 API
 
 ```bash
-start_all.bat
+.\.venv\Scripts\python.exe -m uvicorn shuai_web.main:app --host 0.0.0.0 --port 38000 --app-dir web
 ```
 
-### 方式 B（分开启动）
+### 终端 2：启动前端
 
 ```bash
-start_api.bat
-start_frontend.bat
+cd frontend
+npm run dev
 ```
 
 ## 5. 访问地址

@@ -20,16 +20,16 @@ from ..config.runtime import get_llm_config_path
 
 ensure_project_paths()
 
-from agent.src.llm.langchain_adapter import create_from_yaml_config
-from agent.src.tools.travel_tools import get_travel_tools
-from agent.src.graph import TRAVEL_AGENT_SYSTEM_PROMPT
-from agent.src.graph.builder import (
+from agent.travel_agent.llm.langchain_adapter import create_from_yaml_config
+from agent.travel_agent.tools.travel_tools import get_travel_tools
+from agent.travel_agent.graph import TRAVEL_AGENT_SYSTEM_PROMPT
+from agent.travel_agent.graph.builder import (
     TOOL_RESULT_PREVIEW_LIMIT,
     generate_plan_preview_with_memory,
     get_tool_health_diagnostics,
     run_travel_agent_streaming_with_memory,
 )
-from agent.src.graph.memory_integration import get_agent_memory_manager
+from agent.travel_agent.graph.memory_integration import get_agent_memory_manager
 
 logger = logging.getLogger(__name__)
 

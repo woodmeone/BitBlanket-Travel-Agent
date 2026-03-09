@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Optional
 
 INTENT_GUIDANCE: dict[str, str] = {
-    "recommend": "先给出候选目的地对比（适合人群、季节、预算区间），再给出推荐结论。",
-    "attractions": "先给出景点清单、开放时间与建议游玩时长，再给动线建议。",
+    "recommend": "先给候选目的地对比（适合人群、季节、预算区间），再给推荐结论。",
+    "attractions": "先给景点清单、开放时间与建议游玩时长，再给动线建议。",
     "itinerary": "先给按天行程（上午/下午/晚上），再给交通与备选方案。",
     "budget": "先给分项预算（交通/住宿/门票/餐饮），再给总预算区间与可降本项。",
     "tips": "先给风险提醒和准备清单，再给可执行注意事项。",
@@ -75,5 +75,5 @@ def build_direct_prompt(user_question: str, intent: Optional[str]) -> str:
         f"用户问题: {user_question}\n\n"
         f"任务类型: {intent or 'general'}\n"
         f"回答要求: {guidance}\n"
-        "若关键条件不足，请在结尾给出最多 2 个澄清问题。"
+        "若关键信息不足，请在结尾给出最多 2 个澄清问题。"
     )

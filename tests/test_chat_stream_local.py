@@ -14,9 +14,9 @@ WEB_DIR = PROJECT_ROOT / "web"
 if str(WEB_DIR) not in sys.path:
     sys.path.insert(0, str(WEB_DIR))
 
-from src.dependencies.container import get_container
-from src.main import create_app
-from src.services.chat_service import ChatService
+from shuai_web.dependencies.container import get_container
+from shuai_web.main import create_app
+from shuai_web.services.chat_service import ChatService
 
 
 @pytest.mark.asyncio
@@ -44,7 +44,7 @@ async def test_chat_stream_sse_smoke(monkeypatch):
         async with client.stream(
             "POST",
             "/api/chat/stream",
-            json={"message": "推荐旅行地", "mode": "react"},
+            json={"message": "recommend a travel destination", "mode": "react"},
         ) as response:
             assert response.status_code == 200
 
@@ -122,8 +122,8 @@ async def test_chat_stream_plan_mode_emits_plan_preview(monkeypatch):
                 }
             ],
             "plan": [
-                {"step": 1, "tool": "query_attractions", "params": {"city": "北京"}},
-                {"step": 2, "tool": "plan_itinerary", "params": {"destination": "北京", "days": 3}},
+                {"step": 1, "tool": "query_attractions", "params": {"city": "Shanghai"}},
+                {"step": 2, "tool": "plan_itinerary", "params": {"destination": "Shanghai", "days": 3}},
             ],
         }
 
@@ -136,7 +136,7 @@ async def test_chat_stream_plan_mode_emits_plan_preview(monkeypatch):
         async with client.stream(
             "POST",
             "/api/chat/stream",
-            json={"message": "做一个北京行程", "mode": "plan"},
+            json={"message": "plan a 3-day trip in Shanghai", "mode": "plan"},
         ) as response:
             assert response.status_code == 200
 

@@ -48,11 +48,30 @@
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 
 from .session_repository import SessionRepository
 from ..storage.session_storage import SessionStorage
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _parse_iso_to_timestamp(value: Any) -> float:
+    if not value:
+        return 0.0
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return 0.0
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.timestamp()
 
 
 class SessionRepositoryImpl(SessionRepository):
@@ -92,7 +111,7 @@ class SessionRepositoryImpl(SessionRepository):
         """
         # 生成会话ID（优先使用传入的ID）
         session_id = session_data.get('session_id', str(uuid.uuid4()))
-        now = datetime.now().isoformat()
+        now = _utc_now_iso()
 
         # 构建完整的会话数据
         session = {
@@ -136,7 +155,7 @@ class SessionRepositoryImpl(SessionRepository):
         if existing:
             merged = existing.copy()
             merged.update(session_data)
-            merged['last_active'] = datetime.now().isoformat()
+            merged['last_active'] = _utc_now_iso()
             merged['session_id'] = session_id
             merged['created_at'] = existing.get('created_at')
             await self._storage.save(session_id, merged)
@@ -177,13 +196,11 @@ class SessionRepositoryImpl(SessionRepository):
         sessions = await self._storage.list_all()
 
         # 计算1小时前的时间戳
-        one_hour_ago = datetime.now().timestamp() - 3600
+        one_hour_ago = datetime.now(timezone.utc).timestamp() - 3600
 
         result = []
         for session_data in sessions.values():
-            last_active = datetime.fromisoformat(
-                session_data['last_active']
-            ).timestamp()
+            last_active = _parse_iso_to_timestamp(session_data.get('last_active'))
 
             # 过滤逻辑
             if include_empty:
@@ -192,7 +209,7 @@ class SessionRepositoryImpl(SessionRepository):
                 result.append(session_data)
 
         # 按最后活跃时间降序排列
-        result.sort(key=lambda x: x['last_active'], reverse=True)
+        result.sort(key=lambda x: _parse_iso_to_timestamp(x.get('last_active')), reverse=True)
 
         # 应用数量限制
         return result[:limit]

@@ -1,6 +1,6 @@
 """Route package exports.
 
-Business routers are mounted under `/api` in `src.main`.
+Business routers are mounted under `/api` in `shuai_web.main`.
 Documentation routers are mounted without API prefix.
 """
 

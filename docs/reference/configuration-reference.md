@@ -28,7 +28,7 @@ frontend:
 
 ## 运行时环境变量
 
-- `SHUAI_WEB_PORT`: `run_api.py` 在启动 uvicorn 时注入
+- `SHUAI_WEB_PORT`: 手动运行 `uvicorn` 时可通过环境变量注入端口
 - `CORS_ORIGINS`: 逗号分隔，覆盖默认 CORS 白名单
 - `AGENT_CHECKPOINT_DB`: Agent checkpoint SQLite 文件路径（默认 `data/langgraph_checkpoints.sqlite3`）
 - `AGENT_CHECKPOINT_MAX_PER_THREAD`: 每个 thread 保留的 checkpoint 数（默认 `200`）
@@ -36,7 +36,7 @@ frontend:
 
 ## Agent 运行时配置分组（可灰度启停）
 
-以下变量由 [runtime_config.py](/D:/projects/shuai/ShuaiTravelAgent/agent/src/graph/runtime_config.py) 统一读取。
+以下变量由 [runtime_config.py](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/runtime_config.py) 统一读取。
 
 ### 可靠性（Reliability）
 
@@ -69,7 +69,7 @@ frontend:
 
 ### 健康诊断（SLO）
 
-以下变量由 [chat_service.py](/D:/projects/shuai/ShuaiTravelAgent/web/src/services/chat_service.py) 使用：
+以下变量由 [chat_service.py](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py) 使用：
 
 - `AGENT_HEALTH_WINDOW_MINUTES`：健康聚合窗口分钟数（默认 `60`）
 - `AGENT_SLO_TIMEOUT_RATE_THRESHOLD`：超时率阈值（默认 `0.1`）

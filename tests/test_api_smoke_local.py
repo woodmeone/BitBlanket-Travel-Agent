@@ -8,13 +8,13 @@ from pathlib import Path
 import httpx
 import pytest
 
-# Ensure `src.*` imports resolve exactly like runtime.
+# Ensure `shuai_web.*` imports resolve exactly like runtime.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = PROJECT_ROOT / "web"
 if str(WEB_DIR) not in sys.path:
     sys.path.insert(0, str(WEB_DIR))
 
-from src.main import create_app
+from shuai_web.main import create_app
 
 
 @pytest.mark.asyncio

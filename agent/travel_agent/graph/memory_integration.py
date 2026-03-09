@@ -15,7 +15,7 @@ import re
 import threading
 import math
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
@@ -404,7 +404,7 @@ class AgentMemoryManager:
             self._sessions.pop(session_id, None)
 
     def _cleanup_expired_locked(self) -> None:
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         ttl = timedelta(seconds=self._session_ttl_seconds)
         expired: List[str] = []
         for session_id, session in self._sessions.items():
@@ -413,7 +413,11 @@ class AgentMemoryManager:
                 continue
             last_ts = messages[-1].timestamp
             try:
-                last_dt = datetime.fromisoformat(last_ts)
+                last_dt = datetime.fromisoformat(str(last_ts).replace("Z", "+00:00"))
+                if last_dt.tzinfo is None:
+                    last_dt = last_dt.replace(tzinfo=timezone.utc)
+                else:
+                    last_dt = last_dt.astimezone(timezone.utc)
             except Exception:
                 continue
             if now - last_dt > ttl:
@@ -670,8 +674,12 @@ class AgentMemoryManager:
     @staticmethod
     def _time_decay_factor(timestamp: str) -> float:
         try:
-            ts = datetime.fromisoformat(timestamp)
-            age_hours = max(0.0, (datetime.now() - ts).total_seconds() / 3600.0)
+            ts = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            else:
+                ts = ts.astimezone(timezone.utc)
+            age_hours = max(0.0, (datetime.now(timezone.utc) - ts).total_seconds() / 3600.0)
             return math.pow(0.5, age_hours / AgentMemoryManager.DECAY_HALF_LIFE_HOURS)
         except Exception:
             return 0.5
