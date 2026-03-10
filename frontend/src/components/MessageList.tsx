@@ -200,6 +200,60 @@ function prepareMarkdownContent(content: string): string {
   );
 }
 
+interface ThinkExtractResult {
+  visibleContent: string;
+  thinkBlocks: string[];
+  hasUnclosedThink: boolean;
+}
+
+function extractThinkBlocks(content: string): ThinkExtractResult {
+  if (!content) {
+    return { visibleContent: '', thinkBlocks: [], hasUnclosedThink: false };
+  }
+
+  const normalized = content.replace(/\r\n?/g, '\n');
+  const lowered = normalized.toLowerCase();
+  const openTag = '<think>';
+  const closeTag = '</think>';
+  const visibleParts: string[] = [];
+  const thinkBlocks: string[] = [];
+  let cursor = 0;
+  let hasUnclosedThink = false;
+
+  while (cursor < normalized.length) {
+    const thinkStart = lowered.indexOf(openTag, cursor);
+    if (thinkStart === -1) {
+      visibleParts.push(normalized.slice(cursor));
+      break;
+    }
+
+    visibleParts.push(normalized.slice(cursor, thinkStart));
+    const thinkContentStart = thinkStart + openTag.length;
+    const thinkEnd = lowered.indexOf(closeTag, thinkContentStart);
+
+    if (thinkEnd === -1) {
+      const trailingThink = normalized.slice(thinkContentStart).trim();
+      if (trailingThink) thinkBlocks.push(trailingThink);
+      hasUnclosedThink = true;
+      break;
+    }
+
+    const thinkText = normalized.slice(thinkContentStart, thinkEnd).trim();
+    if (thinkText) thinkBlocks.push(thinkText);
+    cursor = thinkEnd + closeTag.length;
+  }
+
+  return {
+    visibleContent: visibleParts.join('').replace(/\n{3,}/g, '\n\n').trim(),
+    thinkBlocks,
+    hasUnclosedThink,
+  };
+}
+
+function formatThinkContent(thinkBlocks: string[]): string {
+  return thinkBlocks.join('\n\n---\n\n');
+}
+
 function getMarkdownText(children: React.ReactNode): string {
   return React.Children.toArray(children)
     .map((child) => (typeof child === 'string' ? child : ''))
@@ -550,6 +604,63 @@ const ReasoningBlock: React.FC<{
   );
 };
 
+const ThinkBlock: React.FC<{ content: string; isStreaming?: boolean }> = ({ content, isStreaming = false }) => {
+  const [expanded, setExpanded] = useState(false);
+  if (!content) return null;
+
+  return (
+    <div
+      style={{
+        marginBottom: '12px',
+        borderRadius: '12px',
+        border: '1px solid rgba(180, 83, 9, 0.2)',
+        background: 'linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)',
+        overflow: 'hidden',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        style={{
+          width: '100%',
+          border: 'none',
+          background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          cursor: 'pointer',
+          padding: '10px 12px',
+          color: '#78350f',
+          fontSize: '13px',
+          fontWeight: 600,
+        }}
+      >
+        <BulbOutlined />
+        <span style={{ flex: 1, textAlign: 'left' }}>{isStreaming ? '思考中（可展开）' : '思考过程（可展开）'}</span>
+        {expanded ? <UpOutlined /> : <DownOutlined />}
+      </button>
+
+      {expanded && (
+        <div
+          style={{
+            padding: '12px',
+            borderTop: '1px dashed rgba(180, 83, 9, 0.25)',
+            fontSize: '12px',
+            color: '#7c2d12',
+            lineHeight: 1.7,
+            maxHeight: '260px',
+            overflow: 'auto',
+          }}
+        >
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={enhancedMarkdownComponents}>
+            {prepareMarkdownContent(content)}
+          </ReactMarkdown>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const DiagnosticsPanel: React.FC<{ diagnostics?: Message['diagnostics'] }> = ({ diagnostics }) => {
   if (!diagnostics) return null;
 
@@ -598,7 +709,13 @@ const MessageItem = memo(function MessageItem({
   const isUser = msg.role === 'user';
   const isExpanded = reasoningExpanded[messageId] ?? false;
   const exportCardRef = useRef<HTMLDivElement>(null);
-  const exportTitle = useMemo(() => deriveExportTitle(msg.content), [msg.content]);
+  const thinkData = useMemo(() => extractThinkBlocks(msg.content), [msg.content]);
+  const thinkContent = useMemo(() => formatThinkContent(thinkData.thinkBlocks), [thinkData.thinkBlocks]);
+  const visibleMessageContent = thinkData.visibleContent || '';
+  const exportTitle = useMemo(
+    () => deriveExportTitle(isUser ? msg.content : visibleMessageContent || msg.content),
+    [isUser, msg.content, visibleMessageContent]
+  );
 
   return (
     <div
@@ -667,16 +784,22 @@ const MessageItem = memo(function MessageItem({
               />
             )}
 
+            {!isUser && thinkContent && <ThinkBlock content={thinkContent} isStreaming={thinkData.hasUnclosedThink} />}
+
             <div style={{ lineHeight: 1.7, fontSize: '14px' }}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={enhancedMarkdownComponents}>
-                {prepareMarkdownContent(msg.content)}
-              </ReactMarkdown>
+              {isUser || visibleMessageContent ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={enhancedMarkdownComponents}>
+                  {prepareMarkdownContent(isUser ? msg.content : visibleMessageContent)}
+                </ReactMarkdown>
+              ) : (
+                <div style={{ fontSize: '12px', color: '#64748b' }}>已折叠思考过程，正文内容为空。</div>
+              )}
             </div>
 
             {!isUser && (
               <TravelPlanToolkit
                 messageId={messageId}
-                content={msg.content}
+                content={visibleMessageContent}
                 diagnostics={msg.diagnostics}
                 onContinuePrompt={onContinuePrompt}
               />
@@ -695,7 +818,7 @@ const MessageItem = memo(function MessageItem({
               exportedAt={new Date().toLocaleString('zh-CN', { hour12: false })}
             />
           )}
-          <CopyButton content={msg.content} />
+          <CopyButton content={isUser ? msg.content : visibleMessageContent || msg.content} />
         </div>
       </div>
     </div>
@@ -715,7 +838,13 @@ const StreamingMessageItem = memo(function StreamingMessageItem({
   isThinking?: boolean;
   currentTool?: string | null;
 }) {
-  const hasContent = Boolean(content && content.length > 0);
+  const streamingThinkData = useMemo(() => extractThinkBlocks(content), [content]);
+  const streamingThinkContent = useMemo(
+    () => formatThinkContent(streamingThinkData.thinkBlocks),
+    [streamingThinkData.thinkBlocks]
+  );
+  const visibleStreamingContent = streamingThinkData.visibleContent;
+  const hasContent = Boolean(visibleStreamingContent && visibleStreamingContent.length > 0);
   const cleanReasoning = prepareMarkdownContent(reasoning || '');
   const showReasoning = Boolean(cleanReasoning);
   const statusLabel = hasContent ? '生成中' : isThinking ? '思考中' : '等待响应';
@@ -859,6 +988,10 @@ const StreamingMessageItem = memo(function StreamingMessageItem({
             </div>
           )}
 
+          {streamingThinkContent && (
+            <ThinkBlock content={streamingThinkContent} isStreaming={isWaiting || isThinking || streamingThinkData.hasUnclosedThink} />
+          )}
+
           {currentTool && (
             <div style={{ marginBottom: hasContent ? '12px' : 0, fontSize: '12px', color: '#92400e' }}>
               工具执行中: {currentTool}
@@ -868,7 +1001,7 @@ const StreamingMessageItem = memo(function StreamingMessageItem({
           {hasContent && (
             <div style={{ lineHeight: 1.7, fontSize: '14px', color: '#1f2937', wordBreak: 'break-word' }}>
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={enhancedMarkdownComponents}>
-                {prepareMarkdownContent(content)}
+                {prepareMarkdownContent(visibleStreamingContent)}
               </ReactMarkdown>
               {(isWaiting || isThinking) && (
                 <span
@@ -887,7 +1020,7 @@ const StreamingMessageItem = memo(function StreamingMessageItem({
         </Card>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-          <CopyButton content={hasContent ? content : '小帅助手正在思考中...'} />
+          <CopyButton content={hasContent ? visibleStreamingContent : '小帅助手正在思考中...'} />
         </div>
       </div>
     </div>
