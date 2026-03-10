@@ -90,30 +90,81 @@ function normalizeLooseTableBlocks(input: string): string {
   return output.join('\n');
 }
 
+function parsePipeCells(line: string): string[] {
+  return line
+    .trim()
+    .replace(/｜/g, '|')
+    .replace(/^\|+/, '')
+    .replace(/\|+$/, '')
+    .split('|')
+    .map((cell) => cell.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+}
+
+function isTableSeparatorLine(line: string): boolean {
+  return /^\|\s*:?-{3,}:?(?:\s*\|\s*:?-{3,}:?)+\s*\|$/.test(line.trim());
+}
+
+function buildTableSeparator(columnCount: number): string {
+  return `| ${Array.from({ length: Math.max(columnCount, 2) }, () => '---').join(' | ')} |`;
+}
+
 function normalizeHtmlBreaks(input: string): string {
   return input.replace(/<br\s*\/?>/gi, '\n');
 }
 
 function normalizePseudoSeparators(input: string): string {
   return input
-    .split('\n')
-    .map((line) => {
-      const raw = line.trim();
-      if (!raw) return line;
+    .replace(/｜/g, '|')
+    .replace(/[ \t]*\|\|[ \t]*/g, '\n| ')
+    .replace(/\n{3,}/g, '\n\n');
+}
 
-      if (/^\|{2,}[\-|｜| ]+\|{1,}$/.test(raw) || /^[\-|｜ ]{8,}$/.test(raw)) {
-        return '';
+function normalizePipeTableBlocks(input: string): string {
+  const lines = input.split('\n');
+  const output: string[] = [];
+
+  let index = 0;
+  while (index < lines.length) {
+    const firstCells = parsePipeCells(lines[index]);
+    const firstLooksLikeRow = firstCells.length >= 2 && lines[index].includes('|');
+
+    if (!firstLooksLikeRow) {
+      output.push(lines[index]);
+      index += 1;
+      continue;
+    }
+
+    const tableRows: string[] = [];
+    let rowIndex = index;
+    while (rowIndex < lines.length) {
+      const cells = parsePipeCells(lines[rowIndex]);
+      const looksLikeRow = cells.length >= 2 && lines[rowIndex].includes('|');
+      if (!looksLikeRow) break;
+      tableRows.push(`| ${cells.join(' | ')} |`);
+      rowIndex += 1;
+    }
+
+    if (tableRows.length >= 2) {
+      const headerColumns = parsePipeCells(tableRows[0]).length;
+      if (isTableSeparatorLine(tableRows[1])) {
+        output.push(...tableRows);
+      } else {
+        output.push(tableRows[0], buildTableSeparator(headerColumns), ...tableRows.slice(1));
       }
+    } else {
+      const singleCells = parsePipeCells(tableRows[0] || '');
+      if (singleCells.length >= 2) {
+        output.push(`- **${singleCells[0]}**：${singleCells.slice(1).join(' / ')}`);
+      } else {
+        output.push(...tableRows);
+      }
+    }
 
-      return line
-        .replace(/\|\|\s*/g, ' ')
-        .replace(/\s*\|\|/g, ' ')
-        .replace(/\s*[|｜]\s*/g, ' | ')
-        .replace(/\s{2,}/g, ' ')
-        .trimEnd();
-    })
-    .filter((line, index, lines) => !(line === '' && lines[index - 1] === ''))
-    .join('\n');
+    index = rowIndex;
+  }
+
+  return output.join('\n');
 }
 
 function normalizeEvidenceBlocks(input: string): string {
@@ -128,10 +179,112 @@ function cleanContent(content: string): string {
     .replace(/\u00a0/g, ' ')
     .replace(/[ \t]+$/gm, '');
 
-  return normalizeEvidenceBlocks(
-    normalizeLooseTableBlocks(normalizeInlinePseudoTables(normalizePseudoSeparators(normalizeHtmlBreaks(normalized))))
-  ).trim();
+  return normalizeEvidenceBlocks(normalizePipeTableBlocks(normalizePseudoSeparators(normalizeHtmlBreaks(normalized)))).trim();
 }
+
+function getNodeText(node: React.ReactNode): string {
+  if (node === null || node === undefined || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map((item) => getNodeText(item)).join('');
+  if (React.isValidElement(node)) {
+    const element = node as React.ReactElement<{ children?: React.ReactNode }>;
+    return getNodeText(element.props.children);
+  }
+  return '';
+}
+
+function extractMarkdownTableRows(node: React.ReactNode, rows: string[][] = []): string[][] {
+  React.Children.forEach(node, (child) => {
+    if (!React.isValidElement(child)) return;
+
+    const element = child as React.ReactElement<{ children?: React.ReactNode }>;
+    const elementType = typeof element.type === 'string' ? element.type : '';
+
+    if (elementType === 'tr') {
+      const cells: string[] = [];
+      React.Children.forEach(element.props.children, (cellNode) => {
+        if (!React.isValidElement(cellNode)) return;
+        const cellElement = cellNode as React.ReactElement<{ children?: React.ReactNode }>;
+        const cellType = typeof cellElement.type === 'string' ? cellElement.type : '';
+        if (cellType !== 'th' && cellType !== 'td') return;
+
+        const text = getNodeText(cellElement.props.children).replace(/\s+/g, ' ').trim();
+        cells.push(text);
+      });
+      if (cells.length > 0) rows.push(cells);
+      return;
+    }
+
+    extractMarkdownTableRows(element.props.children, rows);
+  });
+
+  return rows;
+}
+
+const MarkdownTableAsCards: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
+  const rows = extractMarkdownTableRows(children);
+  if (rows.length === 0) return null;
+
+  const header = rows[0];
+  const bodyRows = rows.slice(1).filter((row) => row.some((cell) => cell.trim().length > 0));
+  if (bodyRows.length === 0) return null;
+
+  const columnCount = Math.max(2, header.length, ...bodyRows.map((row) => row.length));
+  const headers = Array.from({ length: columnCount }, (_, index) => header[index] || `字段${index + 1}`);
+  const normalizedBody = bodyRows.map((row) => Array.from({ length: columnCount }, (_, index) => row[index] || '-'));
+  const isKeyValue = columnCount <= 2;
+
+  return (
+    <div style={{ display: 'grid', gap: 8, margin: '8px 0' }}>
+      {normalizedBody.map((row, rowIndex) => (
+        <div
+          key={`markdown-table-row-${rowIndex}`}
+          style={{
+            border: '1px solid #dbe4ee',
+            borderRadius: 12,
+            background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+            padding: 10,
+          }}
+        >
+          {isKeyValue ? (
+            <div style={{ display: 'grid', gap: 4 }}>
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: 0.2 }}>
+                {row[0] === '-' ? headers[0] : row[0]}
+              </div>
+              <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 600, lineHeight: 1.6 }}>{row[1] || '-'}</div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 700 }}>{row[0] === '-' ? `条目 ${rowIndex + 1}` : row[0]}</div>
+              <div
+                style={{
+                  display: 'grid',
+                  gap: 8,
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                }}
+              >
+                {headers.slice(1).map((label, columnIndex) => (
+                  <div
+                    key={`markdown-table-field-${rowIndex}-${columnIndex}`}
+                    style={{
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 10,
+                      background: '#ffffff',
+                      padding: '8px 9px',
+                    }}
+                  >
+                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 13, color: '#1f2937', lineHeight: 1.6 }}>{row[columnIndex + 1] || '-'}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const markdownComponents: Components = {
   p: ({ children }) => <p style={{ margin: 0, padding: 0 }}>{children}</p>,
@@ -147,11 +300,7 @@ const markdownComponents: Components = {
   ),
   ol: ({ children }) => <ol style={{ margin: '2px 0', paddingLeft: '20px' }}>{children}</ol>,
   ul: ({ children }) => <ul style={{ margin: '2px 0', paddingLeft: '20px' }}>{children}</ul>,
-  table: ({ children }) => (
-    <div style={{ overflowX: 'auto', margin: '8px 0' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>{children}</table>
-    </div>
-  ),
+  table: ({ children }) => <MarkdownTableAsCards>{children}</MarkdownTableAsCards>,
   th: ({ children }) => (
     <th
       style={{
