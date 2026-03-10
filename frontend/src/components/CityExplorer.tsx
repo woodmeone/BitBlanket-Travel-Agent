@@ -10,21 +10,15 @@ import {
   RiseOutlined,
   SwapOutlined,
 } from '@ant-design/icons';
+import type { ColumnsType } from 'antd/es/table';
 import { apiService } from '@/services/api';
 import type { CityDetail, CitySummary } from '@/types';
-import type { ColumnsType } from 'antd/es/table';
 
 interface CityExplorerProps {
   onUsePrompt: (prompt: string) => void;
 }
 
-type QuickFilterKey =
-  | 'weekend'
-  | 'budget'
-  | 'family'
-  | 'easywalk'
-  | 'rainy'
-  | 'food';
+type QuickFilterKey = 'weekend' | 'budget' | 'family' | 'easywalk' | 'rainy' | 'food';
 
 interface QuickFilterOption {
   key: QuickFilterKey;
@@ -59,46 +53,24 @@ const QUICK_FILTERS: QuickFilterOption[] = [
 
 function includesAny(source: string[], patterns: string[]): boolean {
   const text = source.join(' ').toLowerCase();
-  return patterns.some((pattern) => text.includes(pattern));
+  return patterns.some((pattern) => text.includes(pattern.toLowerCase()));
 }
 
 function buildCityProfile(city: CitySummary | CityDetail): DerivedCityProfile {
-  const budgetValue = 'avg_budget_per_day' in city ? city.avg_budget_per_day : 0;
+  const budgetValue = city.avg_budget_per_day || 0;
   const tags = city.tags || [];
-  const region = city.region || '';
-
-  const familyFriendly = includesAny(tags, ['亲子', '家庭', '儿童', '乐园']);
-  const foodFriendly = includesAny(tags, ['美食', '夜市', '小吃', '吃']);
-  const rainFriendly = includesAny(tags, ['博物馆', '艺术', '文化', '室内', '展馆']) || ['北京', '上海', '广州', '深圳'].includes(city.name);
-  const easyWalk = includesAny(tags, ['轻松', '度假', '慢游', '休闲', '城市漫步']);
-
   const budgetLevel: DerivedCityProfile['budgetLevel'] =
-    budgetValue > 0 ? (budgetValue <= 500 ? 'low' : budgetValue <= 900 ? 'medium' : 'high') : 'medium';
-  const walkIntensity: DerivedCityProfile['walkIntensity'] = familyFriendly || easyWalk ? 'low' : foodFriendly ? 'medium' : 'high';
-  const tripDuration =
-    includesAny(tags, ['周末', '短途', '城市漫步']) || ['华东', '华北'].includes(region) ? '2-3 天' : '3-4 天';
-
-  let styleLabel = '综合体验';
-  if (familyFriendly) styleLabel = '亲子轻松';
-  else if (foodFriendly) styleLabel = '美食城市';
-  else if (rainFriendly) styleLabel = '文化室内';
-  else if (easyWalk) styleLabel = '慢节奏度假';
-
-  let recommendation = `${city.name}适合第一次出发，信息密度高，比较容易快速做决定。`;
-  if (familyFriendly) recommendation = `${city.name}对亲子用户更友好，行程容错高，也容易安排午休和室内备选。`;
-  else if (foodFriendly) recommendation = `${city.name}更适合把“吃”和“逛”结合起来，预算弹性也更好控制。`;
-  else if (rainFriendly) recommendation = `${city.name}即使遇到天气变化也不容易废行程，室内内容更充足。`;
-  else if (easyWalk) recommendation = `${city.name}节奏相对轻松，适合少走路、低压力的短假期。`;
+    budgetValue <= 500 ? 'low' : budgetValue <= 900 ? 'medium' : 'high';
 
   return {
     budgetLevel,
-    tripDuration,
-    walkIntensity,
-    rainFriendly,
-    familyFriendly,
-    foodFriendly,
-    styleLabel,
-    recommendation,
+    tripDuration: city.trip_duration || '2-3天',
+    walkIntensity: city.walk_intensity || 'medium',
+    rainFriendly: city.rain_friendly ?? includesAny(tags, ['博物馆', '室内', '文化']),
+    familyFriendly: city.family_friendly ?? includesAny(tags, ['亲子', '家庭', '乐园']),
+    foodFriendly: city.food_friendly ?? includesAny(tags, ['美食', '小吃', '夜市']),
+    styleLabel: city.style_label || '综合体验',
+    recommendation: city.editorial_note?.trim() || city.description?.trim() || `${city.name}适合做轻量旅行。`,
   };
 }
 
@@ -114,29 +86,29 @@ function walkLabel(level: DerivedCityProfile['walkIntensity']): string {
   return '步行适中';
 }
 
-function familyLabel(friendly: boolean): string {
-  return friendly ? '较友好' : '一般';
+function boolLabel(value: boolean): string {
+  return value ? '友好' : '一般';
 }
 
-function rainLabel(friendly: boolean): string {
-  return friendly ? '较友好' : '一般';
+function foodLabel(value: boolean): string {
+  return value ? '高' : '中';
 }
 
-function foodLabel(friendly: boolean): string {
-  return friendly ? '高' : '中';
+function seasonLabel(seasons: string[]): string {
+  return seasons.slice(0, 2).join(' / ') || '四季皆可';
 }
 
 function buildPlanPrompt(cityName: string): string {
-  return `请为我规划 ${cityName} 3 天旅行计划，包含每日时间轴、预算估算、住宿建议、适合拍照或放松的点位，以及下雨天备选方案。`;
+  return `请为我规划 ${cityName} 3 天旅行计划，包含每日时间轴、预算估算、住宿建议、拍照点位、下雨天备选和适合第一次去的顺序安排。`;
 }
 
 function buildComparePrompt(cityNames: string[]): string {
-  return `请比较这几个城市作为下一次旅行目的地的差异：${cityNames.join('、')}。请从预算、适合天数、步行强度、亲子友好度、雨天可玩度和核心亮点做并排对比，并给出推荐结论。`;
+  return `请比较这些城市作为下一次旅行目的地的差异：${cityNames.join('、')}。请从预算、适合天数、步行强度、亲子友好度、雨天可玩度、核心景点真实性和整体旅行氛围做并排对比，并给出推荐结论。`;
 }
 
-const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
-  const INITIAL_VISIBLE_CITY_COUNT = 24;
-  const LOAD_MORE_CITY_COUNT = 24;
+export default function CityExplorer({ onUsePrompt }: CityExplorerProps) {
+  const initialVisibleCityCount = 24;
+  const loadMoreCityCount = 24;
   const [regions, setRegions] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string | undefined>(undefined);
@@ -150,45 +122,45 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [compareCityIds, setCompareCityIds] = useState<string[]>([]);
   const [favoriteCityIds, setFavoriteCityIds] = useState<string[]>([]);
-  const [visibleCityCount, setVisibleCityCount] = useState(INITIAL_VISIBLE_CITY_COUNT);
+  const [visibleCityCount, setVisibleCityCount] = useState(initialVisibleCityCount);
 
   useEffect(() => {
-    const loadFilterOptions = async () => {
+    async function loadFilterOptions() {
       try {
         setIsFilterLoading(true);
-        const [regionsData, tagsData] = await Promise.all([apiService.getRegions(), apiService.getTags()]);
-        setRegions(regionsData.regions || []);
-        setTags(tagsData.tags || []);
+        const [regionData, tagData] = await Promise.all([apiService.getRegions(), apiService.getTags()]);
+        setRegions(regionData.regions || []);
+        setTags(tagData.tags || []);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : '加载筛选项失败');
       } finally {
         setIsFilterLoading(false);
       }
-    };
+    }
 
-    loadFilterOptions();
+    void loadFilterOptions();
   }, []);
 
   useEffect(() => {
-    const loadCities = async () => {
+    async function loadCities() {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await apiService.getCities({ region: selectedRegion, tags: selectedTags });
-        setCities(data.cities || []);
+        const response = await apiService.getCities({ region: selectedRegion, tags: selectedTags });
+        setCities(response.cities || []);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : '加载城市失败');
       } finally {
         setIsLoading(false);
       }
-    };
+    }
 
-    loadCities();
+    void loadCities();
   }, [selectedRegion, selectedTags]);
 
   useEffect(() => {
-    setVisibleCityCount(INITIAL_VISIBLE_CITY_COUNT);
-  }, [selectedRegion, selectedTags, selectedQuickFilters]);
+    setVisibleCityCount(initialVisibleCityCount);
+  }, [selectedQuickFilters, selectedRegion, selectedTags]);
 
   const filteredCities = useMemo(() => {
     return cities.filter((city) => {
@@ -196,7 +168,7 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
       const profile = buildCityProfile(city);
 
       return selectedQuickFilters.every((filterKey) => {
-        if (filterKey === 'weekend') return profile.tripDuration === '2-3 天';
+        if (filterKey === 'weekend') return /^2/.test(profile.tripDuration);
         if (filterKey === 'budget') return profile.budgetLevel === 'low';
         if (filterKey === 'family') return profile.familyFriendly;
         if (filterKey === 'easywalk') return profile.walkIntensity === 'low';
@@ -209,7 +181,7 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
 
   const compareCities = useMemo(
     () => filteredCities.filter((city) => compareCityIds.includes(city.id)).slice(0, 3),
-    [filteredCities, compareCityIds]
+    [compareCityIds, filteredCities]
   );
 
   const favoriteCities = useMemo(
@@ -233,10 +205,10 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
           .join(' / ')
       );
     }
-    return segments.length > 0 ? segments.join(' · ') : '全部城市';
+    return segments.length > 0 ? segments.join(' · ') : '全部真实策展城市';
   }, [selectedQuickFilters, selectedRegion, selectedTags]);
 
-  const openCityDetail = async (cityId: string) => {
+  async function openCityDetail(cityId: string) {
     try {
       const detail = await apiService.getCityDetail(cityId);
       setActiveCityDetail(detail);
@@ -244,29 +216,30 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
     } catch (detailError) {
       setError(detailError instanceof Error ? detailError.message : '加载城市详情失败');
     }
-  };
+  }
 
-  const toggleQuickFilter = (filterKey: QuickFilterKey) => {
-    setSelectedQuickFilters((prev) =>
-      prev.includes(filterKey) ? prev.filter((item) => item !== filterKey) : [...prev, filterKey]
+  function toggleQuickFilter(filterKey: QuickFilterKey) {
+    setSelectedQuickFilters((previous) =>
+      previous.includes(filterKey) ? previous.filter((item) => item !== filterKey) : [...previous, filterKey]
     );
-  };
+  }
 
-  const toggleCompareCity = (cityId: string) => {
-    setCompareCityIds((prev) => {
-      if (prev.includes(cityId)) return prev.filter((item) => item !== cityId);
-      if (prev.length >= 3) return [...prev.slice(1), cityId];
-      return [...prev, cityId];
+  function toggleCompareCity(cityId: string) {
+    setCompareCityIds((previous) => {
+      if (previous.includes(cityId)) return previous.filter((item) => item !== cityId);
+      if (previous.length >= 3) return [...previous.slice(1), cityId];
+      return [...previous, cityId];
     });
-  };
+  }
 
-  const toggleFavoriteCity = (cityId: string) => {
-    setFavoriteCityIds((prev) =>
-      prev.includes(cityId) ? prev.filter((item) => item !== cityId) : [...prev, cityId]
+  function toggleFavoriteCity(cityId: string) {
+    setFavoriteCityIds((previous) =>
+      previous.includes(cityId) ? previous.filter((item) => item !== cityId) : [...previous, cityId]
     );
-  };
+  }
 
   const activeDetailProfile = activeCityDetail ? buildCityProfile(activeCityDetail) : null;
+
   const compareColumns: ColumnsType<CompareTableRow> = [
     {
       title: '对比项',
@@ -296,8 +269,10 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
         },
         {
           key: 'budget',
-          metric: '预算档位',
-          values: Object.fromEntries(compareCities.map((city) => [city.id, budgetLabel(buildCityProfile(city).budgetLevel)])),
+          metric: '预算',
+          values: Object.fromEntries(
+            compareCities.map((city) => [city.id, `¥${city.avg_budget_per_day} / ${budgetLabel(buildCityProfile(city).budgetLevel)}`])
+          ),
         },
         {
           key: 'days',
@@ -310,49 +285,19 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
           values: Object.fromEntries(compareCities.map((city) => [city.id, walkLabel(buildCityProfile(city).walkIntensity)])),
         },
         {
-          key: 'rain',
-          metric: '雨天友好度',
-          values: Object.fromEntries(compareCities.map((city) => [city.id, rainLabel(buildCityProfile(city).rainFriendly)])),
-        },
-        {
-          key: 'family',
-          metric: '亲子友好度',
-          values: Object.fromEntries(compareCities.map((city) => [city.id, familyLabel(buildCityProfile(city).familyFriendly)])),
-        },
-        {
-          key: 'food',
-          metric: '美食密度',
-          values: Object.fromEntries(compareCities.map((city) => [city.id, foodLabel(buildCityProfile(city).foodFriendly)])),
+          key: 'season',
+          metric: '合适季节',
+          values: Object.fromEntries(compareCities.map((city) => [city.id, seasonLabel(city.best_seasons)])),
         },
         {
           key: 'style',
-          metric: '旅行风格',
+          metric: '旅行气质',
           values: Object.fromEntries(compareCities.map((city) => [city.id, buildCityProfile(city).styleLabel])),
         },
         {
-          key: 'tags',
-          metric: '核心标签',
-          values: Object.fromEntries(compareCities.map((city) => [city.id, city.tags.slice(0, 4).join(' / ') || '-'])),
-        },
-        {
-          key: 'recommendation',
-          metric: '推荐理由',
+          key: 'note',
+          metric: '编辑建议',
           values: Object.fromEntries(compareCities.map((city) => [city.id, buildCityProfile(city).recommendation])),
-        },
-        {
-          key: 'decision',
-          metric: '适合谁',
-          values: Object.fromEntries(
-            compareCities.map((city) => {
-              const profile = buildCityProfile(city);
-              const segments = [];
-              if (profile.familyFriendly) segments.push('亲子');
-              if (profile.foodFriendly) segments.push('美食党');
-              if (profile.walkIntensity === 'low') segments.push('轻松派');
-              if (profile.rainFriendly) segments.push('雨天容错高');
-              return [city.id, segments.length > 0 ? segments.join(' / ') : '综合体验用户'];
-            })
-          ),
         },
       ]
     : [];
@@ -377,7 +322,7 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
                 城市探索
               </div>
               <div style={{ fontSize: 13, color: '#475569', maxWidth: 760 }}>
-                从“想去哪里”升级成“为什么去、适不适合你、值不值得现在出发”的决策入口。
+                当前只展示真实策展城市库，详情中的景点名称、区位和备注都来自人工整理，不再混入模板化生成城市。
               </div>
             </div>
             <Space wrap>
@@ -403,21 +348,21 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
                 minHeight: 180,
               }}
             >
-              <div style={{ fontSize: 12, letterSpacing: 1.2, opacity: 0.75, marginBottom: 10 }}>INSPIRATION</div>
+              <div style={{ fontSize: 12, letterSpacing: 1.2, opacity: 0.75, marginBottom: 10 }}>CURATED</div>
               <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.3, marginBottom: 12 }}>
-                用“出发方式”挑目的地，
+                先判断城市是否适合你，
                 <br />
-                比只按地区筛更像真实用户决策。
+                再决定要不要继续做 AI 行程规划。
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <Button onClick={() => onUsePrompt('请推荐适合周末两天出发、预算 1500 内、地铁友好的城市，并说明理由。')}>
+                <Button onClick={() => onUsePrompt('请推荐适合周末两天出发、预算 1500 内、地铁友好的真实城市目的地，并给出选择理由。')}>
                   本周末去哪
                 </Button>
-                <Button onClick={() => onUsePrompt('请推荐亲子友好、少走路、下雨也不容易废行程的城市。')}>
-                  亲子省心版
+                <Button onClick={() => onUsePrompt('请推荐亲子友好、少走路、下雨也不容易废行程的真实城市，并说明为什么适合。')}>
+                  亲子省心
                 </Button>
-                <Button onClick={() => onUsePrompt('请推荐适合预算友好、美食优先的旅行城市，并做简短对比。')}>
-                  预算美食版
+                <Button onClick={() => onUsePrompt('请推荐预算友好、以美食为主、景点不需要太密集的城市，并做简短对比。')}>
+                  预算美食
                 </Button>
               </div>
             </div>
@@ -432,18 +377,18 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
                 gap: 10,
               }}
             >
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>候选城市池</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>目的地 shortlist</div>
               {favoriteCities.length === 0 ? (
-                <div style={{ fontSize: 13, color: '#64748b' }}>先收藏几个城市，这里会变成你的目的地 shortlist。</div>
+                <div style={{ fontSize: 13, color: '#64748b' }}>先收藏几个城市，这里会变成你的候选池。</div>
               ) : (
                 favoriteCities.slice(0, 4).map((city) => (
-                  <div key={`favorite-${city.id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={`favorite-${city.id}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                     <div>
                       <div style={{ fontWeight: 600, color: '#1f2937' }}>{city.name}</div>
                       <div style={{ fontSize: 12, color: '#64748b' }}>{buildCityProfile(city).recommendation}</div>
                     </div>
                     <Button size="small" onClick={() => onUsePrompt(buildPlanPrompt(city.name))}>
-                      开始规划
+                      继续规划
                     </Button>
                   </div>
                 ))
@@ -470,7 +415,7 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
               onChange={(value) => setSelectedTags(value)}
               options={tags.map((item) => ({ label: item, value: item }))}
             />
-            <Button onClick={() => onUsePrompt('请推荐一个适合周末两天出发的城市，并从预算、轻松程度、雨天可玩度解释原因。')}>
+            <Button onClick={() => onUsePrompt('请帮我从当前真实城市库里选一个适合第一次出发的目的地，并从预算、步行强度、雨天备选和核心景点真实性解释原因。')}>
               让助手帮我选
             </Button>
           </Space>
@@ -508,7 +453,7 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#92400e' }}>城市对比池</div>
-                  <div style={{ fontSize: 12, color: '#78716c' }}>最多放 3 个城市，快速比较后直接继续规划。</div>
+                  <div style={{ fontSize: 12, color: '#78716c' }}>最多放 3 个真实城市，快速比较后直接继续规划。</div>
                 </div>
                 <Space wrap>
                   <Button icon={<SwapOutlined />} onClick={() => onUsePrompt(buildComparePrompt(compareCities.map((city) => city.name)))}>
@@ -517,24 +462,7 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
                   <Button onClick={() => setCompareCityIds([])}>清空</Button>
                 </Space>
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${compareCities.length}, minmax(0, 1fr))`, gap: 10 }}>
-                <Table
-                  size="small"
-                  pagination={false}
-                  rowKey="key"
-                  columns={compareColumns}
-                  dataSource={compareRows}
-                  scroll={{ x: 780 }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {compareCities.map((city) => (
-                  <Button key={`compare-plan-${city.id}`} size="small" onClick={() => onUsePrompt(buildPlanPrompt(city.name))}>
-                    选中“{city.name}”继续规划
-                  </Button>
-                ))}
-              </div>
+              <Table size="small" pagination={false} rowKey="key" columns={compareColumns} dataSource={compareRows} scroll={{ x: 780 }} />
             </Card>
           )}
 
@@ -545,44 +473,28 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
               <Spin />
             </div>
           ) : filteredCities.length === 0 ? (
-            <Empty description="没有匹配的城市，换个筛选试试" />
+            <Empty description="没有匹配的城市，换个筛选试试。" />
           ) : (
             <div style={{ display: 'grid', gap: 14 }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: 12,
-                  flexWrap: 'wrap',
-                }}
-              >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ fontSize: 13, color: '#475569' }}>
-                  {'\u5df2\u663e\u793a ' }
-                  <span style={{ fontWeight: 700, color: '#0f172a' }}>{displayedCities.length}</span>
-                  {` / ${filteredCities.length} \u4e2a\u57ce\u5e02`}
+                  已显示 <span style={{ fontWeight: 700, color: '#0f172a' }}>{displayedCities.length}</span> / {filteredCities.length} 个城市
                 </div>
                 <Space wrap size={8}>
                   {filteredCities.length > visibleCityCount && (
-                    <Button size="small" onClick={() => setVisibleCityCount((count) => count + LOAD_MORE_CITY_COUNT)}>
-                      {'\u518d\u770b 24 \u4e2a'}
+                    <Button size="small" onClick={() => setVisibleCityCount((count) => count + loadMoreCityCount)}>
+                      再看 24 个
                     </Button>
                   )}
-                  {visibleCityCount > INITIAL_VISIBLE_CITY_COUNT && (
-                    <Button size="small" onClick={() => setVisibleCityCount(INITIAL_VISIBLE_CITY_COUNT)}>
-                      {'\u6536\u8d77\u5230\u9996\u5c4f'}
+                  {visibleCityCount > initialVisibleCityCount && (
+                    <Button size="small" onClick={() => setVisibleCityCount(initialVisibleCityCount)}>
+                      收起到首屏
                     </Button>
                   )}
                 </Space>
               </div>
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                  gap: 12,
-                }}
-              >
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
                 {displayedCities.map((city) => {
                   const profile = buildCityProfile(city);
                   const inCompare = compareCityIds.includes(city.id);
@@ -625,11 +537,14 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
                           <Tag color="purple" style={{ marginInlineEnd: 0 }}>
                             {profile.styleLabel}
                           </Tag>
+                          <Tag color="cyan" style={{ marginInlineEnd: 0 }}>
+                            {seasonLabel(city.best_seasons)}
+                          </Tag>
                         </div>
 
                         <div style={{ fontSize: 12, lineHeight: 1.65, color: '#334155', minHeight: 58 }}>{profile.recommendation}</div>
 
-                        <div style={{ marginTop: -2, minHeight: 24 }}>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                           {city.tags.slice(0, 3).map((tag) => (
                             <Tag key={`${city.id}-${tag}`} style={{ marginBottom: 4 }}>
                               {tag}
@@ -649,21 +564,23 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
                             padding: 8,
                           }}
                         >
+                          <div>人均: ¥{city.avg_budget_per_day}</div>
                           <div>步行: {walkLabel(profile.walkIntensity)}</div>
-                          <div>{'\u96e8\u5929: ' }{profile.rainFriendly ? '\u53cb\u597d' : '\u4e00\u822c'}</div>
-                          <div>{'\u4eb2\u5b50: ' }{profile.familyFriendly ? '\u53cb\u597d' : '\u4e00\u822c'}</div>
-                          <div>{'\u7f8e\u98df: ' }{profile.foodFriendly ? '\u9ad8' : '\u4e2d'}</div>
+                          <div>雨天: {boolLabel(profile.rainFriendly)}</div>
+                          <div>亲子: {boolLabel(profile.familyFriendly)}</div>
+                          <div>美食: {foodLabel(profile.foodFriendly)}</div>
+                          <div>数据: {city.data_source}</div>
                         </div>
 
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           <Button size="small" onClick={() => openCityDetail(city.id)}>
-                            {'\u8be6\u60c5'}
+                            详情
                           </Button>
                           <Button size="small" icon={<RiseOutlined />} onClick={() => toggleCompareCity(city.id)}>
-                            {inCompare ? '\u79fb\u51fa\u5bf9\u6bd4' : '\u52a0\u5165\u5bf9\u6bd4'}
+                            {inCompare ? '移出对比' : '加入对比'}
                           </Button>
                           <Button size="small" type="primary" onClick={() => onUsePrompt(buildPlanPrompt(city.name))}>
-                            {'\u89c4\u5212'}
+                            规划
                           </Button>
                         </div>
                       </div>
@@ -693,13 +610,14 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
               <div style={{ display: 'grid', gap: 10 }}>
                 <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>城市气质</div>
                 <div style={{ color: '#334155', lineHeight: 1.8 }}>{activeCityDetail.description}</div>
+                <div style={{ fontSize: 13, color: '#475569' }}>{activeDetailProfile.recommendation}</div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <Tag color="blue">{budgetLabel(activeDetailProfile.budgetLevel)}</Tag>
                   <Tag color="green">{activeDetailProfile.tripDuration}</Tag>
                   <Tag color="purple">{activeDetailProfile.styleLabel}</Tag>
                   <Tag color="cyan">{walkLabel(activeDetailProfile.walkIntensity)}</Tag>
+                  <Tag color="gold">真实策展</Tag>
                 </div>
-                <div style={{ fontSize: 13, color: '#475569' }}>{activeDetailProfile.recommendation}</div>
               </div>
             </Card>
 
@@ -714,17 +632,15 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
               </Card>
               <Card size="small" styles={{ body: { padding: 12 } }}>
                 <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>最佳季节</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>
-                  {activeCityDetail.best_seasons.slice(0, 2).join(' / ') || '四季皆可'}
-                </div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>{seasonLabel(activeCityDetail.best_seasons)}</div>
               </Card>
             </div>
 
             <Card size="small" title="怎么玩更顺">
               <div style={{ display: 'grid', gap: 8, fontSize: 13, color: '#475569' }}>
-                <div>推荐节奏：{activeDetailProfile.tripDuration}，先把核心城区放在前两天，减少跨区折返。</div>
-                <div>雨天策略：{activeDetailProfile.rainFriendly ? '可以保留大部分安排，优先室内点位。' : '建议预留 1-2 个室内备选点。'}</div>
-                <div>体力管理：{walkLabel(activeDetailProfile.walkIntensity)}，建议把高密度打卡集中在一天内。</div>
+                <div>推荐节奏：{activeDetailProfile.tripDuration}，先安排核心片区，再做跨区延展。</div>
+                <div>雨天策略：{activeDetailProfile.rainFriendly ? '可保留大部分行程，优先馆和街区。' : '建议预留 1-2 个室内备选点。'}</div>
+                <div>体力管理：{walkLabel(activeDetailProfile.walkIntensity)}，不要把高密度打卡全堆在同一天。</div>
               </div>
             </Card>
 
@@ -746,7 +662,9 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
                     </div>
                     <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
                       建议停留 {attraction.duration} · 门票 ¥{attraction.ticket}
+                      {attraction.district ? ` · ${attraction.district}` : ''}
                     </div>
+                    {attraction.note && <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>{attraction.note}</div>}
                   </div>
                 ))}
               </div>
@@ -767,6 +685,4 @@ const CityExplorer: React.FC<CityExplorerProps> = ({ onUsePrompt }) => {
       </Drawer>
     </div>
   );
-};
-
-export default CityExplorer;
+}

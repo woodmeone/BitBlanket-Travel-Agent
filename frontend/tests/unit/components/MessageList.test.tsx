@@ -62,4 +62,36 @@ describe('MessageList', () => {
     expect(screen.getByText('备源切换: 2 次')).toBeInTheDocument();
     expect(screen.getByText('工具列表: get_weather, query_hotels')).toBeInTheDocument();
   });
+
+  it('renders richer markdown blocks for assistant messages', () => {
+    const messages: Message[] = [
+      {
+        role: 'assistant',
+        timestamp: '10:03',
+        content: [
+          '# 行程建议',
+          '',
+          '> 先锁定预约景点',
+          '',
+          '```bash',
+          'pnpm plan-trip',
+          '```',
+          '',
+          '---',
+          '',
+          '[查看预约](https://example.com)',
+        ].join('\n'),
+      },
+    ];
+
+    const { container } = renderWithApp(
+      <MessageList messages={messages} reasoningExpanded={{}} onToggleReasoning={vi.fn()} />
+    );
+
+    expect(screen.getByRole('heading', { name: '行程建议' })).toBeInTheDocument();
+    expect(container.querySelector('blockquote')).not.toBeNull();
+    expect(container.querySelector('pre')).not.toBeNull();
+    expect(container.querySelector('hr')).not.toBeNull();
+    expect(screen.getByRole('link', { name: '查看预约' })).toHaveAttribute('href', 'https://example.com');
+  });
 });

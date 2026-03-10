@@ -180,8 +180,118 @@ const markdownComponents: Components = {
   ),
 };
 
+function transformOutsideCodeFences(input: string, transformer: (segment: string) => string): string {
+  return input
+    .split(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g)
+    .map((segment) => {
+      if (segment.startsWith('```') || segment.startsWith('~~~')) return segment;
+      return transformer(segment);
+    })
+    .join('');
+}
+
+function prepareMarkdownContent(content: string): string {
+  const cleaned = cleanContent(content);
+
+  return transformOutsideCodeFences(cleaned, (segment) =>
+    segment
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/(证据来源\s*\n(?:\|.*\n)+)(?!\n)/g, '$1\n')
+  );
+}
+
+function getMarkdownText(children: React.ReactNode): string {
+  return React.Children.toArray(children)
+    .map((child) => (typeof child === 'string' ? child : ''))
+    .join('');
+}
+
+const enhancedMarkdownComponents: Components = {
+  ...markdownComponents,
+  p: ({ children }) => <p style={{ margin: '0 0 8px', padding: 0, lineHeight: 1.8 }}>{children}</p>,
+  li: ({ children }) => <li style={{ margin: '2px 0', padding: 0, lineHeight: 1.7 }}>{children}</li>,
+  blockquote: ({ children }) => (
+    <blockquote
+      style={{
+        margin: '10px 0',
+        padding: '8px 12px',
+        borderLeft: '3px solid #38bdf8',
+        background: '#f8fafc',
+        color: '#334155',
+      }}
+    >
+      {children}
+    </blockquote>
+  ),
+  hr: () => <hr style={{ border: 0, borderTop: '1px solid #e2e8f0', margin: '14px 0' }} />,
+  a: ({ href, children }) => (
+    <a href={href} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>
+      {children}
+    </a>
+  ),
+  img: ({ src, alt }) => (
+    <img
+      src={src || ''}
+      alt={alt || ''}
+      style={{ maxWidth: '100%', borderRadius: 12, margin: '10px 0', border: '1px solid #e2e8f0' }}
+    />
+  ),
+  pre: ({ children }) => (
+    <pre
+      style={{
+        margin: '10px 0',
+        padding: '12px 14px',
+        borderRadius: 12,
+        background: '#0f172a',
+        color: '#e2e8f0',
+        overflowX: 'auto',
+        whiteSpace: 'pre-wrap',
+      }}
+    >
+      {children}
+    </pre>
+  ),
+  code: (props) => {
+    const { className, children } = props as React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode };
+    const text = getMarkdownText(children);
+    const isBlock = Boolean(className?.includes('language-')) || text.includes('\n');
+
+    if (isBlock) {
+      return (
+        <code
+          className={className}
+          style={{
+            background: 'transparent',
+            color: 'inherit',
+            fontFamily: 'SF Mono, Monaco, Consolas, monospace',
+            fontSize: '12px',
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {children}
+        </code>
+      );
+    }
+
+    return (
+      <code
+        className={className}
+        style={{
+          background: '#f3f4f6',
+          borderRadius: '4px',
+          padding: '1px 4px',
+          fontFamily: 'SF Mono, Monaco, Consolas, monospace',
+          fontSize: '12px',
+        }}
+      >
+        {children}
+      </code>
+    );
+  },
+};
+
 function deriveExportTitle(content: string): string {
-  const firstMeaningfulLine = cleanContent(content)
+  const firstMeaningfulLine = prepareMarkdownContent(content)
     .split('\n')
     .map((line) => line.trim())
     .find((line) => line && !line.startsWith('|') && !line.startsWith('-') && !line.startsWith('>'));
@@ -431,8 +541,8 @@ const ReasoningBlock: React.FC<{
             borderTop: '1px dashed rgba(114, 46, 209, 0.1)',
           }}
         >
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-            {cleanContent(cleaned)}
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={enhancedMarkdownComponents}>
+            {prepareMarkdownContent(cleaned)}
           </ReactMarkdown>
         </div>
       )}
@@ -558,8 +668,8 @@ const MessageItem = memo(function MessageItem({
             )}
 
             <div style={{ lineHeight: 1.7, fontSize: '14px' }}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                {cleanContent(msg.content)}
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={enhancedMarkdownComponents}>
+                {prepareMarkdownContent(msg.content)}
               </ReactMarkdown>
             </div>
 
@@ -606,7 +716,7 @@ const StreamingMessageItem = memo(function StreamingMessageItem({
   currentTool?: string | null;
 }) {
   const hasContent = Boolean(content && content.length > 0);
-  const cleanReasoning = cleanContent(reasoning || '');
+  const cleanReasoning = prepareMarkdownContent(reasoning || '');
   const showReasoning = Boolean(cleanReasoning);
   const statusLabel = hasContent ? '生成中' : isThinking ? '思考中' : '等待响应';
   const statusColor = hasContent ? '#2563eb' : '#7c3aed';
@@ -757,8 +867,8 @@ const StreamingMessageItem = memo(function StreamingMessageItem({
 
           {hasContent && (
             <div style={{ lineHeight: 1.7, fontSize: '14px', color: '#1f2937', wordBreak: 'break-word' }}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                {cleanContent(content)}
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={enhancedMarkdownComponents}>
+                {prepareMarkdownContent(content)}
               </ReactMarkdown>
               {(isWaiting || isThinking) && (
                 <span

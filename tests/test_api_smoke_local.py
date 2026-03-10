@@ -115,6 +115,9 @@ async def test_city_routes_smoke():
         cities = cities_data.get("cities")
         assert isinstance(cities, list)
         assert len(cities) > 0
+        assert all(item.get("data_source") == "curated" for item in cities)
+        assert all(not str(item.get("id", "")).startswith("city-") for item in cities)
+        assert all(isinstance(item.get("description"), str) and item.get("description") for item in cities)
 
         region_resp = await client.get("/api/cities", params={"region": "华东"})
         assert region_resp.status_code == 200
@@ -137,6 +140,10 @@ async def test_city_routes_smoke():
         city_data = city_resp.json()
         assert city_data.get("id") == first_city_id
         assert isinstance(city_data.get("attractions"), list)
+        assert city_data.get("data_source") == "curated"
+        assert len(city_data.get("attractions", [])) > 0
+        assert isinstance(city_data["attractions"][0].get("district"), (str, type(None)))
+        assert isinstance(city_data["attractions"][0].get("note"), (str, type(None)))
 
         attractions_resp = await client.get(f"/api/cities/{first_city_id}/attractions")
         assert attractions_resp.status_code == 200

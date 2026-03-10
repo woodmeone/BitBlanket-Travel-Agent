@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
@@ -19,6 +21,8 @@ class Attraction(BaseModel):
     type: str
     duration: str
     ticket: int
+    district: str | None = None
+    note: str | None = None
 
 
 class CitySummary(BaseModel):
@@ -28,15 +32,23 @@ class CitySummary(BaseModel):
     name: str
     region: str
     tags: list[str]
+    description: str
+    avg_budget_per_day: int
+    best_seasons: list[str]
+    trip_duration: str
+    walk_intensity: Literal["low", "medium", "high"]
+    rain_friendly: bool
+    family_friendly: bool
+    food_friendly: bool
+    style_label: str
+    editorial_note: str
+    data_source: Literal["curated"]
 
 
 class CityDetail(CitySummary):
     """Expanded city detail payload with recommendation metadata."""
 
-    description: str
     attractions: list[Attraction]
-    avg_budget_per_day: int
-    best_seasons: list[str]
 
 
 class CityListResponse(BaseModel):

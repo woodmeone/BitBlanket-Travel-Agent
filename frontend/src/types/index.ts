@@ -97,6 +97,8 @@ export interface CityAttraction {
   type: string;
   duration: string;
   ticket: number;
+  district?: string | null;
+  note?: string | null;
 }
 
 export interface CitySummary {
@@ -104,13 +106,21 @@ export interface CitySummary {
   name: string;
   region: string;
   tags: string[];
+  description: string;
+  avg_budget_per_day: number;
+  best_seasons: string[];
+  trip_duration: string;
+  walk_intensity: 'low' | 'medium' | 'high';
+  rain_friendly: boolean;
+  family_friendly: boolean;
+  food_friendly: boolean;
+  style_label: string;
+  editorial_note: string;
+  data_source: 'curated';
 }
 
 export interface CityDetail extends CitySummary {
-  description: string;
   attractions: CityAttraction[];
-  avg_budget_per_day: number;
-  best_seasons: string[];
 }
 
 export interface CityListResponse {
