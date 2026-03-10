@@ -28,7 +28,13 @@ async def test_chat_stream_sse_smoke(monkeypatch):
     async def mock_initialize(self):
         self._initialized = True
 
-    async def mock_stream_agent_events(self, session_id: str, message: str, run_id: str | None = None):
+    async def mock_stream_agent_events(
+        self,
+        session_id: str,
+        message: str,
+        mode: str = "react",
+        run_id: str | None = None,
+    ):
         yield {"type": "reasoning", "content": "analyzing"}
         yield {"type": "tool_start", "tool": "search_cities"}
         yield {"type": "tool_end", "tool": "search_cities", "result": "ok"}
@@ -102,7 +108,13 @@ async def test_chat_stream_plan_mode_emits_plan_preview(monkeypatch):
     async def mock_initialize(self):
         self._initialized = True
 
-    async def mock_stream_agent_events(self, session_id: str, message: str, run_id: str | None = None):
+    async def mock_stream_agent_events(
+        self,
+        session_id: str,
+        message: str,
+        mode: str = "react",
+        run_id: str | None = None,
+    ):
         yield {"type": "reasoning", "content": "planning"}
         yield {"type": "chunk", "content": "final"}
         yield {"type": "done", "answer": "final", "tools_used": ["search_cities"]}

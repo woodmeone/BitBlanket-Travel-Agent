@@ -716,6 +716,7 @@ class AgentStateWithMemory:
         session_id: str,
         memory_manager: AgentMemoryManager,
         system_prompt: str,
+        chat_mode: Optional[str] = None,
     ) -> Dict[str, Any]:
         messages: List[BaseMessage] = [SystemMessage(content=system_prompt)]
 
@@ -726,6 +727,7 @@ class AgentStateWithMemory:
 
         return {
             "messages": messages,
+            "chat_mode": chat_mode,
             "intent": None,
             "intent_detail": None,
             "strategy": None,

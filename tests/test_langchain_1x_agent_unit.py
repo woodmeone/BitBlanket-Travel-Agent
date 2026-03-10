@@ -126,3 +126,12 @@ def test_build_answer_prompt_requires_evidence_when_high_risk():
     assert "source" in prompt
     assert "fetched_at" in prompt
     assert "必须在答案末尾追加" in prompt
+
+
+def test_routing_decision_distinguishes_plan_and_react_modes():
+    nodes = AgentNodes.__new__(AgentNodes)
+
+    assert nodes.routing_decision({"routing": "plan", "chat_mode": "plan"}) == "plan"
+    assert nodes.routing_decision({"routing": "plan", "chat_mode": "react"}) == "react"
+    assert nodes.routing_decision({"routing": "plan"}) == "react"
+    assert nodes.routing_decision({"routing": "direct", "chat_mode": "plan"}) == "direct"

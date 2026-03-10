@@ -215,7 +215,7 @@ class ChatService:
                     except Exception as exc:
                         logger.warning("Plan preview failed, continue react flow: %s", exc)
 
-                async for event in self._stream_agent_events(sid, message, run_id=run_id):
+                async for event in self._stream_agent_events(sid, message, mode=mode, run_id=run_id):
                     event_type = event.get("type")
 
                     if event_type == "reasoning":
@@ -400,6 +400,7 @@ class ChatService:
         self,
         session_id: str,
         message: str,
+        mode: str = "react",
         run_id: Optional[str] = None,
     ) -> AsyncGenerator[dict[str, Any], None]:
         async for event in run_travel_agent_streaming_with_memory(
@@ -411,6 +412,7 @@ class ChatService:
             system_prompt=TRAVEL_AGENT_SYSTEM_PROMPT,
             persist_memory=False,
             run_id=run_id,
+            chat_mode=mode,
             routing_llm=self._router_llm,
         ):
             if event.get("type") == "tool_end":
@@ -425,6 +427,7 @@ class ChatService:
             session_id=session_id,
             memory_manager=self._memory_manager,
             system_prompt=TRAVEL_AGENT_SYSTEM_PROMPT,
+            chat_mode="plan",
             routing_llm=self._router_llm,
         )
 

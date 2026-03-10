@@ -12,6 +12,7 @@ class AgentState(TypedDict):
     """Shared mutable state flowing through LangGraph nodes."""
 
     messages: Annotated[list[BaseMessage], add_messages]
+    chat_mode: Optional[str]
     intent: Optional[str]
     intent_detail: Optional[Dict[str, Any]]
     strategy: Optional[str]
@@ -50,6 +51,7 @@ def create_initial_state(
     session_id: str = "default",
     system_message: Optional[str] = None,
     run_id: Optional[str] = None,
+    chat_mode: Optional[str] = None,
 ) -> AgentState:
     """Build initial graph state for one user turn."""
     messages: list[BaseMessage] = []
@@ -59,6 +61,7 @@ def create_initial_state(
 
     return AgentState(
         messages=messages,
+        chat_mode=chat_mode,
         intent=None,
         intent_detail=None,
         strategy=None,

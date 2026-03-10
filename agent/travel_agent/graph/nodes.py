@@ -209,7 +209,7 @@ class StrategyResult(BaseModel):
     required_tools: list[str] = []
     optional_tools: list[str] = []
     requires_verification: bool = False
-    routing: Literal["plan", "direct"] = "direct"
+    routing: Literal["plan", "react", "direct"] = "direct"
     reason: str = ""
 
 
@@ -242,7 +242,7 @@ class IntentStageOutput(BaseModel):
 class StrategyStageOutput(BaseModel):
     strategy: str
     strategy_detail: dict[str, Any]
-    routing: Literal["plan", "direct"]
+    routing: Literal["plan", "react", "direct"]
 
 
 class PlanStageOutput(BaseModel):
@@ -608,8 +608,15 @@ class AgentNodes:
     def router_node(self, state: AgentState) -> AgentState:
         return self.strategy_node(state)
 
-    def routing_decision(self, state: AgentState) -> Literal["plan", "direct"]:
-        return state.get("routing", "direct")
+    def routing_decision(self, state: AgentState) -> Literal["plan", "react", "direct"]:
+        routing = state.get("routing", "direct")
+        if routing != "plan":
+            return "direct"
+
+        chat_mode = str(state.get("chat_mode") or "react").strip().lower()
+        if chat_mode == "plan":
+            return "plan"
+        return "react"
 
     def plan_node(self, state: AgentState) -> AgentState:
         logger.info("[Plan Node] Building execution plan...")

@@ -86,6 +86,7 @@ class TravelAgentGraph:
         graph.add_node("intent", self.nodes.intent_node)
         graph.add_node("strategy", self.nodes.strategy_node)
         graph.add_node("plan", self.nodes.plan_node)
+        graph.add_node("react", self.nodes.plan_node)
         graph.add_node("execute", self.nodes.execute_node)
         graph.add_node("verify", self.nodes.verify_node)
         graph.add_node("answer", self.nodes.answer_node)
@@ -97,9 +98,10 @@ class TravelAgentGraph:
         graph.add_conditional_edges(
             "strategy",
             self.nodes.routing_decision,
-            {"plan": "plan", "direct": "direct_answer"},
+            {"plan": "plan", "react": "react", "direct": "direct_answer"},
         )
         graph.add_edge("plan", "execute")
+        graph.add_edge("react", "execute")
         graph.add_conditional_edges(
             "execute",
             self.nodes.should_continue,
@@ -249,6 +251,7 @@ async def run_travel_agent(
     session_id: str = "default",
     system_prompt: str | None = None,
     run_id: str | None = None,
+    chat_mode: str | None = None,
     routing_llm: Runnable | None = None,
 ) -> dict:
     agent = build_travel_agent(
@@ -263,6 +266,7 @@ async def run_travel_agent(
         session_id=session_id,
         system_message=system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
         run_id=run_id,
+        chat_mode=chat_mode,
     )
     result = await agent.ainvoke(initial_state)
     return {
@@ -282,6 +286,7 @@ async def run_travel_agent_streaming(
     session_id: str = "default",
     system_prompt: str | None = None,
     run_id: str | None = None,
+    chat_mode: str | None = None,
     on_token: Callable | None = None,
     on_tool_start: Callable | None = None,
     on_tool_end: Callable | None = None,
@@ -299,6 +304,7 @@ async def run_travel_agent_streaming(
         session_id=session_id,
         system_message=system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
         run_id=run_id,
+        chat_mode=chat_mode,
     )
 
     answer = ""
@@ -336,6 +342,7 @@ async def run_travel_agent_with_memory(
     session_id: str = "default",
     memory_manager=None,
     system_prompt: str | None = None,
+    chat_mode: str | None = None,
     on_token: Callable | None = None,
     on_tool_start: Callable | None = None,
     on_tool_end: Callable | None = None,
@@ -353,6 +360,7 @@ async def run_travel_agent_with_memory(
         session_id=session_id,
         memory_manager=memory_manager,
         system_prompt=system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
+        chat_mode=chat_mode,
     )
     if run_id:
         initial_state["run_id"] = run_id
@@ -408,6 +416,7 @@ async def run_travel_agent_streaming_with_memory(
     system_prompt: str | None = None,
     persist_memory: bool = True,
     run_id: str | None = None,
+    chat_mode: str | None = None,
     routing_llm: Runnable | None = None,
 ):
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
@@ -420,6 +429,7 @@ async def run_travel_agent_streaming_with_memory(
         session_id=session_id,
         memory_manager=memory_manager,
         system_prompt=system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
+        chat_mode=chat_mode,
     )
     if run_id:
         initial_state["run_id"] = run_id
@@ -460,6 +470,11 @@ async def run_travel_agent_streaming_with_memory(
                     progress = 25
                     yield {"type": "stage", "stage": stage, "progress": progress, "label": "生成计划"}
                     yield {"type": "reasoning", "content": "制定执行计划..."}
+                elif node_name == "react":
+                    stage = "query"
+                    progress = 25
+                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "ReAct 执行计划"}
+                    yield {"type": "reasoning", "content": "进入 ReAct 工具编排..."}
                 elif node_name == "execute":
                     stage = "query"
                     progress = 45
@@ -577,6 +592,7 @@ def generate_plan_preview_with_memory(
     session_id: str = "default",
     memory_manager=None,
     system_prompt: str | None = None,
+    chat_mode: str | None = None,
     routing_llm: Runnable | None = None,
 ) -> dict:
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
@@ -589,6 +605,7 @@ def generate_plan_preview_with_memory(
         session_id=session_id,
         memory_manager=memory_manager,
         system_prompt=system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
+        chat_mode=chat_mode,
     )
 
     nodes = AgentNodes(llm, tools, system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT, routing_llm=routing_llm)
