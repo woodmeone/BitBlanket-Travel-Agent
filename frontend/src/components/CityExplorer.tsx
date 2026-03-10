@@ -306,62 +306,202 @@ export default function CityExplorer({ onUsePrompt }: CityExplorerProps) {
     <div style={{ margin: '0 16px 16px' }}>
       <Card
         style={{
-          borderRadius: 20,
-          border: '1px solid rgba(15, 23, 42, 0.08)',
+          borderRadius: 24,
+          border: '1px solid rgba(15, 23, 42, 0.1)',
           background:
-            'radial-gradient(circle at top left, rgba(14,165,233,0.16), transparent 34%), linear-gradient(140deg, #ffffff 0%, #f8fafc 45%, #eef6ff 100%)',
+            'radial-gradient(circle at 12% 0%, rgba(14,165,233,0.18), transparent 36%), radial-gradient(circle at 100% 100%, rgba(15,118,110,0.12), transparent 30%), linear-gradient(150deg, #ffffff 0%, #f8fbff 44%, #eef6ff 100%)',
           overflow: 'hidden',
+          boxShadow: '0 16px 42px rgba(15, 23, 42, 0.08)',
         }}
-        styles={{ body: { padding: 18 } }}
+        styles={{ body: { padding: 22, position: 'relative' } }}
       >
-        <div style={{ display: 'grid', gap: 16 }}>
+        <div
+          style={{
+            pointerEvents: 'none',
+            position: 'absolute',
+            inset: 0,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              width: 320,
+              height: 320,
+              borderRadius: '50%',
+              right: -120,
+              top: -130,
+              background: 'radial-gradient(circle, rgba(3, 105, 161, 0.16) 0%, transparent 68%)',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              width: 260,
+              height: 260,
+              borderRadius: '50%',
+              left: -100,
+              bottom: -120,
+              background: 'radial-gradient(circle, rgba(15, 118, 110, 0.14) 0%, transparent 70%)',
+            }}
+          />
+        </div>
+
+        <div style={{ display: 'grid', gap: 16, position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
-                <CompassOutlined style={{ marginRight: 10, color: '#0369a1' }} />
-                城市探索
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 14,
+                  display: 'grid',
+                  placeItems: 'center',
+                  background: 'linear-gradient(135deg, #0c4a6e 0%, #0f766e 100%)',
+                  boxShadow: '0 10px 24px rgba(2, 132, 199, 0.35)',
+                }}
+              >
+                <CompassOutlined style={{ color: '#f0f9ff', fontSize: 20 }} />
               </div>
-              <div style={{ fontSize: 13, color: '#475569', maxWidth: 760 }}>
-                当前只展示真实策展城市库，详情中的景点名称、区位和备注都来自人工整理，不再混入模板化生成城市。
+              <div>
+                <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 0.2, color: '#0f172a', marginBottom: 4 }}>城市探索</div>
+                <div style={{ fontSize: 13, color: '#475569', maxWidth: 760, lineHeight: 1.75 }}>
+                  当前只展示真实策展城市库，详情中的景点名称、区位和备注都来自人工整理，不再混入模板化生成城市。
+                </div>
               </div>
             </div>
-            <Space wrap>
-              <Tag color="blue">{summaryText}</Tag>
-              <Tag color={compareCities.length > 0 ? 'gold' : 'default'}>对比池 {compareCities.length}/3</Tag>
-              <Tag color={favoriteCities.length > 0 ? 'red' : 'default'}>收藏 {favoriteCities.length}</Tag>
-            </Space>
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gap: 2,
+                  minWidth: 190,
+                  maxWidth: 260,
+                  padding: '8px 12px',
+                  borderRadius: 12,
+                  border: '1px solid #bfdbfe',
+                  background: 'linear-gradient(180deg, #eff6ff 0%, #f8fbff 100%)',
+                }}
+              >
+                <span style={{ fontSize: 11, color: '#1d4ed8', fontWeight: 700 }}>当前视图</span>
+                <span style={{ fontSize: 12, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{summaryText}</span>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 12px',
+                  borderRadius: 12,
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  background: compareCities.length > 0 ? 'linear-gradient(180deg, #fff7ed 0%, #fffbeb 100%)' : '#ffffff',
+                  color: compareCities.length > 0 ? '#92400e' : '#64748b',
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                <SwapOutlined />
+                对比池 {compareCities.length}/3
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 12px',
+                  borderRadius: 12,
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  background: favoriteCities.length > 0 ? 'linear-gradient(180deg, #fff1f2 0%, #fff7f7 100%)' : '#ffffff',
+                  color: favoriteCities.length > 0 ? '#be123c' : '#64748b',
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                <HeartFilled style={{ color: favoriteCities.length > 0 ? '#e11d48' : '#94a3b8' }} />
+                收藏 {favoriteCities.length}
+              </div>
+            </div>
           </div>
 
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '1.3fr 1fr',
-              gap: 14,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: 16,
+              alignItems: 'stretch',
             }}
           >
             <div
               style={{
-                borderRadius: 18,
-                padding: 16,
-                background: 'linear-gradient(135deg, #082f49 0%, #155e75 100%)',
+                borderRadius: 20,
+                padding: 20,
+                background:
+                  'radial-gradient(circle at 90% -20%, rgba(125, 211, 252, 0.35), transparent 40%), linear-gradient(130deg, #082f49 0%, #0f4c72 45%, #0f766e 100%)',
+                border: '1px solid rgba(255, 255, 255, 0.22)',
+                boxShadow: '0 18px 34px rgba(8, 47, 73, 0.24)',
                 color: '#f8fafc',
                 minHeight: 180,
+                position: 'relative',
+                overflow: 'hidden',
               }}
             >
-              <div style={{ fontSize: 12, letterSpacing: 1.2, opacity: 0.75, marginBottom: 10 }}>CURATED</div>
-              <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.3, marginBottom: 12 }}>
+              <div
+                style={{
+                  position: 'absolute',
+                  right: -40,
+                  bottom: -60,
+                  width: 180,
+                  height: 180,
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle, rgba(255,255,255,0.24) 0%, transparent 70%)',
+                  pointerEvents: 'none',
+                }}
+              />
+              <div style={{ fontSize: 12, letterSpacing: 1.4, opacity: 0.86, marginBottom: 10, fontWeight: 700 }}>CURATED TRAVEL</div>
+              <div style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.25, marginBottom: 14 }}>
                 先判断城市是否适合你，
                 <br />
                 再决定要不要继续做 AI 行程规划。
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <Button onClick={() => onUsePrompt('请推荐适合周末两天出发、预算 1500 内、地铁友好的真实城市目的地，并给出选择理由。')}>
+                <Button
+                  style={{
+                    borderRadius: 999,
+                    border: '1px solid rgba(255,255,255,0.45)',
+                    background: 'rgba(255,255,255,0.14)',
+                    color: '#f8fafc',
+                    fontWeight: 700,
+                    backdropFilter: 'blur(4px)',
+                  }}
+                  onClick={() => onUsePrompt('请推荐适合周末两天出发、预算 1500 内、地铁友好的真实城市目的地，并给出选择理由。')}
+                >
                   本周末去哪
                 </Button>
-                <Button onClick={() => onUsePrompt('请推荐亲子友好、少走路、下雨也不容易废行程的真实城市，并说明为什么适合。')}>
+                <Button
+                  style={{
+                    borderRadius: 999,
+                    border: '1px solid rgba(255,255,255,0.45)',
+                    background: 'rgba(255,255,255,0.14)',
+                    color: '#f8fafc',
+                    fontWeight: 700,
+                    backdropFilter: 'blur(4px)',
+                  }}
+                  onClick={() => onUsePrompt('请推荐亲子友好、少走路、下雨也不容易废行程的真实城市，并说明为什么适合。')}
+                >
                   亲子省心
                 </Button>
-                <Button onClick={() => onUsePrompt('请推荐预算友好、以美食为主、景点不需要太密集的城市，并做简短对比。')}>
+                <Button
+                  style={{
+                    borderRadius: 999,
+                    border: '1px solid rgba(255,255,255,0.45)',
+                    background: 'rgba(255,255,255,0.14)',
+                    color: '#f8fafc',
+                    fontWeight: 700,
+                    backdropFilter: 'blur(4px)',
+                  }}
+                  onClick={() => onUsePrompt('请推荐预算友好、以美食为主、景点不需要太密集的城市，并做简短对比。')}
+                >
                   预算美食
                 </Button>
               </div>
@@ -369,25 +509,74 @@ export default function CityExplorer({ onUsePrompt }: CityExplorerProps) {
 
             <div
               style={{
-                borderRadius: 18,
-                padding: 16,
-                background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+                borderRadius: 20,
+                padding: 18,
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, #f8fafc 100%)',
                 border: '1px solid #dbe4ee',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)',
                 display: 'grid',
                 gap: 10,
               }}
             >
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>目的地 shortlist</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>目的地 shortlist</div>
+                <Tag color="blue" style={{ marginInlineEnd: 0, borderRadius: 999, paddingInline: 10 }}>
+                  {favoriteCities.length}/4
+                </Tag>
+              </div>
               {favoriteCities.length === 0 ? (
-                <div style={{ fontSize: 13, color: '#64748b' }}>先收藏几个城市，这里会变成你的候选池。</div>
+                <div
+                  style={{
+                    minHeight: 108,
+                    borderRadius: 14,
+                    border: '1px dashed #cbd5e1',
+                    background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontSize: 13,
+                    color: '#64748b',
+                    textAlign: 'center',
+                    padding: 12,
+                  }}
+                >
+                  先收藏几个城市，这里会变成你的候选池。
+                </div>
               ) : (
                 favoriteCities.slice(0, 4).map((city) => (
-                  <div key={`favorite-${city.id}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                    <div>
-                      <div style={{ fontWeight: 600, color: '#1f2937' }}>{city.name}</div>
-                      <div style={{ fontSize: 12, color: '#64748b' }}>{buildCityProfile(city).recommendation}</div>
+                  <div
+                    key={`favorite-${city.id}`}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 12,
+                      padding: '10px 12px',
+                      background: '#ffffff',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, color: '#1f2937' }}>{city.name}</div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: '#64748b',
+                          lineHeight: 1.55,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {buildCityProfile(city).recommendation}
+                      </div>
                     </div>
-                    <Button size="small" onClick={() => onUsePrompt(buildPlanPrompt(city.name))}>
+                    <Button
+                      size="small"
+                      type="primary"
+                      style={{ borderRadius: 999, border: 'none', background: 'linear-gradient(135deg, #0284c7 0%, #0f766e 100%)' }}
+                      onClick={() => onUsePrompt(buildPlanPrompt(city.name))}
+                    >
                       继续规划
                     </Button>
                   </div>
@@ -396,52 +585,80 @@ export default function CityExplorer({ onUsePrompt }: CityExplorerProps) {
             </div>
           </div>
 
-          <Space wrap size={10}>
-            <Select
-              allowClear
-              loading={isFilterLoading}
-              placeholder="按地区筛选"
-              style={{ width: 180 }}
-              value={selectedRegion}
-              onChange={(value) => setSelectedRegion(value)}
-              options={regions.map((item) => ({ label: item, value: item }))}
-            />
-            <Select
-              mode="multiple"
-              loading={isFilterLoading}
-              placeholder="按标签筛选"
-              style={{ width: 320 }}
-              value={selectedTags}
-              onChange={(value) => setSelectedTags(value)}
-              options={tags.map((item) => ({ label: item, value: item }))}
-            />
-            <Button onClick={() => onUsePrompt('请帮我从当前真实城市库里选一个适合第一次出发的目的地，并从预算、步行强度、雨天备选和核心景点真实性解释原因。')}>
-              让助手帮我选
-            </Button>
-          </Space>
+          <div
+            style={{
+              border: '1px solid #dbe4ee',
+              borderRadius: 16,
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.9) 0%, #f8fbff 100%)',
+              padding: 12,
+              display: 'grid',
+              gap: 10,
+            }}
+          >
+            <Space wrap size={[10, 10]}>
+              <Select
+                allowClear
+                loading={isFilterLoading}
+                placeholder="按地区筛选"
+                style={{ width: 190 }}
+                value={selectedRegion}
+                onChange={(value) => setSelectedRegion(value)}
+                options={regions.map((item) => ({ label: item, value: item }))}
+              />
+              <Select
+                mode="multiple"
+                loading={isFilterLoading}
+                placeholder="按标签筛选"
+                style={{ width: 340, maxWidth: '100%' }}
+                value={selectedTags}
+                onChange={(value) => setSelectedTags(value)}
+                options={tags.map((item) => ({ label: item, value: item }))}
+              />
+              <Button
+                type="primary"
+                style={{
+                  borderRadius: 999,
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #0369a1 0%, #0f766e 100%)',
+                  boxShadow: '0 8px 20px rgba(14, 116, 144, 0.28)',
+                }}
+                onClick={() => onUsePrompt('请帮我从当前真实城市库里选一个适合第一次出发的目的地，并从预算、步行强度、雨天备选和核心景点真实性解释原因。')}
+              >
+                让助手帮我选
+              </Button>
+            </Space>
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {QUICK_FILTERS.map((filter) => {
-              const active = selectedQuickFilters.includes(filter.key);
-              return (
-                <Button
-                  key={filter.key}
-                  size="small"
-                  type={active ? 'primary' : 'default'}
-                  onClick={() => toggleQuickFilter(filter.key)}
-                  style={
-                    active
-                      ? {
-                          background: 'linear-gradient(135deg, #0284c7 0%, #0f766e 100%)',
-                          borderColor: 'transparent',
-                        }
-                      : undefined
-                  }
-                >
-                  {filter.label}
-                </Button>
-              );
-            })}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {QUICK_FILTERS.map((filter) => {
+                const active = selectedQuickFilters.includes(filter.key);
+                return (
+                  <Button
+                    key={filter.key}
+                    size="small"
+                    type={active ? 'primary' : 'default'}
+                    onClick={() => toggleQuickFilter(filter.key)}
+                    style={
+                      active
+                        ? {
+                            borderRadius: 999,
+                            fontWeight: 700,
+                            background: 'linear-gradient(135deg, #0284c7 0%, #0f766e 100%)',
+                            borderColor: 'transparent',
+                            boxShadow: '0 8px 16px rgba(2, 132, 199, 0.24)',
+                          }
+                        : {
+                            borderRadius: 999,
+                            borderColor: '#cbd5e1',
+                            color: '#334155',
+                            background: '#ffffff',
+                          }
+                    }
+                  >
+                    {filter.label}
+                  </Button>
+                );
+              })}
+            </div>
           </div>
 
           {compareCities.length > 0 && (

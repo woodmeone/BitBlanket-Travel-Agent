@@ -294,6 +294,12 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
 
   if (cards.length === 0 || !looksLikeItineraryContent(content, baseCards)) return null;
 
+  const cardEntries = cards.map((day, dayIndex) => ({
+    day,
+    dayIndex,
+    dayKey: `${day.dayLabel}-${dayIndex}`,
+  }));
+
   const totalBaseBudget = cards.reduce((sum, day) => sum + day.baseBudget, 0);
   const budgetProjection = getBudgetProjection(totalBaseBudget / cards.length, cards.length, modeToSliderValue(budgetMode));
   const familyBudget = Math.round(budgetProjection.totalBudget * 2.4);
@@ -301,9 +307,9 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
   const favoriteSpotList = Object.values(favoriteSpots);
 
   const conflictMap = new Map<string, ItineraryConflict[]>();
-  cards.forEach((day) => {
-    const distanceM = routeByDay[day.dayLabel]?.distance_m;
-    conflictMap.set(day.dayLabel, detectDayConflicts(day, distanceM));
+  cardEntries.forEach(({ day, dayKey }) => {
+    const distanceM = routeByDay[dayKey]?.distance_m;
+    conflictMap.set(dayKey, detectDayConflicts(day, distanceM));
   });
 
   const totalConflicts = Array.from(conflictMap.values()).reduce((sum, list) => sum + list.length, 0);
@@ -312,16 +318,16 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
     setExpandedPeriods((prev) => ({ ...prev, [periodKey]: !prev[periodKey] }));
   };
 
-  const handleFetchRoute = async (day: DayPlanCard) => {
+  const handleFetchRoute = async (dayKey: string, day: DayPlanCard) => {
     if (day.spots.length < 2) {
       message.warning('当天景点少于 2 个，无法生成路线。');
       return;
     }
 
     try {
-      setRouteLoadingDay(day.dayLabel);
+      setRouteLoadingDay(dayKey);
       const result = await apiService.getRoutePreview({ spots: day.spots.slice(0, 12), provider: 'amap' });
-      setRouteByDay((prev) => ({ ...prev, [day.dayLabel]: result }));
+      setRouteByDay((prev) => ({ ...prev, [dayKey]: result }));
       message.success(`已获取 ${day.dayLabel} 真实路线`);
     } catch (error) {
       message.error(`路线获取失败：${error instanceof Error ? error.message : '未知错误'}`);
@@ -330,8 +336,8 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
     }
   };
 
-  const handleReorderByDistance = (day: DayPlanCard) => {
-    const route = routeByDay[day.dayLabel];
+  const handleReorderByDistance = (dayKey: string, dayIndex: number, day: DayPlanCard) => {
+    const route = routeByDay[dayKey];
 
     let orderedSpots = day.spots;
     if (route?.points?.length) {
@@ -341,19 +347,19 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
       orderedSpots = points.map((point) => point.name);
     }
 
-    setCards((prev) => prev.map((item) => (item.dayLabel === day.dayLabel ? { ...item, spots: orderedSpots } : item)));
+    setCards((prev) => prev.map((item, index) => (index === dayIndex ? { ...item, spots: orderedSpots } : item)));
     message.success(`${day.dayLabel} 已按距离重排`);
   };
 
-  const handleOneClickFix = (day: DayPlanCard) => {
-    const conflicts = conflictMap.get(day.dayLabel) || [];
+  const handleOneClickFix = (dayKey: string, dayIndex: number, day: DayPlanCard) => {
+    const conflicts = conflictMap.get(dayKey) || [];
     if (conflicts.length === 0) {
       message.info('当前无冲突，无需修复。');
       return;
     }
 
     const fixed = applyConflictFixes(day, conflicts);
-    setCards((prev) => prev.map((item) => (item.dayLabel === day.dayLabel ? fixed : item)));
+    setCards((prev) => prev.map((item, index) => (index === dayIndex ? fixed : item)));
     message.success(`${day.dayLabel} 已应用修复建议`);
   };
 
@@ -558,17 +564,17 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
         </div>
       </Card>
 
-      {cards.map((day) => {
-        const route = routeByDay[day.dayLabel];
-        const conflicts = conflictMap.get(day.dayLabel) || [];
+      {cardEntries.map(({ day, dayIndex, dayKey }) => {
+        const route = routeByDay[dayKey];
+        const conflicts = conflictMap.get(dayKey) || [];
         const decisionInfos = buildSpotDecisionInfos(day.spots);
         const compactedTips = compactTips(day.tips);
-        const tipsExpanded = expandedTips[day.dayLabel] ?? false;
+        const tipsExpanded = expandedTips[dayKey] ?? false;
         const visibleTips = tipsExpanded ? compactedTips : compactedTips.slice(0, 2);
         const hiddenTipCount = compactedTips.length - visibleTips.length;
 
         return (
-          <Card key={`${messageId}-${day.dayLabel}`} size="small" title={day.dayLabel}>
+          <Card key={`${messageId}-${dayKey}`} size="small" title={day.dayLabel}>
             <div style={{ display: 'grid', gap: 10 }}>
               {conflicts.length > 0 && (
                 <div
@@ -583,7 +589,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
                 >
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#9a3412' }}>本日风险提醒</div>
                   {conflicts.slice(0, 2).map((conflict) => (
-                    <div key={`${day.dayLabel}-risk-${conflict.id}`} style={{ fontSize: 12, color: riskColor(conflict.severity) }}>
+                    <div key={`${dayKey}-risk-${conflict.id}`} style={{ fontSize: 12, color: riskColor(conflict.severity) }}>
                       {conflict.title}：{conflict.suggestion}
                     </div>
                   ))}
@@ -594,21 +600,21 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
                 <PeriodTimeline
                   period="morning"
                   rawText={day.morning}
-                  dayKey={day.dayLabel}
+                  dayKey={dayKey}
                   expandedPeriods={expandedPeriods}
                   onToggle={togglePeriod}
                 />
                 <PeriodTimeline
                   period="afternoon"
                   rawText={day.afternoon}
-                  dayKey={day.dayLabel}
+                  dayKey={dayKey}
                   expandedPeriods={expandedPeriods}
                   onToggle={togglePeriod}
                 />
                 <PeriodTimeline
                   period="evening"
                   rawText={day.evening}
-                  dayKey={day.dayLabel}
+                  dayKey={dayKey}
                   expandedPeriods={expandedPeriods}
                   onToggle={togglePeriod}
                 />
@@ -624,15 +630,15 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
                 <Button
                   size="small"
                   icon={<EnvironmentOutlined />}
-                  loading={routeLoadingDay === day.dayLabel}
-                  onClick={() => handleFetchRoute(day)}
+                  loading={routeLoadingDay === dayKey}
+                  onClick={() => handleFetchRoute(dayKey, day)}
                 >
                   真实路线
                 </Button>
-                <Button size="small" icon={<CompassOutlined />} onClick={() => handleReorderByDistance(day)}>
+                <Button size="small" icon={<CompassOutlined />} onClick={() => handleReorderByDistance(dayKey, dayIndex, day)}>
                   按距离重排
                 </Button>
-                <Button size="small" icon={<ThunderboltOutlined />} onClick={() => handleOneClickFix(day)}>
+                <Button size="small" icon={<ThunderboltOutlined />} onClick={() => handleOneClickFix(dayKey, dayIndex, day)}>
                   一键修复冲突
                 </Button>
               </div>
@@ -659,7 +665,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
                       const active = Boolean(favoriteSpots[spot.name]);
                       return (
                         <div
-                          key={`${day.dayLabel}-${spot.name}`}
+                          key={`${dayKey}-${spot.name}`}
                           style={{
                             border: '1px solid #dbe4ee',
                             borderRadius: 12,
@@ -693,7 +699,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
                 <div style={{ display: 'grid', gap: 6 }}>
                   {conflicts.map((conflict) => (
                     <div
-                      key={`${day.dayLabel}-${conflict.id}`}
+                      key={`${dayKey}-${conflict.id}`}
                       style={{
                         fontSize: 12,
                         color: '#7c2d12',
@@ -714,7 +720,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
               {compactedTips.length > 0 && (
                 <div style={{ display: 'grid', gap: 4 }}>
                   {visibleTips.map((tip, index) => (
-                    <div key={`${day.dayLabel}-tip-${index}`} style={{ fontSize: 12, color: '#0f766e' }}>
+                    <div key={`${dayKey}-tip-${index}`} style={{ fontSize: 12, color: '#0f766e' }}>
                       小贴士：{tip}
                     </div>
                   ))}
@@ -726,7 +732,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
                       onClick={() =>
                         setExpandedTips((prev) => ({
                           ...prev,
-                          [day.dayLabel]: !tipsExpanded,
+                          [dayKey]: !tipsExpanded,
                         }))
                       }
                     >
@@ -852,7 +858,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
     <div style={{ display: 'grid', gap: 10 }}>
       {reminders.map((item) => (
         <Card key={`${messageId}-${item.id}`} size="small">
-          <Space direction="vertical" size={2}>
+          <Space orientation="vertical" size={2}>
             <Tag color="blue">{item.phase}</Tag>
             <div style={{ fontWeight: 600 }}>{item.title}</div>
             <div style={{ fontSize: 13, color: '#475569' }}>{item.detail}</div>
@@ -867,21 +873,21 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
       <Tag color={totalConflicts > 0 ? 'orange' : 'green'}>
         {totalConflicts > 0 ? `检测到 ${totalConflicts} 个冲突风险` : '未检测到明显冲突'}
       </Tag>
-      {cards.map((day) => {
-        const conflicts = conflictMap.get(day.dayLabel) || [];
+      {cardEntries.map(({ day, dayIndex, dayKey }) => {
+        const conflicts = conflictMap.get(dayKey) || [];
         if (conflicts.length === 0) {
           return (
-            <Card key={`${messageId}-conflict-${day.dayLabel}`} size="small" title={day.dayLabel}>
+            <Card key={`${messageId}-conflict-${dayKey}`} size="small" title={day.dayLabel}>
               <span style={{ fontSize: 13, color: '#16a34a' }}>无冲突</span>
             </Card>
           );
         }
 
         return (
-          <Card key={`${messageId}-conflict-${day.dayLabel}`} size="small" title={day.dayLabel}>
+          <Card key={`${messageId}-conflict-${dayKey}`} size="small" title={day.dayLabel}>
             <div style={{ display: 'grid', gap: 8 }}>
               {conflicts.map((conflict) => (
-                <div key={conflict.id}>
+                <div key={`${dayKey}-${conflict.id}`}>
                   <Tag color={conflict.severity === 'high' ? 'red' : conflict.severity === 'medium' ? 'orange' : 'gold'}>
                     {conflict.type}
                   </Tag>
@@ -891,7 +897,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
                 </div>
               ))}
               <Divider style={{ margin: '6px 0' }} />
-              <Button size="small" icon={<ReloadOutlined />} onClick={() => handleOneClickFix(day)}>
+              <Button size="small" icon={<ReloadOutlined />} onClick={() => handleOneClickFix(dayKey, dayIndex, day)}>
                 一键修复此日
               </Button>
             </div>
