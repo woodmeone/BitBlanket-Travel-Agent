@@ -230,6 +230,7 @@ python -m pytest tests -q
 
 - [docs/README.md](docs/README.md): 文档总入口
 - [docs/getting-started/quick-start.md](docs/getting-started/quick-start.md): 快速启动
+- [docs/getting-started/ai-travel-agent-zero-to-one.md](docs/getting-started/ai-travel-agent-zero-to-one.md): 面向新人的 AI 旅游 Agent 从 0 到 1 教学教程
 - [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md): 系统架构
 - [docs/reference/api-reference.md](docs/reference/api-reference.md): API 参考
 - [docs/reference/project-structure.md](docs/reference/project-structure.md): 目录结构

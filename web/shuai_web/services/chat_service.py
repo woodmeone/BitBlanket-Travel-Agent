@@ -368,9 +368,33 @@ class ChatService:
         payload.append(HumanMessage(content=message))
 
         async for chunk in self._llm.astream(payload):
-            token = getattr(chunk, "content", "")
+            token = self._extract_stream_text(chunk)
             if token:
                 yield token
+
+    @staticmethod
+    def _extract_stream_text(chunk: Any) -> str:
+        content = getattr(chunk, "content", chunk)
+        if content is None:
+            return ""
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts: list[str] = []
+            for item in content:
+                if isinstance(item, str):
+                    parts.append(item)
+                    continue
+                if isinstance(item, dict):
+                    text = item.get("text")
+                    if isinstance(text, str):
+                        parts.append(text)
+            return "".join(parts)
+        if isinstance(content, dict):
+            text = content.get("text")
+            if isinstance(text, str):
+                return text
+        return str(content)
 
     async def _stream_agent_events(
         self,

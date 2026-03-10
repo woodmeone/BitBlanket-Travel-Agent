@@ -8,20 +8,23 @@
 
 1. [../README.md](../README.md): 先看项目概览、能力范围和界面截图
 2. [getting-started/quick-start.md](getting-started/quick-start.md): 按步骤启动前后端
-3. [reference/project-structure.md](reference/project-structure.md): 了解目录职责
+3. [getting-started/ai-travel-agent-zero-to-one.md](getting-started/ai-travel-agent-zero-to-one.md): 用一条完整链路理解 AI 旅游 Agent 的设计
+4. [reference/project-structure.md](reference/project-structure.md): 了解目录职责
 
 ### 如果你要继续开发或排查问题
 
 1. [architecture/system-architecture.md](architecture/system-architecture.md): 理解前端、API、Agent 调用链
-2. [reference/api-reference.md](reference/api-reference.md): 查看接口与 SSE 事件协议
-3. [testing/testing-guide.md](testing/testing-guide.md): 跑测试、benchmark 和 replay
-4. [reference/configuration-reference.md](reference/configuration-reference.md): 查配置与环境变量
+2. [getting-started/ai-travel-agent-zero-to-one.md](getting-started/ai-travel-agent-zero-to-one.md): 先建立 Agent 心智模型，再深入代码
+3. [reference/api-reference.md](reference/api-reference.md): 查看接口与 SSE 事件协议
+4. [testing/testing-guide.md](testing/testing-guide.md): 跑测试、benchmark 和 replay
+5. [reference/configuration-reference.md](reference/configuration-reference.md): 查配置与环境变量
 
 ## 文档分区
 
 ### Getting Started
 
 - [getting-started/quick-start.md](getting-started/quick-start.md): 本地启动、配置、访问地址
+- [getting-started/ai-travel-agent-zero-to-one.md](getting-started/ai-travel-agent-zero-to-one.md): 面向新人的 AI 旅游 Agent 从 0 到 1 教程
 - [getting-started/development-workflow.md](getting-started/development-workflow.md): 日常开发流程与提交前检查
 
 ### Product
