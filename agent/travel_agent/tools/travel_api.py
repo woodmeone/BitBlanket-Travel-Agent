@@ -50,7 +50,7 @@ class TravelAPIClient:
         
         Args:
             key: Input field `key` used for normalization or matching rules.
-            bypass_cache: Input parameter `bypass_cache` for this routine.
+            bypass_cache: When true, skip cache and force live data-provider request.
         
         Returns:
             Optional[Any]: Computed value returned to the caller.
@@ -115,8 +115,8 @@ class TravelAPIClient:
             Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            refresh_attempted: Input parameter `refresh_attempted` for this routine.
-            refresh_success: Input parameter `refresh_success` for this routine.
+            refresh_attempted: Whether stale-data refresh was attempted for this result.
+            refresh_success: Whether stale-data refresh completed successfully.
         
         Returns:
             Dict[str, Any]: Computed value returned to the caller.
@@ -166,10 +166,10 @@ class TravelAPIClient:
             Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            primary_env: Input parameter `primary_env` for this routine.
-            fallback_env: Input parameter `fallback_env` for this routine.
-            primary_default: Input parameter `primary_default` for this routine.
-            fallback_default: Input parameter `fallback_default` for this routine.
+            primary_env: Primary environment-variable name used to resolve provider credential.
+            fallback_env: Fallback environment-variable name used when primary credential is empty.
+            primary_default: Default primary credential value when environment variable is absent.
+            fallback_default: Default fallback credential value when environment variable is absent.
         
         Returns:
             List[str]: Computed value returned to the caller.
@@ -189,7 +189,7 @@ class TravelAPIClient:
         
         Args:
             provider: Provider identifier used in fallback selection logic.
-            down_env: Input parameter `down_env` for this routine.
+            down_env: Environment-variable name used to mark provider-down override state.
         
         Returns:
             bool: Boolean outcome flag used by guards or success checks.
@@ -442,12 +442,12 @@ class TravelAPIClient:
         Args:
             city: Target city name/code used by city or map operations.
             district: Text input `district` used for parsing, prompt assembly, or display.
-            check_in: Input parameter `check_in` for this routine.
-            check_out: Input parameter `check_out` for this routine.
+            check_in: Hotel check-in date used by accommodation lookup requests.
+            check_out: Hotel check-out date used by accommodation lookup requests.
             price_range: Input field `price_range` used for normalization or matching rules.
             page: Numeric control parameter `page` used for bounds or pagination.
             page_size: Numeric control parameter `page_size` used for bounds or pagination.
-            bypass_cache: Input parameter `bypass_cache` for this routine.
+            bypass_cache: When true, skip cache and force live data-provider request.
         
         Returns:
             Dict[str, Any]: Computed value returned to the caller.
@@ -534,8 +534,8 @@ class TravelAPIClient:
         
         Args:
             city: Target city name/code used by city or map operations.
-            days: Input parameter `days` for this routine.
-            bypass_cache: Input parameter `bypass_cache` for this routine.
+            days: Trip duration in days used by budget estimation logic.
+            bypass_cache: When true, skip cache and force live data-provider request.
         
         Returns:
             Dict[str, Any]: Computed value returned to the caller.

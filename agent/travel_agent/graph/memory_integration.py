@@ -45,7 +45,7 @@ class ConversationSummarizer:
         
         Args:
             llm: Primary chat model runnable used for reasoning and answer generation.
-            summary_threshold: Input parameter `summary_threshold` for this routine.
+            summary_threshold: Maximum message count before older dialogue turns are summarized.
         
         Returns:
             Any: Runtime-dependent value returned for downstream processing.
@@ -116,7 +116,7 @@ class AgentMemoryManager:
         Args:
             llm: Primary chat model runnable used for reasoning and answer generation.
             max_history: Numeric control parameter `max_history` used for bounds or pagination.
-            summary_threshold: Input parameter `summary_threshold` for this routine.
+            summary_threshold: Maximum message count before older dialogue turns are summarized.
             persist_path: Filesystem/resource path for `persist_path` resolution.
             session_ttl_seconds: Time-related setting `session_ttl_seconds` used by scheduling/retry windows.
             max_sessions: Numeric control parameter `max_sessions` used for bounds or pagination.
@@ -736,7 +736,7 @@ class AgentMemoryManager:
             key: Input field `key` used for normalization or matching rules.
             value: Candidate scalar value to normalize/validate.
             source: Input field `source` used for normalization or matching rules.
-            confidence: Input parameter `confidence` for this routine.
+            confidence: Confidence score used when writing inferred profile attributes.
         
         Returns:
             None: No explicit return value; side effects happen in-place.
@@ -884,7 +884,7 @@ class AgentMemoryManager:
         
         Args:
             key: Input field `key` used for normalization or matching rules.
-            existing: Input parameter `existing` for this routine.
+            existing: Existing profile attribute value before merge/overwrite decisions.
             new_value: Input field `new_value` used for normalization or matching rules.
             new_source: Input field `new_source` used for normalization or matching rules.
         
@@ -952,8 +952,8 @@ class AgentMemoryManager:
         Args:
             profile: User preference profile snapshot stored in memory manager.
             key: Input field `key` used for normalization or matching rules.
-            conflict: Input parameter `conflict` for this routine.
-            now: Input parameter `now` for this routine.
+            conflict: Conflict descriptor generated when incoming and stored values disagree.
+            now: Current UTC timestamp used for decay and freshness calculations.
         
         Returns:
             None: No explicit return value; side effects happen in-place.
@@ -987,7 +987,7 @@ class AgentMemoryManager:
             Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            timestamp: Input parameter `timestamp` for this routine.
+            timestamp: Timestamp associated with a memory message for recency weighting.
         
         Returns:
             float: Parsed float value returned to caller.

@@ -210,7 +210,7 @@ class ToolOrchestrator:
             trace_counter: Signature counter used to detect repeated loop patterns.
             signature_getter: Callback that builds a stable signature for one plan step.
             max_same_invocations: Numeric control parameter `max_same_invocations` used for bounds or pagination.
-            requested_parallelism: Input parameter `requested_parallelism` for this routine.
+            requested_parallelism: Requested number of parallel tool invocations for this round.
             max_parallelism: Numeric control parameter `max_parallelism` used for bounds or pagination.
             budget: Scheduler budget snapshot used for selection guards.
         
@@ -462,7 +462,7 @@ class AgentNodes:
             Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            model: Input parameter `model` for this routine.
+            model: Candidate structured-output model used for parse/validation fallback.
             payload: Structured event payload serialized to one SSE data line.
         
         Returns:
@@ -1824,8 +1824,8 @@ class AgentNodes:
             Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            primary: Input parameter `primary` for this routine.
-            secondary: Input parameter `secondary` for this routine.
+            primary: Primary intent label candidate selected by routing logic.
+            secondary: Secondary intent label candidate used for tie-breaks/fallback.
         
         Returns:
             list[dict[str, Any]]: Computed value returned to the caller.
@@ -1899,7 +1899,7 @@ class AgentNodes:
             Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            step_num: Input parameter `step_num` for this routine.
+            step_num: Current plan step number written into execution traces.
             tool_name: Registered tool identifier from the tool map.
             entities: Structured entities parsed from intent stage output.
             required: Collection `required` iterated or aggregated by this routine.
@@ -2365,7 +2365,7 @@ class AgentNodes:
         
         Args:
             execution_trace: Collection `execution_trace` iterated or aggregated by this routine.
-            signature: Input parameter `signature` for this routine.
+            signature: Stable step signature used for loop-detection and dedup guards.
         
         Returns:
             bool: Decision flag used by guards, routing, or policy checks.
@@ -2840,7 +2840,7 @@ class AgentNodes:
             Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            item: Input parameter `item` for this routine.
+            item: Raw list item being normalized into a comparable text fragment.
         
         Returns:
             dict[str, Any]: Structured metadata payload returned to caller.
@@ -2876,7 +2876,7 @@ class AgentNodes:
         Args:
             value: Candidate scalar value to normalize/validate.
             minimum: Lower bound accepted for parsed numeric value.
-            maximum: Input parameter `maximum` for this routine.
+            maximum: Upper bound applied to the computed percentile/quantile result.
             default: Fallback value used when parsing fails or variable is missing.
         
         Returns:
@@ -3399,8 +3399,8 @@ class AgentNodes:
             Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            values: Input parameter `values` for this routine.
-            percentile: Input parameter `percentile` for this routine.
+            values: Numeric sample values used to estimate percentile thresholds.
+            percentile: Percentile ratio (0-1) used when selecting quantile index.
         
         Returns:
             int: Numeric count/value returned to caller.
@@ -3501,7 +3501,7 @@ class AgentNodes:
         
         Args:
             tool_name: Registered tool identifier from the tool map.
-            error_code: Input parameter `error_code` for this routine.
+            error_code: Normalized error code used for diagnostics and telemetry clustering.
         
         Returns:
             str: Normalized string value returned to caller.

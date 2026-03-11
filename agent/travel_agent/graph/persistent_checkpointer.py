@@ -147,7 +147,7 @@ class PersistentSqliteSaver(InMemorySaver):
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
+            checkpoint_ns: Checkpoint namespace that partitions persisted state records.
         
         Returns:
             int: Numeric count/value returned to caller.
@@ -325,7 +325,7 @@ class PersistentSqliteSaver(InMemorySaver):
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
+            checkpoint_ns: Checkpoint namespace that partitions persisted state records.
             checkpoint_id: Unique identifier for `checkpoint_id` used in lookup/tracing logic.
         
         Returns:
@@ -361,7 +361,7 @@ class PersistentSqliteSaver(InMemorySaver):
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
+            checkpoint_ns: Checkpoint namespace that partitions persisted state records.
             new_versions: Collection `new_versions` iterated or aggregated by this routine.
         
         Returns:
@@ -403,7 +403,7 @@ class PersistentSqliteSaver(InMemorySaver):
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
+            checkpoint_ns: Checkpoint namespace that partitions persisted state records.
             checkpoint_id: Unique identifier for `checkpoint_id` used in lookup/tracing logic.
         
         Returns:
@@ -452,7 +452,7 @@ class PersistentSqliteSaver(InMemorySaver):
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
+            checkpoint_ns: Checkpoint namespace that partitions persisted state records.
         
         Returns:
             None: No explicit return value; side effects happen in-place.
@@ -470,7 +470,7 @@ class PersistentSqliteSaver(InMemorySaver):
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
+            checkpoint_ns: Checkpoint namespace that partitions persisted state records.
         
         Returns:
             None: No explicit return value; side effects happen in-place.
@@ -522,8 +522,8 @@ class PersistentSqliteSaver(InMemorySaver):
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
-            keep: Input parameter `keep` for this routine.
+            checkpoint_ns: Checkpoint namespace that partitions persisted state records.
+            keep: Number of newest checkpoints preserved during compaction.
         
         Returns:
             None: No explicit return value; side effects happen in-place.

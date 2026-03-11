@@ -40,7 +40,7 @@ def build_system_prompt(base_prompt: str, intent: Optional[str]) -> str:
         Document service/API behavior, side effects, and integration expectations for maintainers.
     
     Args:
-        base_prompt: Input parameter `base_prompt` for this routine.
+        base_prompt: Base prompt template before appending extra constraints/context.
         intent: Detected intent label used for SLO bucket aggregation.
     
     Returns:
@@ -66,10 +66,10 @@ def build_answer_prompt(
     
     Args:
         user_question: Text input `user_question` used for parsing, prompt assembly, or display.
-        context: Input parameter `context` for this routine.
+        context: Context dictionary used to render prompt sections and variables.
         tools_used: Collection `tools_used` iterated or aggregated by this routine.
         intent: Detected intent label used for SLO bucket aggregation.
-        evidence_required: Input parameter `evidence_required` for this routine.
+        evidence_required: Whether generated answer prompt must enforce evidence statements.
     
     Returns:
         str: Normalized string value returned to caller.
