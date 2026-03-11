@@ -36,15 +36,15 @@ class PersistentSqliteSaver(InMemorySaver):
         """Initialize PersistentSqliteSaver and prepare runtime dependencies.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            db_path: Input `db_path` consumed by this method.
-            max_checkpoints_per_thread_ns: Input `max_checkpoints_per_thread_ns` consumed by this method.
-            compaction_interval: Input `compaction_interval` consumed by this method.
+            db_path: Filesystem/resource path for `db_path` resolution.
+            max_checkpoints_per_thread_ns: Numeric control parameter `max_checkpoints_per_thread_ns` used for bounds or pagination.
+            compaction_interval: Time-related setting `compaction_interval` used by scheduling/retry windows.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         self._db_path = os.path.abspath(db_path)
         self._persist_lock = threading.RLock()
@@ -59,16 +59,16 @@ class PersistentSqliteSaver(InMemorySaver):
         """Execute put in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             config: Configuration payload used to initialize runtime behavior.
-            checkpoint: Input `checkpoint` consumed by this method.
-            metadata: Input `metadata` consumed by this method.
-            new_versions: Input `new_versions` consumed by this method.
+            checkpoint: Structured payload `checkpoint` used by this routine.
+            metadata: Structured payload `metadata` used by this routine.
+            new_versions: Collection `new_versions` iterated or aggregated by this routine.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         next_config = super().put(config, checkpoint, metadata, new_versions)
         thread_id, checkpoint_ns, checkpoint_id = self._resolve_checkpoint_key(next_config)
@@ -81,16 +81,16 @@ class PersistentSqliteSaver(InMemorySaver):
         """Execute aput in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             config: Configuration payload used to initialize runtime behavior.
-            checkpoint: Input `checkpoint` consumed by this method.
-            metadata: Input `metadata` consumed by this method.
-            new_versions: Input `new_versions` consumed by this method.
+            checkpoint: Structured payload `checkpoint` used by this routine.
+            metadata: Structured payload `metadata` used by this routine.
+            new_versions: Collection `new_versions` iterated or aggregated by this routine.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         next_config = await super().aput(config, checkpoint, metadata, new_versions)
         thread_id, checkpoint_ns, checkpoint_id = self._resolve_checkpoint_key(next_config)
@@ -103,16 +103,16 @@ class PersistentSqliteSaver(InMemorySaver):
         """Execute put writes in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             config: Configuration payload used to initialize runtime behavior.
-            writes: Input `writes` consumed by this method.
-            task_id: Input `task_id` consumed by this method.
-            task_path: Input `task_path` consumed by this method.
+            writes: Collection `writes` iterated or aggregated by this routine.
+            task_id: Unique identifier for `task_id` used in lookup/tracing logic.
+            task_path: Filesystem/resource path for `task_path` resolution.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         super().put_writes(config, writes, task_id, task_path=task_path)
         thread_id, checkpoint_ns, checkpoint_id = self._resolve_checkpoint_key(config)
@@ -123,16 +123,16 @@ class PersistentSqliteSaver(InMemorySaver):
         """Execute aput writes in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             config: Configuration payload used to initialize runtime behavior.
-            writes: Input `writes` consumed by this method.
-            task_id: Input `task_id` consumed by this method.
-            task_path: Input `task_path` consumed by this method.
+            writes: Collection `writes` iterated or aggregated by this routine.
+            task_id: Unique identifier for `task_id` used in lookup/tracing logic.
+            task_path: Filesystem/resource path for `task_path` resolution.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         await super().aput_writes(config, writes, task_id, task_path=task_path)
         thread_id, checkpoint_ns, checkpoint_id = self._resolve_checkpoint_key(config)
@@ -143,14 +143,14 @@ class PersistentSqliteSaver(InMemorySaver):
         """Get checkpoint count from current backend context.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input `checkpoint_ns` consumed by this method.
+            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
         
         Returns:
-            int: Result value produced by this method.
+            int: Numeric count/value returned to caller.
         """
         self._compact_thread(thread_id, checkpoint_ns)
         with self._persist_lock:
@@ -168,13 +168,13 @@ class PersistentSqliteSaver(InMemorySaver):
         """Resolve checkpoint key using config defaults and overrides.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             config: Configuration payload used to initialize runtime behavior.
         
         Returns:
-            Key3: Result value produced by this method.
+            Key3: Computed value returned to the caller.
         """
         configurable = (config or {}).get("configurable", {})
         thread_id = str(configurable.get("thread_id") or "default")
@@ -186,10 +186,10 @@ class PersistentSqliteSaver(InMemorySaver):
         """Execute init db in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         os.makedirs(os.path.dirname(self._db_path), exist_ok=True)
         with sqlite3.connect(self._db_path) as conn:
@@ -246,10 +246,10 @@ class PersistentSqliteSaver(InMemorySaver):
         """Load from db from persistence source.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         with self._persist_lock:
             with sqlite3.connect(self._db_path) as conn:
@@ -304,13 +304,13 @@ class PersistentSqliteSaver(InMemorySaver):
         """Execute safe load in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             payload: Structured payload used by API/service boundary.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         try:
             return pickle.loads(payload)
@@ -321,15 +321,15 @@ class PersistentSqliteSaver(InMemorySaver):
         """Execute persist checkpoint in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input `checkpoint_ns` consumed by this method.
-            checkpoint_id: Input `checkpoint_id` consumed by this method.
+            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
+            checkpoint_id: Unique identifier for `checkpoint_id` used in lookup/tracing logic.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         if not checkpoint_id:
             return
@@ -357,15 +357,15 @@ class PersistentSqliteSaver(InMemorySaver):
         """Execute persist blobs in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input `checkpoint_ns` consumed by this method.
-            new_versions: Input `new_versions` consumed by this method.
+            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
+            new_versions: Collection `new_versions` iterated or aggregated by this routine.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         if not new_versions:
             return
@@ -399,15 +399,15 @@ class PersistentSqliteSaver(InMemorySaver):
         """Execute persist writes in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input `checkpoint_ns` consumed by this method.
-            checkpoint_id: Input `checkpoint_id` consumed by this method.
+            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
+            checkpoint_id: Unique identifier for `checkpoint_id` used in lookup/tracing logic.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         outer_key: Key3 = (thread_id, checkpoint_ns, checkpoint_id)
         write_map = self.writes.get(outer_key, {})
@@ -448,14 +448,14 @@ class PersistentSqliteSaver(InMemorySaver):
         """Execute on mutation in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input `checkpoint_ns` consumed by this method.
+            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         self._write_counter += 1
         if self._write_counter % self._compaction_interval != 0:
@@ -466,14 +466,14 @@ class PersistentSqliteSaver(InMemorySaver):
         """Execute compact thread in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input `checkpoint_ns` consumed by this method.
+            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         with self._persist_lock:
             with sqlite3.connect(self._db_path) as conn:
@@ -518,15 +518,15 @@ class PersistentSqliteSaver(InMemorySaver):
         """Execute compact memory in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             thread_id: Thread/checkpoint identifier used by langgraph persistence.
-            checkpoint_ns: Input `checkpoint_ns` consumed by this method.
-            keep: Input `keep` consumed by this method.
+            checkpoint_ns: Input parameter `checkpoint_ns` for this routine.
+            keep: Input parameter `keep` for this routine.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         keep_set = set(keep)
         ns_storage = self.storage.get(thread_id, {}).get(checkpoint_ns, {})

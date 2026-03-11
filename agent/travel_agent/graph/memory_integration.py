@@ -41,14 +41,14 @@ class ConversationSummarizer:
         """Initialize deterministic summarization settings for long session histories.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            llm: Input `llm` consumed by this routine.
-            summary_threshold: Input `summary_threshold` consumed by this routine.
+            llm: Primary chat model runnable used for reasoning and answer generation.
+            summary_threshold: Input parameter `summary_threshold` for this routine.
         
         Returns:
-            Any: Result value produced by this routine.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         self.llm = llm
         self.summary_threshold = max(2, summary_threshold)
@@ -57,13 +57,13 @@ class ConversationSummarizer:
         """Compress older turns into short bullets used as compact system context.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             messages: Chronological message list used as model/tool context.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         if not messages:
             return ""
@@ -111,18 +111,18 @@ class AgentMemoryManager:
         """Initialize session memory store, locks, retention policy, and optional disk persistence.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            llm: Input `llm` consumed by this routine.
-            max_history: Input `max_history` consumed by this routine.
-            summary_threshold: Input `summary_threshold` consumed by this routine.
-            persist_path: Input `persist_path` consumed by this routine.
-            session_ttl_seconds: Input `session_ttl_seconds` consumed by this routine.
-            max_sessions: Input `max_sessions` consumed by this routine.
+            llm: Primary chat model runnable used for reasoning and answer generation.
+            max_history: Numeric control parameter `max_history` used for bounds or pagination.
+            summary_threshold: Input parameter `summary_threshold` for this routine.
+            persist_path: Filesystem/resource path for `persist_path` resolution.
+            session_ttl_seconds: Time-related setting `session_ttl_seconds` used by scheduling/retry windows.
+            max_sessions: Numeric control parameter `max_sessions` used for bounds or pagination.
         
         Returns:
-            Any: Result value produced by this routine.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         self.max_history = max(2, max_history)
         self.summarizer = ConversationSummarizer(llm=llm, summary_threshold=summary_threshold)
@@ -146,15 +146,15 @@ class AgentMemoryManager:
         """Persist one chat turn, refresh summary/profile, and enforce retention and capacity rules.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             session_id: Session identifier used to isolate memory/checkpoint scope.
-            role: Input `role` consumed by this routine.
+            role: Message role label (user/assistant/system).
             content: Raw text content being normalized or analyzed.
         
         Returns:
-            None: Result value produced by this routine.
+            None: No explicit return value; side effects happen in-place.
         """
         async with self._lock:
             with self._sync_lock:
@@ -182,14 +182,14 @@ class AgentMemoryManager:
         """Return recent session messages for async call-sites.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             session_id: Session identifier used to isolate memory/checkpoint scope.
-            limit: Input `limit` consumed by this routine.
+            limit: Numeric control parameter `limit` used for bounds or pagination.
         
         Returns:
-            List[MemoryMessage]: Result value produced by this routine.
+            List[MemoryMessage]: Computed value returned to the caller.
         """
         async with self._lock:
             with self._sync_lock:
@@ -204,13 +204,13 @@ class AgentMemoryManager:
         """Return the cached session summary for async call-sites.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             session_id: Session identifier used to isolate memory/checkpoint scope.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         async with self._lock:
             with self._sync_lock:
@@ -224,14 +224,14 @@ class AgentMemoryManager:
         """Get recent messages sync from current runtime context.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             session_id: Session identifier used to isolate memory/checkpoint scope.
-            limit: Input `limit` consumed by this routine.
+            limit: Numeric control parameter `limit` used for bounds or pagination.
         
         Returns:
-            List[MemoryMessage]: Result value produced by this routine.
+            List[MemoryMessage]: Computed value returned to the caller.
         """
         with self._sync_lock:
             session = self._sessions.get(session_id)
@@ -244,13 +244,13 @@ class AgentMemoryManager:
         """Get summary sync from current runtime context.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             session_id: Session identifier used to isolate memory/checkpoint scope.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         with self._sync_lock:
             session = self._sessions.get(session_id)
@@ -262,13 +262,13 @@ class AgentMemoryManager:
         """Build baseline memory context injected into the next agent invocation.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             session_id: Session identifier used to isolate memory/checkpoint scope.
         
         Returns:
-            List[BaseMessage]: Result value produced by this routine.
+            List[BaseMessage]: Computed value returned to the caller.
         """
         summary = self.get_summary_sync(session_id)
         recent = self.get_recent_messages_sync(session_id, self.max_history)
@@ -301,15 +301,15 @@ class AgentMemoryManager:
         """Select memory messages relevant to the current query and build compact context messages.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             session_id: Session identifier used to isolate memory/checkpoint scope.
-            user_message: Input `user_message` consumed by this routine.
-            max_messages: Input `max_messages` consumed by this routine.
+            user_message: Raw user request text for this run.
+            max_messages: Numeric control parameter `max_messages` used for bounds or pagination.
         
         Returns:
-            List[BaseMessage]: Result value produced by this routine.
+            List[BaseMessage]: Computed value returned to the caller.
         """
         summary = self.get_summary_sync(session_id)
         profile = self.get_profile_sync(session_id)
@@ -360,13 +360,13 @@ class AgentMemoryManager:
         """Execute clear session messages in the backend runtime workflow.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             session_id: Session identifier used to isolate memory/checkpoint scope.
         
         Returns:
-            bool: Result value produced by this routine.
+            bool: Boolean outcome flag used by guards or success checks.
         """
         async with self._lock:
             with self._sync_lock:
@@ -384,13 +384,13 @@ class AgentMemoryManager:
         """Execute delete session in the backend runtime workflow.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             session_id: Session identifier used to isolate memory/checkpoint scope.
         
         Returns:
-            bool: Result value produced by this routine.
+            bool: Boolean outcome flag used by guards or success checks.
         """
         async with self._lock:
             with self._sync_lock:
@@ -403,13 +403,13 @@ class AgentMemoryManager:
         """Get profile sync from current runtime context.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             session_id: Session identifier used to isolate memory/checkpoint scope.
         
         Returns:
-            Dict[str, Any]: Result value produced by this routine.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         with self._sync_lock:
             session = self._sessions.get(session_id)
@@ -434,13 +434,13 @@ class AgentMemoryManager:
         """Get profile from current runtime context.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             session_id: Session identifier used to isolate memory/checkpoint scope.
         
         Returns:
-            Dict[str, Any]: Result value produced by this routine.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         async with self._lock:
             return self.get_profile_sync(session_id)
@@ -449,13 +449,13 @@ class AgentMemoryManager:
         """Trim per-session message history while preserving the configured recency window.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             session: Mutable session record containing messages/summary/profile fields.
         
         Returns:
-            None: Result value produced by this routine.
+            None: No explicit return value; side effects happen in-place.
         """
         keep = max(self.max_history * 3, self.max_history + 6)
         if len(session["messages"]) > keep:
@@ -465,15 +465,15 @@ class AgentMemoryManager:
         """Extract and merge long-term preference signals from incoming conversation text.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             session: Mutable session record containing messages/summary/profile fields.
-            role: Input `role` consumed by this routine.
+            role: Message role label (user/assistant/system).
             content: Raw text content being normalized or analyzed.
         
         Returns:
-            None: Result value produced by this routine.
+            None: No explicit return value; side effects happen in-place.
         """
         if role != "user":
             return
@@ -584,10 +584,10 @@ class AgentMemoryManager:
         """Evict oldest sessions when global in-memory capacity exceeds configured limits.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Returns:
-            None: Result value produced by this routine.
+            None: No explicit return value; side effects happen in-place.
         """
         if len(self._sessions) <= self._max_sessions:
             return
@@ -596,13 +596,13 @@ class AgentMemoryManager:
             """Execute latest ts in the backend runtime workflow.
             
             Purpose:
-                Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+                Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
             
             Args:
-                session_data: Input `session_data` consumed by this routine.
+                session_data: Structured payload `session_data` used by this routine.
             
             Returns:
-                str: Result value produced by this routine.
+                str: Normalized string value returned to caller.
             """
             messages = session_data.get("messages", [])
             if messages:
@@ -618,10 +618,10 @@ class AgentMemoryManager:
         """Execute cleanup expired locked in the backend runtime workflow.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Returns:
-            None: Result value produced by this routine.
+            None: No explicit return value; side effects happen in-place.
         """
         now = datetime.now(timezone.utc)
         ttl = timedelta(seconds=self._session_ttl_seconds)
@@ -649,10 +649,10 @@ class AgentMemoryManager:
         """Load persisted memory snapshot and normalize schema before serving requests.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Returns:
-            None: Result value produced by this routine.
+            None: No explicit return value; side effects happen in-place.
         """
         if not self._persist_path or not os.path.exists(self._persist_path):
             return
@@ -685,10 +685,10 @@ class AgentMemoryManager:
         """Persist in-memory sessions to disk under lock protection for crash recovery.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Returns:
-            None: Result value produced by this routine.
+            None: No explicit return value; side effects happen in-place.
         """
         if not self._persist_path:
             return
@@ -729,17 +729,17 @@ class AgentMemoryManager:
         """Execute merge profile attr in the backend runtime workflow.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             profile: User preference profile snapshot stored in memory manager.
-            key: Input `key` consumed by this routine.
+            key: Input field `key` used for normalization or matching rules.
             value: Candidate scalar value to normalize/validate.
-            source: Input `source` consumed by this routine.
-            confidence: Input `confidence` consumed by this routine.
+            source: Input field `source` used for normalization or matching rules.
+            confidence: Input parameter `confidence` for this routine.
         
         Returns:
-            None: Result value produced by this routine.
+            None: No explicit return value; side effects happen in-place.
         """
         source = source if source in self.SOURCE_PRIORITY else "inferred"
         confidence = max(0.0, min(1.0, float(confidence)))
@@ -787,10 +787,10 @@ class AgentMemoryManager:
         """Execute empty profile in the backend runtime workflow.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Returns:
-            Dict[str, Any]: Result value produced by this routine.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         return {
             "schema_version": self.PROFILE_SCHEMA_VERSION,
@@ -806,13 +806,13 @@ class AgentMemoryManager:
         """Normalize profile into canonical format.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             profile: User preference profile snapshot stored in memory manager.
         
         Returns:
-            Dict[str, Any]: Result value produced by this routine.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         if not isinstance(profile, dict):
             return self._empty_profile()
@@ -853,13 +853,13 @@ class AgentMemoryManager:
         """Execute to number in the backend runtime workflow.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             value: Candidate scalar value to normalize/validate.
         
         Returns:
-            Optional[float]: Result value produced by this routine.
+            Optional[float]: Computed value returned to the caller.
         """
         if value is None:
             return None
@@ -880,16 +880,16 @@ class AgentMemoryManager:
         """Detect contradictory preference updates and emit conflict metadata for clarification.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            key: Input `key` consumed by this routine.
-            existing: Input `existing` consumed by this routine.
-            new_value: Input `new_value` consumed by this routine.
-            new_source: Input `new_source` consumed by this routine.
+            key: Input field `key` used for normalization or matching rules.
+            existing: Input parameter `existing` for this routine.
+            new_value: Input field `new_value` used for normalization or matching rules.
+            new_source: Input field `new_source` used for normalization or matching rules.
         
         Returns:
-            Optional[Dict[str, Any]]: Result value produced by this routine.
+            Optional[Dict[str, Any]]: Computed value returned to the caller.
         """
         old_value = existing.get("value")
         if old_value is None:
@@ -947,16 +947,16 @@ class AgentMemoryManager:
         """Record preference conflicts for later prompts and profile reconciliation.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             profile: User preference profile snapshot stored in memory manager.
-            key: Input `key` consumed by this routine.
-            conflict: Input `conflict` consumed by this routine.
-            now: Input `now` consumed by this routine.
+            key: Input field `key` used for normalization or matching rules.
+            conflict: Input parameter `conflict` for this routine.
+            now: Input parameter `now` for this routine.
         
         Returns:
-            None: Result value produced by this routine.
+            None: No explicit return value; side effects happen in-place.
         """
         entry = {
             "key": key,
@@ -984,13 +984,13 @@ class AgentMemoryManager:
         """Execute time decay factor in the backend runtime workflow.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            timestamp: Input `timestamp` consumed by this routine.
+            timestamp: Input parameter `timestamp` for this routine.
         
         Returns:
-            float: Result value produced by this routine.
+            float: Parsed float value returned to caller.
         """
         try:
             ts = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
@@ -1007,13 +1007,13 @@ class AgentMemoryManager:
         """Execute decayed confidence in the backend runtime workflow.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            attr: Input `attr` consumed by this routine.
+            attr: Input field `attr` used for normalization or matching rules.
         
         Returns:
-            float: Result value produced by this routine.
+            float: Parsed float value returned to caller.
         """
         base = float(attr.get("confidence", 0.0) or 0.0)
         updated_at = str(attr.get("updated_at") or "")
@@ -1024,13 +1024,13 @@ class AgentMemoryManager:
         """Execute attributes with decay in the backend runtime workflow.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            attrs: Input `attrs` consumed by this routine.
+            attrs: Input field `attrs` used for normalization or matching rules.
         
         Returns:
-            Dict[str, Any]: Result value produced by this routine.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         output: Dict[str, Any] = {}
         for key, item in attrs.items():
@@ -1047,13 +1047,13 @@ class AgentMemoryManager:
         """Execute tokenize in the backend runtime workflow.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            text: Input `text` consumed by this routine.
+            text: Text input `text` used for parsing, prompt assembly, or display.
         
         Returns:
-            set[str]: Result value produced by this routine.
+            set[str]: Computed value returned to the caller.
         """
         tokens = re.findall(r"[\u4e00-\u9fff]{2,}|[a-zA-Z0-9]+", text or "")
         return {token.lower() for token in tokens if token}
@@ -1073,17 +1073,17 @@ class AgentStateWithMemory:
         """Execute create in the backend runtime workflow.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            user_message: Input `user_message` consumed by this routine.
+            user_message: Raw user request text for this run.
             session_id: Session identifier used to isolate memory/checkpoint scope.
-            memory_manager: Input `memory_manager` consumed by this routine.
-            system_prompt: Input `system_prompt` consumed by this routine.
-            chat_mode: Input `chat_mode` consumed by this routine.
+            memory_manager: Session memory manager used to build context and persist message memory.
+            system_prompt: System prompt text injected at the beginning of model context.
+            chat_mode: Requested orchestration mode such as direct/react/plan.
         
         Returns:
-            Dict[str, Any]: Result value produced by this routine.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         messages: List[BaseMessage] = [SystemMessage(content=system_prompt)]
 

@@ -18,13 +18,13 @@ class TravelAPIClient:
         """Initialize TravelAPIClient and prepare runtime dependencies.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            use_cache: Input `use_cache` consumed by this method.
+            use_cache: Boolean flag `use_cache` that toggles runtime behavior.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         self.use_cache = use_cache
         self._cache: Dict[str, Any] = {}
@@ -35,10 +35,10 @@ class TravelAPIClient:
         """Execute now iso in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            str: Result value produced by this method.
+            str: Normalized string value returned to caller.
         """
         return datetime.now(timezone.utc).isoformat()
 
@@ -46,14 +46,14 @@ class TravelAPIClient:
         """Get cache from current backend context.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            key: Input `key` consumed by this method.
-            bypass_cache: Input `bypass_cache` consumed by this method.
+            key: Input field `key` used for normalization or matching rules.
+            bypass_cache: Input parameter `bypass_cache` for this routine.
         
         Returns:
-            Optional[Any]: Result value produced by this method.
+            Optional[Any]: Computed value returned to the caller.
         """
         if bypass_cache:
             return None
@@ -65,14 +65,14 @@ class TravelAPIClient:
         """Execute set cache in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            key: Input `key` consumed by this method.
-            value: Input `value` consumed by this method.
+            key: Input field `key` used for normalization or matching rules.
+            value: Input field `value` used for normalization or matching rules.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         if self.use_cache:
             self._cache[key] = value
@@ -82,15 +82,15 @@ class TravelAPIClient:
         """Build meta for downstream processing.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            key: Input `key` consumed by this method.
-            source: Input `source` consumed by this method.
-            ttl_seconds: Input `ttl_seconds` consumed by this method.
+            key: Input field `key` used for normalization or matching rules.
+            source: Input field `source` used for normalization or matching rules.
+            ttl_seconds: Time-related setting `ttl_seconds` used by scheduling/retry windows.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         fetched_at = self._cache_meta.get(key, self._now_iso())
         is_stale = False
@@ -112,14 +112,14 @@ class TravelAPIClient:
         """Execute refresh meta in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            refresh_attempted: Input `refresh_attempted` consumed by this method.
-            refresh_success: Input `refresh_success` consumed by this method.
+            refresh_attempted: Input parameter `refresh_attempted` for this routine.
+            refresh_success: Input parameter `refresh_success` for this routine.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         return {
             "refresh_attempted": bool(refresh_attempted),
@@ -131,10 +131,10 @@ class TravelAPIClient:
         """Execute weather provider chain in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            List[str]: Result value produced by this method.
+            List[str]: Computed value returned to the caller.
         """
         primary = os.getenv("WEATHER_API_PROVIDER", "mock-weather-provider").strip() or "mock-weather-provider"
         fallback = os.getenv("WEATHER_API_FALLBACK_PROVIDER", "mock-weather-fallback").strip() or "mock-weather-fallback"
@@ -147,13 +147,13 @@ class TravelAPIClient:
         """Execute is provider down in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             provider: Provider identifier used in fallback selection logic.
         
         Returns:
-            bool: Result value produced by this method.
+            bool: Boolean outcome flag used by guards or success checks.
         """
         down_list = [item.strip() for item in os.getenv("WEATHER_DOWN_PROVIDERS", "").split(",") if item.strip()]
         return provider in down_list
@@ -163,16 +163,16 @@ class TravelAPIClient:
         """Execute provider chain in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            primary_env: Input `primary_env` consumed by this method.
-            fallback_env: Input `fallback_env` consumed by this method.
-            primary_default: Input `primary_default` consumed by this method.
-            fallback_default: Input `fallback_default` consumed by this method.
+            primary_env: Input parameter `primary_env` for this routine.
+            fallback_env: Input parameter `fallback_env` for this routine.
+            primary_default: Input parameter `primary_default` for this routine.
+            fallback_default: Input parameter `fallback_default` for this routine.
         
         Returns:
-            List[str]: Result value produced by this method.
+            List[str]: Computed value returned to the caller.
         """
         primary = os.getenv(primary_env, primary_default).strip() or primary_default
         fallback = os.getenv(fallback_env, fallback_default).strip() or fallback_default
@@ -185,14 +185,14 @@ class TravelAPIClient:
         """Execute is provider down by env in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             provider: Provider identifier used in fallback selection logic.
-            down_env: Input `down_env` consumed by this method.
+            down_env: Input parameter `down_env` for this routine.
         
         Returns:
-            bool: Result value produced by this method.
+            bool: Boolean outcome flag used by guards or success checks.
         """
         down_list = [item.strip() for item in os.getenv(down_env, "").split(",") if item.strip()]
         return provider in down_list
@@ -201,13 +201,13 @@ class TravelAPIClient:
         """Execute search cities in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             query: Query text or request query parameters.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         cache_key = f"city:{query}"
         providers = self._provider_chain(
@@ -324,16 +324,16 @@ class TravelAPIClient:
         """Execute search attractions in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             city: Target city name/code used by city or map operations.
-            category: Input `category` consumed by this method.
-            page: Input `page` consumed by this method.
-            page_size: Input `page_size` consumed by this method.
+            category: Input field `category` used for normalization or matching rules.
+            page: Numeric control parameter `page` used for bounds or pagination.
+            page_size: Numeric control parameter `page_size` used for bounds or pagination.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         cache_key = f"attractions:{city}:{category}:{page}:{page_size}"
         providers = self._provider_chain(
@@ -437,20 +437,20 @@ class TravelAPIClient:
         """Execute search hotels in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             city: Target city name/code used by city or map operations.
-            district: Input `district` consumed by this method.
-            check_in: Input `check_in` consumed by this method.
-            check_out: Input `check_out` consumed by this method.
-            price_range: Input `price_range` consumed by this method.
-            page: Input `page` consumed by this method.
-            page_size: Input `page_size` consumed by this method.
-            bypass_cache: Input `bypass_cache` consumed by this method.
+            district: Text input `district` used for parsing, prompt assembly, or display.
+            check_in: Input parameter `check_in` for this routine.
+            check_out: Input parameter `check_out` for this routine.
+            price_range: Input field `price_range` used for normalization or matching rules.
+            page: Numeric control parameter `page` used for bounds or pagination.
+            page_size: Numeric control parameter `page_size` used for bounds or pagination.
+            bypass_cache: Input parameter `bypass_cache` for this routine.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         _ = (check_in, check_out)
         cache_key = f"hotels:{city}:{district}:{price_range}:{page}:{page_size}"
@@ -530,15 +530,15 @@ class TravelAPIClient:
         """Get weather from current backend context.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             city: Target city name/code used by city or map operations.
-            days: Input `days` consumed by this method.
-            bypass_cache: Input `bypass_cache` consumed by this method.
+            days: Input parameter `days` for this routine.
+            bypass_cache: Input parameter `bypass_cache` for this routine.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         cache_key = f"weather:{city}:{days}"
         ttl_seconds = 1800

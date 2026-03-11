@@ -116,10 +116,10 @@ def _resolve_parallelism_default() -> int:
     """Resolve default tool parallelism from runtime config and fallback constants.
     
     Purpose:
-        Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
     
     Returns:
-        int: Result value produced by this routine.
+        int: Numeric count/value returned to caller.
     """
     return get_runtime_config().default_max_parallelism
 
@@ -180,13 +180,13 @@ class ToolOrchestrator:
         """Initialize tool scheduling constraints used by plan execution.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            runtime_config: Input `runtime_config` consumed by this routine.
+            runtime_config: Structured payload `runtime_config` used by this routine.
         
         Returns:
-            Any: Result value produced by this routine.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         self.runtime_config = runtime_config
 
@@ -203,19 +203,19 @@ class ToolOrchestrator:
         """Select runnable tool steps under loop, budget, and parallelism constraints.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             runnable: Candidate runnable steps considered by scheduler.
             trace_counter: Signature counter used to detect repeated loop patterns.
             signature_getter: Callback that builds a stable signature for one plan step.
-            max_same_invocations: Input `max_same_invocations` consumed by this routine.
-            requested_parallelism: Input `requested_parallelism` consumed by this routine.
-            max_parallelism: Input `max_parallelism` consumed by this routine.
+            max_same_invocations: Numeric control parameter `max_same_invocations` used for bounds or pagination.
+            requested_parallelism: Input parameter `requested_parallelism` for this routine.
+            max_parallelism: Numeric control parameter `max_parallelism` used for bounds or pagination.
             budget: Scheduler budget snapshot used for selection guards.
         
         Returns:
-            ToolOrchestratorDecision: Result value produced by this routine.
+            ToolOrchestratorDecision: Computed value returned to the caller.
         """
         selected: list[dict[str, Any]] = []
         skipped: list[dict[str, Any]] = []
@@ -363,17 +363,17 @@ class AgentNodes:
         """Initialize node runtime dependencies, model bindings, tool registry, and health trackers.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            llm: Input `llm` consumed by this routine.
-            tools: Input `tools` consumed by this routine.
-            system_prompt: Input `system_prompt` consumed by this routine.
-            planner_hooks: Input `planner_hooks` consumed by this routine.
-            routing_llm: Input `routing_llm` consumed by this routine.
+            llm: Primary chat model runnable used for reasoning and answer generation.
+            tools: Registered tool list available for planner/execution stages.
+            system_prompt: System prompt text injected at the beginning of model context.
+            planner_hooks: Optional hooks used to override planner behavior in tests/experiments.
+            routing_llm: Optional model used for intent/strategy routing when different from main llm.
         
         Returns:
-            Any: Result value produced by this routine.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         self.llm = llm
         self.routing_llm = routing_llm or llm
@@ -415,10 +415,10 @@ class AgentNodes:
         """Build a structured-output intent model chain and gracefully fall back when unsupported.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Returns:
-            Optional[Runnable]: Result value produced by this routine.
+            Optional[Runnable]: Computed value returned to the caller.
         """
         if self._should_disable_structured_intent():
             logger.info("[Intent Node] Structured output disabled for current routing model")
@@ -438,7 +438,7 @@ class AgentNodes:
         """Return whether structured intent parsing should be disabled for the current model family.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Returns:
             bool: Decision flag used by guards, routing, or policy checks.
@@ -459,14 +459,14 @@ class AgentNodes:
         """Validate stage output payload against the expected schema model.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            model: Input `model` consumed by this routine.
-            payload: Input `payload` consumed by this routine.
+            model: Input parameter `model` for this routine.
+            payload: Structured event payload serialized to one SSE data line.
         
         Returns:
-            dict[str, Any]: Result value produced by this routine.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         validated = model.model_validate(payload)
         return validated.model_dump()
@@ -476,13 +476,13 @@ class AgentNodes:
         """Normalize heterogeneous model output payloads into plain text.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             content: Raw text content being normalized or analyzed.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         if isinstance(content, str):
             return content
@@ -509,7 +509,7 @@ class AgentNodes:
         """Run intent classification, parse entities, and write normalized intent fields into state.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
@@ -598,14 +598,14 @@ class AgentNodes:
         """Parse intent JSON fallback output when structured parsing is unavailable.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            response: Input `response` consumed by this routine.
-            user_text: Input `user_text` consumed by this routine.
+            response: Structured payload `response` used by this routine.
+            user_text: Text input `user_text` used for parsing, prompt assembly, or display.
         
         Returns:
-            dict[str, Any]: Result value produced by this routine.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         try:
             return self.intent_parser.invoke(response)
@@ -628,13 +628,13 @@ class AgentNodes:
         """Extract the first JSON object substring from mixed natural-language model output.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            text: Input `text` consumed by this routine.
+            text: Text input `text` used for parsing, prompt assembly, or display.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         if not text:
             return ""
@@ -649,13 +649,13 @@ class AgentNodes:
         """Infer intent using keyword heuristics when model output is invalid or missing.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            user_text: Input `user_text` consumed by this routine.
+            user_text: Text input `user_text` used for parsing, prompt assembly, or display.
         
         Returns:
-            dict[str, Any]: Result value produced by this routine.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         text = (user_text or "").lower()
         intent = "general"
@@ -693,7 +693,7 @@ class AgentNodes:
         """Decide routing strategy and required tool policy from intent and confidence signals.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
@@ -783,7 +783,7 @@ class AgentNodes:
         """Build lightweight routing metadata consumed by conditional graph edges.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
@@ -797,7 +797,7 @@ class AgentNodes:
         """Return the strategy routing label used by LangGraph conditional edges.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
@@ -818,7 +818,7 @@ class AgentNodes:
         """Build and validate executable tool plan including policy checks and diagnostics fields.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
@@ -906,13 +906,13 @@ class AgentNodes:
         """Validate plan steps for schema completeness and tool policy compliance.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             plan: Plan step list prepared by planner stage.
         
         Returns:
-            tuple[Literal['pass', 'warn', 'fail'], list[dict[str, Any]]]: Result value produced by this routine.
+            tuple[Literal['pass', 'warn', 'fail'], list[dict[str, Any]]]: Computed value returned to the caller.
         """
         errors: list[dict[str, Any]] = []
         for step in plan:
@@ -948,14 +948,14 @@ class AgentNodes:
         """Build summary counters describing plan validation findings.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             plan: Plan step list prepared by planner stage.
-            errors: Input `errors` consumed by this routine.
+            errors: Collection `errors` iterated or aggregated by this routine.
         
         Returns:
-            list[dict[str, Any]]: Result value produced by this routine.
+            list[dict[str, Any]]: Computed value returned to the caller.
         """
         error_by_step: dict[str, dict[str, Any]] = {}
         for item in errors:
@@ -991,13 +991,13 @@ class AgentNodes:
         """Build synthetic tool results describing plan validation problems.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            errors: Input `errors` consumed by this routine.
+            errors: Collection `errors` iterated or aggregated by this routine.
         
         Returns:
-            dict[str, Any]: Result value produced by this routine.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         results: dict[str, Any] = {}
         for item in errors:
@@ -1022,7 +1022,7 @@ class AgentNodes:
         """Execute planned tools with retry, timeout, budget, and circuit-breaker protections.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
@@ -1079,13 +1079,13 @@ class AgentNodes:
             """Refresh stale tool result payloads using fallback params and annotate refresh metadata.
             
             Purpose:
-                Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+                Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
             
             Args:
-                payload: Input `payload` consumed by this routine.
+                payload: Structured event payload serialized to one SSE data line.
             
             Returns:
-                dict[str, Any]: Result value produced by this routine.
+                dict[str, Any]: Structured metadata payload returned to caller.
             """
             if verify_result_update is not None:
                 payload["verify_result"] = verify_result_update
@@ -1294,7 +1294,7 @@ class AgentNodes:
         """Verify evidence freshness/completeness and determine retry or degrade decisions.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
@@ -1449,7 +1449,7 @@ class AgentNodes:
         """Return verify-stage routing label for execute-loop or final answer path.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
@@ -1468,7 +1468,7 @@ class AgentNodes:
         """Run final answer quality checks and annotate missing checklist items.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
@@ -1504,7 +1504,7 @@ class AgentNodes:
         """Return execute-loop continuation decision based on remaining steps and budget state.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
@@ -1528,7 +1528,7 @@ class AgentNodes:
         """Render final answer text, reasoning summary, and execution metadata sections.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
@@ -1652,7 +1652,7 @@ class AgentNodes:
         """Render direct-answer path output when tool orchestration is skipped.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
@@ -1719,14 +1719,14 @@ class AgentNodes:
         """Build default fallback plan when no external plan is produced.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            intent: Input `intent` consumed by this routine.
+            intent: Detected intent label used for SLO bucket aggregation.
             entities: Structured entities parsed from intent stage output.
         
         Returns:
-            list[dict]: Result value produced by this routine.
+            list[dict]: Computed value returned to the caller.
         """
         if intent == "recommend":
             return [
@@ -1821,14 +1821,14 @@ class AgentNodes:
         """Merge generated plan with defaults and remove duplicate steps.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            primary: Input `primary` consumed by this routine.
-            secondary: Input `secondary` consumed by this routine.
+            primary: Input parameter `primary` for this routine.
+            secondary: Input parameter `secondary` for this routine.
         
         Returns:
-            list[dict[str, Any]]: Result value produced by this routine.
+            list[dict[str, Any]]: Computed value returned to the caller.
         """
         merged = list(primary)
         existing_signatures = {
@@ -1852,16 +1852,16 @@ class AgentNodes:
         """Enforce required/optional tool policy against candidate plan steps.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             plan: Plan step list prepared by planner stage.
-            required_tools: Input `required_tools` consumed by this routine.
-            optional_tools: Input `optional_tools` consumed by this routine.
+            required_tools: Collection `required_tools` iterated or aggregated by this routine.
+            optional_tools: Collection `optional_tools` iterated or aggregated by this routine.
             entities: Structured entities parsed from intent stage output.
         
         Returns:
-            list[dict[str, Any]]: Result value produced by this routine.
+            list[dict[str, Any]]: Computed value returned to the caller.
         """
         merged = list(plan)
         existing_tools = {str(item.get("tool", "")) for item in merged}
@@ -1896,16 +1896,16 @@ class AgentNodes:
         """Build default parameters and description for a specific tool step.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            step_num: Input `step_num` consumed by this routine.
+            step_num: Input parameter `step_num` for this routine.
             tool_name: Registered tool identifier from the tool map.
             entities: Structured entities parsed from intent stage output.
-            required: Input `required` consumed by this routine.
+            required: Collection `required` iterated or aggregated by this routine.
         
         Returns:
-            Optional[dict[str, Any]]: Result value produced by this routine.
+            Optional[dict[str, Any]]: Computed value returned to the caller.
         """
         city = entities.get("city") or entities.get("destination") or "北京"
         days = entities.get("days", 3)
@@ -1943,14 +1943,14 @@ class AgentNodes:
         """Invoke one tool with normalized params and collect execution metadata.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             tool: Tool instance or tool descriptor being processed.
             params: Normalized tool parameters after policy correction and validation.
         
         Returns:
-            Any: Result value produced by this routine.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         if hasattr(tool, "ainvoke"):
             return await tool.ainvoke(params)
@@ -1967,17 +1967,17 @@ class AgentNodes:
         """Execute a tool with retry/cooldown policy and normalized error handling.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             tool: Tool instance or tool descriptor being processed.
             tool_name: Registered tool identifier from the tool map.
             params: Normalized tool parameters after policy correction and validation.
-            timeout_seconds: Input `timeout_seconds` consumed by this routine.
-            max_retries: Input `max_retries` consumed by this routine.
+            timeout_seconds: Time-related setting `timeout_seconds` used by scheduling/retry windows.
+            max_retries: Numeric control parameter `max_retries` used for bounds or pagination.
         
         Returns:
-            ExecutionResult: Result value produced by this routine.
+            ExecutionResult: Computed value returned to the caller.
         """
         if not self.runtime_config.reliability_controls_enabled:
             attempts = 1
@@ -2035,14 +2035,14 @@ class AgentNodes:
         """Execute one plan step with validation, health checks, and tracing fields.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             step: Single executable plan step descriptor.
             state: Mutable LangGraph state snapshot passed between node stages.
         
         Returns:
-            tuple[dict[str, Any], ExecutionResult, int]: Result value produced by this routine.
+            tuple[dict[str, Any], ExecutionResult, int]: Computed value returned to the caller.
         """
         step_id = step.get("step_id", f"step-{step.get('step', 0)}")
         tool_name = str(step.get("tool", ""))
@@ -2141,14 +2141,14 @@ class AgentNodes:
         """Build a stable step signature used for loop detection.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             tool_name: Registered tool identifier from the tool map.
             params: Normalized tool parameters after policy correction and validation.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         try:
             rendered = json.dumps(params, ensure_ascii=False, sort_keys=True)
@@ -2167,17 +2167,17 @@ class AgentNodes:
         """Compute deterministic early-stop reason from elapsed budgets and limits.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
             plan: Plan step list prepared by planner stage.
-            execution_state: Input `execution_state` consumed by this routine.
+            execution_state: Structured payload `execution_state` used by this routine.
             execution_summary: Aggregated execution metrics for diagnostics and UI.
-            tool_results: Input `tool_results` consumed by this routine.
+            tool_results: Collection `tool_results` iterated or aggregated by this routine.
         
         Returns:
-            Optional[str]: Result value produced by this routine.
+            Optional[str]: Computed value returned to the caller.
         """
         finished = (
             len(execution_state.get("completed", []))
@@ -2206,13 +2206,13 @@ class AgentNodes:
         """Resolve tools eligible for stale-result refresh based on verify findings.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            verify_result: Input `verify_result` consumed by this routine.
+            verify_result: Structured payload `verify_result` used by this routine.
         
         Returns:
-            list[str]: Result value produced by this routine.
+            list[str]: Computed value returned to the caller.
         """
         if not isinstance(verify_result, dict):
             return []
@@ -2235,14 +2235,14 @@ class AgentNodes:
         """Apply refresh-specific parameter overrides before re-invoking a tool.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             step: Single executable plan step descriptor.
-            refresh_targets: Input `refresh_targets` consumed by this routine.
+            refresh_targets: Collection `refresh_targets` iterated or aggregated by this routine.
         
         Returns:
-            dict[str, Any]: Result value produced by this routine.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         step_id = str(step.get("step_id") or "")
         tool_name = str(step.get("tool") or "")
@@ -2257,13 +2257,13 @@ class AgentNodes:
         """Return the terminal tool usually sufficient for a given intent.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            intent: Input `intent` consumed by this routine.
+            intent: Detected intent label used for SLO bucket aggregation.
         
         Returns:
-            Optional[str]: Result value produced by this routine.
+            Optional[str]: Computed value returned to the caller.
         """
         mapping = {
             "recommend": "search_cities",
@@ -2280,14 +2280,14 @@ class AgentNodes:
         """Resolve effective tool policy for current intent and inferred secondary intent.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            primary_intent: Input `primary_intent` consumed by this routine.
-            secondary_intent: Input `secondary_intent` consumed by this routine.
+            primary_intent: Text input `primary_intent` used for parsing, prompt assembly, or display.
+            secondary_intent: Text input `secondary_intent` used for parsing, prompt assembly, or display.
         
         Returns:
-            tuple[list[str], list[str]]: Result value produced by this routine.
+            tuple[list[str], list[str]]: Computed value returned to the caller.
         """
         primary = INTENT_TOOL_POLICY.get(primary_intent, INTENT_TOOL_POLICY["general"])
         required = list(primary.get("required", []))
@@ -2307,11 +2307,11 @@ class AgentNodes:
         """Return whether verification must run for the current strategy/intent pair.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            primary_intent: Input `primary_intent` consumed by this routine.
-            secondary_intent: Input `secondary_intent` consumed by this routine.
+            primary_intent: Text input `primary_intent` used for parsing, prompt assembly, or display.
+            secondary_intent: Text input `secondary_intent` used for parsing, prompt assembly, or display.
         
         Returns:
             bool: Decision flag used by guards, routing, or policy checks.
@@ -2325,15 +2325,15 @@ class AgentNodes:
         """Infer secondary intent signals from query text and entities.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            primary_intent: Input `primary_intent` consumed by this routine.
-            user_text: Input `user_text` consumed by this routine.
-            intent_detail: Input `intent_detail` consumed by this routine.
+            primary_intent: Text input `primary_intent` used for parsing, prompt assembly, or display.
+            user_text: Text input `user_text` used for parsing, prompt assembly, or display.
+            intent_detail: Structured payload `intent_detail` used by this routine.
         
         Returns:
-            Optional[str]: Result value produced by this routine.
+            Optional[str]: Computed value returned to the caller.
         """
         text = str(user_text or "")
         lowered = text.lower()
@@ -2361,11 +2361,11 @@ class AgentNodes:
         """Detect repeated plan/tool signatures indicating a potential execution loop.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            execution_trace: Input `execution_trace` consumed by this routine.
-            signature: Input `signature` consumed by this routine.
+            execution_trace: Collection `execution_trace` iterated or aggregated by this routine.
+            signature: Input parameter `signature` for this routine.
         
         Returns:
             bool: Decision flag used by guards, routing, or policy checks.
@@ -2380,11 +2380,11 @@ class AgentNodes:
         """Detect high-risk user queries that require stronger evidence verification.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            text: Input `text` consumed by this routine.
-            intent: Input `intent` consumed by this routine.
+            text: Text input `text` used for parsing, prompt assembly, or display.
+            intent: Detected intent label used for SLO bucket aggregation.
         
         Returns:
             bool: Decision flag used by guards, routing, or policy checks.
@@ -2403,14 +2403,14 @@ class AgentNodes:
         """Rank tool results by reliability, freshness, and relevance score.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            tool_results: Input `tool_results` consumed by this routine.
-            intent: Input `intent` consumed by this routine.
+            tool_results: Collection `tool_results` iterated or aggregated by this routine.
+            intent: Detected intent label used for SLO bucket aggregation.
         
         Returns:
-            list[tuple[str, Any, float]]: Result value produced by this routine.
+            list[tuple[str, Any, float]]: Computed value returned to the caller.
         """
         ranked: list[tuple[str, Any, float]] = []
         for tool_name, result in tool_results.items():
@@ -2423,15 +2423,15 @@ class AgentNodes:
         """Compute numeric quality score for one tool result payload.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             tool_name: Registered tool identifier from the tool map.
             result: Tool output payload or normalized intermediate result.
-            intent: Input `intent` consumed by this routine.
+            intent: Detected intent label used for SLO bucket aggregation.
         
         Returns:
-            float: Result value produced by this routine.
+            float: Parsed float value returned to caller.
         """
         if not isinstance(result, dict):
             return 0.0
@@ -2493,13 +2493,13 @@ class AgentNodes:
         """Estimate token footprint of normalized tool results for budget tracking.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            payload: Input `payload` consumed by this routine.
+            payload: Structured event payload serialized to one SSE data line.
         
         Returns:
-            int: Result value produced by this routine.
+            int: Numeric count/value returned to caller.
         """
         try:
             text = json.dumps(payload, ensure_ascii=False) if not isinstance(payload, str) else payload
@@ -2512,13 +2512,13 @@ class AgentNodes:
         """Map tool names into logical groups for summary and diagnostics display.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             tool_name: Registered tool identifier from the tool map.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         name = str(tool_name).split(":")[-1]
         if name in {"search_cities", "query_attractions", "query_hotels", "get_weather"}:
@@ -2535,14 +2535,14 @@ class AgentNodes:
         """Fuse multi-tool outputs into a compact evidence bundle for prompt rendering.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            tool_results: Input `tool_results` consumed by this routine.
-            intent: Input `intent` consumed by this routine.
+            tool_results: Collection `tool_results` iterated or aggregated by this routine.
+            intent: Detected intent label used for SLO bucket aggregation.
         
         Returns:
-            dict[str, Any]: Result value produced by this routine.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         ranked = self._rank_tool_results(tool_results, intent=intent)
         groups: dict[str, list[dict[str, Any]]] = {}
@@ -2592,15 +2592,15 @@ class AgentNodes:
         """Build normalized source-evidence entries from tool result metadata.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            tool_results: Input `tool_results` consumed by this routine.
-            intent: Input `intent` consumed by this routine.
-            limit: Input `limit` consumed by this routine.
+            tool_results: Collection `tool_results` iterated or aggregated by this routine.
+            intent: Detected intent label used for SLO bucket aggregation.
+            limit: Numeric control parameter `limit` used for bounds or pagination.
         
         Returns:
-            list[dict[str, str]]: Result value produced by this routine.
+            list[dict[str, str]]: Computed value returned to the caller.
         """
         ranked = self._rank_tool_results(tool_results, intent=intent)
         entries: list[dict[str, str]] = []
@@ -2633,15 +2633,15 @@ class AgentNodes:
         """Ensure final answer text contains a formatted source-evidence section.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            answer: Input `answer` consumed by this routine.
-            tool_results: Input `tool_results` consumed by this routine.
-            intent: Input `intent` consumed by this routine.
+            answer: Generated answer text being validated for completeness or post-processing.
+            tool_results: Collection `tool_results` iterated or aggregated by this routine.
+            intent: Detected intent label used for SLO bucket aggregation.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         lowered = str(answer or "").lower()
         if "source" in lowered and "fetched_at" in lowered:
@@ -2663,7 +2663,7 @@ class AgentNodes:
         """Auto-correct invalid tool parameters using inferred entities and defaults.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             tool_name: Registered tool identifier from the tool map.
@@ -2671,7 +2671,7 @@ class AgentNodes:
             state: Mutable LangGraph state snapshot passed between node stages.
         
         Returns:
-            dict[str, Any]: Result value produced by this routine.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         corrected = dict(params or {})
         entities = (state.get("intent_detail") or {}).get("entities", {}) or {}
@@ -2752,15 +2752,15 @@ class AgentNodes:
         """Infer budget amount from entities and free-text query content.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             params: Normalized tool parameters after policy correction and validation.
             entities: Structured entities parsed from intent stage output.
-            user_text: Input `user_text` consumed by this routine.
+            user_text: Text input `user_text` used for parsing, prompt assembly, or display.
         
         Returns:
-            Optional[int]: Result value produced by this routine.
+            Optional[int]: Computed value returned to the caller.
         """
         for source in (params, entities):
             raw = source.get("budget_cny") or source.get("budget")
@@ -2781,14 +2781,14 @@ class AgentNodes:
         """Normalize heterogeneous tool outputs into a consistent dict payload.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             tool_name: Registered tool identifier from the tool map.
-            payload: Input `payload` consumed by this routine.
+            payload: Structured event payload serialized to one SSE data line.
         
         Returns:
-            Any: Result value produced by this routine.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         if not isinstance(payload, dict):
             return payload
@@ -2816,13 +2816,13 @@ class AgentNodes:
         """Normalize report-like text blocks for stable downstream markdown rendering.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            text: Input `text` consumed by this routine.
+            text: Text input `text` used for parsing, prompt assembly, or display.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         normalized = text
         normalized = re.sub(r"(?<!C)NY\s*", "CNY ", normalized, flags=re.IGNORECASE)
@@ -2837,13 +2837,13 @@ class AgentNodes:
         """Normalize one nested result item recursively for predictable serialization.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            item: Input `item` consumed by this routine.
+            item: Input parameter `item` for this routine.
         
         Returns:
-            dict[str, Any]: Result value produced by this routine.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         normalized = dict(item)
         for key in ("price", "ticket"):
@@ -2871,16 +2871,16 @@ class AgentNodes:
         """Normalize integer-like values with fallback defaults and bounds.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             value: Candidate scalar value to normalize/validate.
-            minimum: Input `minimum` consumed by this routine.
-            maximum: Input `maximum` consumed by this routine.
-            default: Input `default` consumed by this routine.
+            minimum: Lower bound accepted for parsed numeric value.
+            maximum: Input parameter `maximum` for this routine.
+            default: Fallback value used when parsing fails or variable is missing.
         
         Returns:
-            int: Result value produced by this routine.
+            int: Numeric count/value returned to caller.
         """
         try:
             parsed = int(value)
@@ -2893,14 +2893,14 @@ class AgentNodes:
         """Safely parse integer values without raising parsing exceptions.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             value: Candidate scalar value to normalize/validate.
-            default: Input `default` consumed by this routine.
+            default: Fallback value used when parsing fails or variable is missing.
         
         Returns:
-            int: Result value produced by this routine.
+            int: Numeric count/value returned to caller.
         """
         try:
             if value is None:
@@ -2914,13 +2914,13 @@ class AgentNodes:
         """Normalize accommodation level labels into allowed enum values.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             value: Candidate scalar value to normalize/validate.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         text = str(value or "").strip().lower()
         if text in {"economy", "budget", "low"}:
@@ -2934,14 +2934,14 @@ class AgentNodes:
         """Return the first non-empty text candidate among multiple inputs.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            *values: Input `values` consumed by this routine.
-            default: Input `default` consumed by this routine.
+            *values: Candidate values checked in order for the first non-empty text.
+            default: Fallback text returned when every candidate is empty.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         for value in values:
             text = str(value or "").strip()
@@ -2954,13 +2954,13 @@ class AgentNodes:
         """Extract latest user utterance from current graph state messages.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         messages = list(state.get("messages", []) or [])
         for msg in reversed(messages):
@@ -2973,15 +2973,15 @@ class AgentNodes:
         """Infer destination city from entities, query text, and city hint dictionaries.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             params: Normalized tool parameters after policy correction and validation.
             entities: Structured entities parsed from intent stage output.
-            user_text: Input `user_text` consumed by this routine.
+            user_text: Text input `user_text` used for parsing, prompt assembly, or display.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         for key in ("city", "destination", "query"):
             text = str(params.get(key) or entities.get(key) or "").strip()
@@ -3013,14 +3013,14 @@ class AgentNodes:
         """Resolve effective timeout for a tool by combining SLA table and runtime config.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             step: Single executable plan step descriptor.
             tool_name: Registered tool identifier from the tool map.
         
         Returns:
-            int: Result value produced by this routine.
+            int: Numeric count/value returned to caller.
         """
         override = step.get("timeout_seconds")
         if override is not None:
@@ -3031,7 +3031,7 @@ class AgentNodes:
         """Return whether a tool is currently blocked by circuit-breaker cooldown.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             tool_name: Registered tool identifier from the tool map.
@@ -3051,13 +3051,13 @@ class AgentNodes:
         """Record tool failure and update circuit-breaker counters.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             tool_name: Registered tool identifier from the tool map.
         
         Returns:
-            None: Result value produced by this routine.
+            None: No explicit return value; side effects happen in-place.
         """
         if not self.runtime_config.reliability_controls_enabled:
             return
@@ -3071,13 +3071,13 @@ class AgentNodes:
         """Record tool success and clear failure counters when recovery is observed.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             tool_name: Registered tool identifier from the tool map.
         
         Returns:
-            None: Result value produced by this routine.
+            None: No explicit return value; side effects happen in-place.
         """
         if not self.runtime_config.reliability_controls_enabled:
             return
@@ -3088,10 +3088,10 @@ class AgentNodes:
         """Return global tool health snapshot shared across AgentNodes instances.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Returns:
-            dict[str, Any]: Result value produced by this routine.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         now = time.time()
         tools: dict[str, dict[str, Any]] = {}
@@ -3115,13 +3115,13 @@ class AgentNodes:
         """Normalize plan schema and fill defaults required by executor pipeline.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             plan: Plan step list prepared by planner stage.
         
         Returns:
-            list[dict[str, Any]]: Result value produced by this routine.
+            list[dict[str, Any]]: Computed value returned to the caller.
         """
         normalized: list[dict[str, Any]] = []
         used_step_ids: set[str] = set()
@@ -3150,14 +3150,14 @@ class AgentNodes:
         """Build human-readable explanation describing how the final plan was formed.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            intent: Input `intent` consumed by this routine.
+            intent: Detected intent label used for SLO bucket aggregation.
             plan: Plan step list prepared by planner stage.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         if not plan:
             return f"intent={intent}, no tool plan required"
@@ -3169,14 +3169,14 @@ class AgentNodes:
         """Render reasoning text shown in UI reasoning panel and streaming events.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
-            tools_used: Input `tools_used` consumed by this routine.
+            tools_used: Collection `tools_used` iterated or aggregated by this routine.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         plan_id = state.get("plan_id")
         stats = state.get("execution_stats", {}) or {}
@@ -3193,14 +3193,14 @@ class AgentNodes:
         """Validate tool parameters against safety limits and schema expectations.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             tool: Tool instance or tool descriptor being processed.
             params: Normalized tool parameters after policy correction and validation.
         
         Returns:
-            Optional[str]: Result value produced by this routine.
+            Optional[str]: Computed value returned to the caller.
         """
         schema = getattr(tool, "args_schema", None)
         if schema is None:
@@ -3219,25 +3219,25 @@ class AgentNodes:
         """Detect potentially unsafe parameter values (prompt injection, secrets, oversized payloads).
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             params: Normalized tool parameters after policy correction and validation.
         
         Returns:
-            Optional[str]: Result value produced by this routine.
+            Optional[str]: Computed value returned to the caller.
         """
         def _walk(value: Any) -> list[str]:
             """Walk nested parameter structures when scanning for unsafe payload patterns.
             
             Purpose:
-                Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+                Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
             
             Args:
                 value: Candidate scalar value to normalize/validate.
             
             Returns:
-                list[str]: Result value produced by this routine.
+                list[str]: Computed value returned to the caller.
             """
             found: list[str] = []
             if isinstance(value, str):
@@ -3263,26 +3263,26 @@ class AgentNodes:
         """Sanitize tool params before logging to avoid leaking sensitive values.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             params: Normalized tool parameters after policy correction and validation.
         
         Returns:
-            dict[str, Any]: Result value produced by this routine.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         def _sanitize(key: Optional[str], value: Any) -> Any:
             """Mask sensitive values recursively inside nested dict/list payloads.
             
             Purpose:
-                Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+                Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
             
             Args:
-                key: Input `key` consumed by this routine.
+                key: Input field `key` used for normalization or matching rules.
                 value: Candidate scalar value to normalize/validate.
             
             Returns:
-                Any: Result value produced by this routine.
+                Any: Runtime-dependent value returned for downstream processing.
             """
             if key and key.lower() in SENSITIVE_PARAM_KEYS:
                 return "***"
@@ -3303,13 +3303,13 @@ class AgentNodes:
         """Build per-run execution summary including success rate and latency distribution.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            stats_steps: Input `stats_steps` consumed by this routine.
+            stats_steps: Collection `stats_steps` iterated or aggregated by this routine.
         
         Returns:
-            dict[str, Any]: Result value produced by this routine.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         total_steps = len(stats_steps)
         success_steps = sum(1 for item in stats_steps if item.get("status") == "success")
@@ -3396,14 +3396,14 @@ class AgentNodes:
         """Compute percentile value for latency samples used in execution summary.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            values: Input `values` consumed by this routine.
-            percentile: Input `percentile` consumed by this routine.
+            values: Input parameter `values` for this routine.
+            percentile: Input parameter `percentile` for this routine.
         
         Returns:
-            int: Result value produced by this routine.
+            int: Numeric count/value returned to caller.
         """
         if not values:
             return 0
@@ -3419,14 +3419,14 @@ class AgentNodes:
         """Attach normalized execution metadata to state for API diagnostics output.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             result: Tool output payload or normalized intermediate result.
             tool_name: Registered tool identifier from the tool map.
         
         Returns:
-            None: Result value produced by this routine.
+            None: No explicit return value; side effects happen in-place.
         """
         profile = self._tool_source_profile.get(
             tool_name,
@@ -3477,13 +3477,13 @@ class AgentNodes:
         """Extract source/freshness/provider metadata from raw tool results.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            result_payload: Input `result_payload` consumed by this routine.
+            result_payload: Structured payload `result_payload` used by this routine.
         
         Returns:
-            dict[str, Any]: Result value produced by this routine.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         if not isinstance(result_payload, dict):
             return {}
@@ -3497,14 +3497,14 @@ class AgentNodes:
         """Build user-facing fallback suggestion when tool execution fails.
         
         Purpose:
-            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
             tool_name: Registered tool identifier from the tool map.
-            error_code: Input `error_code` consumed by this routine.
+            error_code: Input parameter `error_code` for this routine.
         
         Returns:
-            str: Result value produced by this routine.
+            str: Normalized string value returned to caller.
         """
         if error_code == "TOOL_TIMEOUT":
             return f"{tool_name} 超时，建议使用缓存信息或提供不依赖实时数据的备选方案"
@@ -3523,13 +3523,13 @@ def create_nodes(llm: Runnable, tools: list[Tool]) -> AgentNodes:
     """Factory helper that builds AgentNodes with default runtime wiring.
     
     Purpose:
-        Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
     
     Args:
-        llm: Input `llm` consumed by this routine.
-        tools: Input `tools` consumed by this routine.
+        llm: Primary chat model runnable used for reasoning and answer generation.
+        tools: Registered tool list available for planner/execution stages.
     
     Returns:
-        AgentNodes: Result value produced by this routine.
+        AgentNodes: Computed value returned to the caller.
     """
     return AgentNodes(llm, tools)

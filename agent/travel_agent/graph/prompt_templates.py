@@ -37,14 +37,14 @@ def build_system_prompt(base_prompt: str, intent: Optional[str]) -> str:
     """Build runtime system prompt with policy and execution-context placeholders.
     
     Purpose:
-        Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        Document service/API behavior, side effects, and integration expectations for maintainers.
     
     Args:
-        base_prompt: Input `base_prompt` consumed by this method.
-        intent: Input `intent` consumed by this method.
+        base_prompt: Input parameter `base_prompt` for this routine.
+        intent: Detected intent label used for SLO bucket aggregation.
     
     Returns:
-        str: Result value produced by this method.
+        str: Normalized string value returned to caller.
     """
     intent_key = (intent or "general").lower()
     guidance = INTENT_GUIDANCE.get(intent_key, INTENT_GUIDANCE["general"])
@@ -62,17 +62,17 @@ def build_answer_prompt(
     """Build answer-generation prompt from user query and normalized tool evidence.
     
     Purpose:
-        Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        Document service/API behavior, side effects, and integration expectations for maintainers.
     
     Args:
-        user_question: Input `user_question` consumed by this method.
-        context: Input `context` consumed by this method.
-        tools_used: Input `tools_used` consumed by this method.
-        intent: Input `intent` consumed by this method.
-        evidence_required: Input `evidence_required` consumed by this method.
+        user_question: Text input `user_question` used for parsing, prompt assembly, or display.
+        context: Input parameter `context` for this routine.
+        tools_used: Collection `tools_used` iterated or aggregated by this routine.
+        intent: Detected intent label used for SLO bucket aggregation.
+        evidence_required: Input parameter `evidence_required` for this routine.
     
     Returns:
-        str: Result value produced by this method.
+        str: Normalized string value returned to caller.
     """
     guidance = INTENT_GUIDANCE.get((intent or "general").lower(), INTENT_GUIDANCE["general"])
     if tools_used:
@@ -100,14 +100,14 @@ def build_direct_prompt(user_question: str, intent: Optional[str]) -> str:
     """Build direct-response prompt used when tool orchestration is bypassed.
     
     Purpose:
-        Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        Document service/API behavior, side effects, and integration expectations for maintainers.
     
     Args:
-        user_question: Input `user_question` consumed by this method.
-        intent: Input `intent` consumed by this method.
+        user_question: Text input `user_question` used for parsing, prompt assembly, or display.
+        intent: Detected intent label used for SLO bucket aggregation.
     
     Returns:
-        str: Result value produced by this method.
+        str: Normalized string value returned to caller.
     """
     guidance = INTENT_GUIDANCE.get((intent or "general").lower(), INTENT_GUIDANCE["general"])
     return (
