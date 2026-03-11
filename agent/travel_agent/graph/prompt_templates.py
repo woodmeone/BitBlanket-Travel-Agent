@@ -34,9 +34,17 @@ ReAct 约束：
 
 
 def build_system_prompt(base_prompt: str, intent: Optional[str]) -> str:
-    """Build system prompt.
+    """Build runtime system prompt with policy and execution-context placeholders.
     
-    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    Purpose:
+        Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+    
+    Args:
+        base_prompt: Input `base_prompt` consumed by this method.
+        intent: Input `intent` consumed by this method.
+    
+    Returns:
+        str: Result value produced by this method.
     """
     intent_key = (intent or "general").lower()
     guidance = INTENT_GUIDANCE.get(intent_key, INTENT_GUIDANCE["general"])
@@ -51,9 +59,20 @@ def build_answer_prompt(
     intent: Optional[str],
     evidence_required: bool = False,
 ) -> str:
-    """Build answer prompt.
+    """Build answer-generation prompt from user query and normalized tool evidence.
     
-    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    Purpose:
+        Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+    
+    Args:
+        user_question: Input `user_question` consumed by this method.
+        context: Input `context` consumed by this method.
+        tools_used: Input `tools_used` consumed by this method.
+        intent: Input `intent` consumed by this method.
+        evidence_required: Input `evidence_required` consumed by this method.
+    
+    Returns:
+        str: Result value produced by this method.
     """
     guidance = INTENT_GUIDANCE.get((intent or "general").lower(), INTENT_GUIDANCE["general"])
     if tools_used:
@@ -78,9 +97,17 @@ def build_answer_prompt(
 
 
 def build_direct_prompt(user_question: str, intent: Optional[str]) -> str:
-    """Build direct prompt.
+    """Build direct-response prompt used when tool orchestration is bypassed.
     
-    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    Purpose:
+        Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+    
+    Args:
+        user_question: Input `user_question` consumed by this method.
+        intent: Input `intent` consumed by this method.
+    
+    Returns:
+        str: Result value produced by this method.
     """
     guidance = INTENT_GUIDANCE.get((intent or "general").lower(), INTENT_GUIDANCE["general"])
     return (

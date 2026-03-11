@@ -15,9 +15,16 @@ class TravelAPIClient:
     """Unified travel data adapter. Currently backed by mock data."""
 
     def __init__(self, use_cache: bool = True):
-        """Initialize TravelAPIClient.
+        """Initialize TravelAPIClient and prepare runtime dependencies.
         
-        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Args:
+            use_cache: Input `use_cache` consumed by this method.
+        
+        Returns:
+            Any: Result value produced by this method.
         """
         self.use_cache = use_cache
         self._cache: Dict[str, Any] = {}
@@ -25,16 +32,28 @@ class TravelAPIClient:
 
     @staticmethod
     def _now_iso() -> str:
-        """Now iso.
+        """Execute now iso in backend support workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Returns:
+            str: Result value produced by this method.
         """
         return datetime.now(timezone.utc).isoformat()
 
     def _get_cache(self, key: str, *, bypass_cache: bool = False) -> Optional[Any]:
-        """Get cache.
+        """Get cache from current backend context.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Args:
+            key: Input `key` consumed by this method.
+            bypass_cache: Input `bypass_cache` consumed by this method.
+        
+        Returns:
+            Optional[Any]: Result value produced by this method.
         """
         if bypass_cache:
             return None
@@ -43,18 +62,35 @@ class TravelAPIClient:
         return None
 
     def _set_cache(self, key: str, value: Any) -> None:
-        """Set cache.
+        """Execute set cache in backend support workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Args:
+            key: Input `key` consumed by this method.
+            value: Input `value` consumed by this method.
+        
+        Returns:
+            None: Result value produced by this method.
         """
         if self.use_cache:
             self._cache[key] = value
             self._cache_meta[key] = self._now_iso()
 
     def _build_meta(self, key: str, source: str, ttl_seconds: int) -> Dict[str, Any]:
-        """Build meta.
+        """Build meta for downstream processing.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Args:
+            key: Input `key` consumed by this method.
+            source: Input `source` consumed by this method.
+            ttl_seconds: Input `ttl_seconds` consumed by this method.
+        
+        Returns:
+            Dict[str, Any]: Result value produced by this method.
         """
         fetched_at = self._cache_meta.get(key, self._now_iso())
         is_stale = False
@@ -73,9 +109,17 @@ class TravelAPIClient:
 
     @staticmethod
     def _refresh_meta(refresh_attempted: bool, refresh_success: bool) -> Dict[str, Any]:
-        """Refresh meta.
+        """Execute refresh meta in backend support workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Args:
+            refresh_attempted: Input `refresh_attempted` consumed by this method.
+            refresh_success: Input `refresh_success` consumed by this method.
+        
+        Returns:
+            Dict[str, Any]: Result value produced by this method.
         """
         return {
             "refresh_attempted": bool(refresh_attempted),
@@ -84,9 +128,13 @@ class TravelAPIClient:
 
     @staticmethod
     def _weather_provider_chain() -> List[str]:
-        """Weather provider chain.
+        """Execute weather provider chain in backend support workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Returns:
+            List[str]: Result value produced by this method.
         """
         primary = os.getenv("WEATHER_API_PROVIDER", "mock-weather-provider").strip() or "mock-weather-provider"
         fallback = os.getenv("WEATHER_API_FALLBACK_PROVIDER", "mock-weather-fallback").strip() or "mock-weather-fallback"
@@ -96,18 +144,35 @@ class TravelAPIClient:
 
     @staticmethod
     def _is_provider_down(provider: str) -> bool:
-        """Return whether provIDer down.
+        """Execute is provider down in backend support workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Args:
+            provider: Provider identifier used in fallback selection logic.
+        
+        Returns:
+            bool: Result value produced by this method.
         """
         down_list = [item.strip() for item in os.getenv("WEATHER_DOWN_PROVIDERS", "").split(",") if item.strip()]
         return provider in down_list
 
     @staticmethod
     def _provider_chain(primary_env: str, fallback_env: str, primary_default: str, fallback_default: str) -> List[str]:
-        """Provider chain.
+        """Execute provider chain in backend support workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Args:
+            primary_env: Input `primary_env` consumed by this method.
+            fallback_env: Input `fallback_env` consumed by this method.
+            primary_default: Input `primary_default` consumed by this method.
+            fallback_default: Input `fallback_default` consumed by this method.
+        
+        Returns:
+            List[str]: Result value produced by this method.
         """
         primary = os.getenv(primary_env, primary_default).strip() or primary_default
         fallback = os.getenv(fallback_env, fallback_default).strip() or fallback_default
@@ -117,17 +182,32 @@ class TravelAPIClient:
 
     @staticmethod
     def _is_provider_down_by_env(provider: str, down_env: str) -> bool:
-        """Return whether provIDer down by env.
+        """Execute is provider down by env in backend support workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Args:
+            provider: Provider identifier used in fallback selection logic.
+            down_env: Input `down_env` consumed by this method.
+        
+        Returns:
+            bool: Result value produced by this method.
         """
         down_list = [item.strip() for item in os.getenv(down_env, "").split(",") if item.strip()]
         return provider in down_list
 
     async def search_cities(self, query: str) -> Dict[str, Any]:
-        """Search cities.
+        """Execute search cities in backend support workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Args:
+            query: Query text or request query parameters.
+        
+        Returns:
+            Dict[str, Any]: Result value produced by this method.
         """
         cache_key = f"city:{query}"
         providers = self._provider_chain(
@@ -241,9 +321,19 @@ class TravelAPIClient:
         page: int = 1,
         page_size: int = 20,
     ) -> Dict[str, Any]:
-        """Search attractions.
+        """Execute search attractions in backend support workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Args:
+            city: Target city name/code used by city or map operations.
+            category: Input `category` consumed by this method.
+            page: Input `page` consumed by this method.
+            page_size: Input `page_size` consumed by this method.
+        
+        Returns:
+            Dict[str, Any]: Result value produced by this method.
         """
         cache_key = f"attractions:{city}:{category}:{page}:{page_size}"
         providers = self._provider_chain(
@@ -344,9 +434,23 @@ class TravelAPIClient:
         page_size: int = 20,
         bypass_cache: bool = False,
     ) -> Dict[str, Any]:
-        """Search hotels.
+        """Execute search hotels in backend support workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Args:
+            city: Target city name/code used by city or map operations.
+            district: Input `district` consumed by this method.
+            check_in: Input `check_in` consumed by this method.
+            check_out: Input `check_out` consumed by this method.
+            price_range: Input `price_range` consumed by this method.
+            page: Input `page` consumed by this method.
+            page_size: Input `page_size` consumed by this method.
+            bypass_cache: Input `bypass_cache` consumed by this method.
+        
+        Returns:
+            Dict[str, Any]: Result value produced by this method.
         """
         _ = (check_in, check_out)
         cache_key = f"hotels:{city}:{district}:{price_range}:{page}:{page_size}"
@@ -423,9 +527,18 @@ class TravelAPIClient:
         return result
 
     async def get_weather(self, city: str, days: int = 7, bypass_cache: bool = False) -> Dict[str, Any]:
-        """Get weather.
+        """Get weather from current backend context.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        
+        Args:
+            city: Target city name/code used by city or map operations.
+            days: Input `days` consumed by this method.
+            bypass_cache: Input `bypass_cache` consumed by this method.
+        
+        Returns:
+            Dict[str, Any]: Result value produced by this method.
         """
         cache_key = f"weather:{city}:{days}"
         ttl_seconds = 1800

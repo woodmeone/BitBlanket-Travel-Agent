@@ -36,17 +36,32 @@ class ConversationSummarizer:
     """
 
     def __init__(self, llm: Any = None, summary_threshold: int = 20):
-        """Initialize ConversationSummarizer.
+        """Initialize deterministic summarization settings for long session histories.
         
-        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            llm: Input `llm` consumed by this routine.
+            summary_threshold: Input `summary_threshold` consumed by this routine.
+        
+        Returns:
+            Any: Result value produced by this routine.
         """
         self.llm = llm
         self.summary_threshold = max(2, summary_threshold)
 
     def summarize(self, messages: List[MemoryMessage]) -> str:
-        """Summarize.
+        """Compress older turns into short bullets used as compact system context.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            messages: Chronological message list used as model/tool context.
+        
+        Returns:
+            str: Result value produced by this routine.
         """
         if not messages:
             return ""
@@ -91,9 +106,21 @@ class AgentMemoryManager:
         session_ttl_seconds: int = 7 * 24 * 3600,
         max_sessions: int = 5000,
     ):
-        """Initialize AgentMemoryManager.
+        """Initialize session memory store, locks, retention policy, and optional disk persistence.
         
-        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            llm: Input `llm` consumed by this routine.
+            max_history: Input `max_history` consumed by this routine.
+            summary_threshold: Input `summary_threshold` consumed by this routine.
+            persist_path: Input `persist_path` consumed by this routine.
+            session_ttl_seconds: Input `session_ttl_seconds` consumed by this routine.
+            max_sessions: Input `max_sessions` consumed by this routine.
+        
+        Returns:
+            Any: Result value produced by this routine.
         """
         self.max_history = max(2, max_history)
         self.summarizer = ConversationSummarizer(llm=llm, summary_threshold=summary_threshold)
@@ -114,9 +141,18 @@ class AgentMemoryManager:
     MIN_DECAY_CONFIDENCE = 0.25
 
     async def add_message(self, session_id: str, role: str, content: str) -> None:
-        """Add message.
+        """Persist one chat turn, refresh summary/profile, and enforce retention and capacity rules.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            session_id: Session identifier used to isolate memory/checkpoint scope.
+            role: Input `role` consumed by this routine.
+            content: Raw text content being normalized or analyzed.
+        
+        Returns:
+            None: Result value produced by this routine.
         """
         async with self._lock:
             with self._sync_lock:
@@ -141,9 +177,17 @@ class AgentMemoryManager:
                 await asyncio.to_thread(self._save_to_disk_locked)
 
     async def get_recent_messages(self, session_id: str, limit: Optional[int] = None) -> List[MemoryMessage]:
-        """Get recent messages.
+        """Return recent session messages for async call-sites.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            session_id: Session identifier used to isolate memory/checkpoint scope.
+            limit: Input `limit` consumed by this routine.
+        
+        Returns:
+            List[MemoryMessage]: Result value produced by this routine.
         """
         async with self._lock:
             with self._sync_lock:
@@ -155,9 +199,16 @@ class AgentMemoryManager:
                 return list(session["messages"][-cap:])
 
     async def get_summary(self, session_id: str) -> str:
-        """Get summary.
+        """Return the cached session summary for async call-sites.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            session_id: Session identifier used to isolate memory/checkpoint scope.
+        
+        Returns:
+            str: Result value produced by this routine.
         """
         async with self._lock:
             with self._sync_lock:
@@ -168,9 +219,17 @@ class AgentMemoryManager:
                 return session.get("summary", "")
 
     def get_recent_messages_sync(self, session_id: str, limit: Optional[int] = None) -> List[MemoryMessage]:
-        """Get recent messages sync.
+        """Get recent messages sync from current runtime context.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            session_id: Session identifier used to isolate memory/checkpoint scope.
+            limit: Input `limit` consumed by this routine.
+        
+        Returns:
+            List[MemoryMessage]: Result value produced by this routine.
         """
         with self._sync_lock:
             session = self._sessions.get(session_id)
@@ -180,9 +239,16 @@ class AgentMemoryManager:
             return list(session["messages"][-cap:])
 
     def get_summary_sync(self, session_id: str) -> str:
-        """Get summary sync.
+        """Get summary sync from current runtime context.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            session_id: Session identifier used to isolate memory/checkpoint scope.
+        
+        Returns:
+            str: Result value produced by this routine.
         """
         with self._sync_lock:
             session = self._sessions.get(session_id)
@@ -191,9 +257,16 @@ class AgentMemoryManager:
             return session.get("summary", "")
 
     def build_context_messages(self, session_id: str) -> List[BaseMessage]:
-        """Build context messages.
+        """Build baseline memory context injected into the next agent invocation.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            session_id: Session identifier used to isolate memory/checkpoint scope.
+        
+        Returns:
+            List[BaseMessage]: Result value produced by this routine.
         """
         summary = self.get_summary_sync(session_id)
         recent = self.get_recent_messages_sync(session_id, self.max_history)
@@ -223,9 +296,18 @@ class AgentMemoryManager:
         user_message: str,
         max_messages: int = 8,
     ) -> List[BaseMessage]:
-        """Build context messages for query.
+        """Select memory messages relevant to the current query and build compact context messages.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            session_id: Session identifier used to isolate memory/checkpoint scope.
+            user_message: Input `user_message` consumed by this routine.
+            max_messages: Input `max_messages` consumed by this routine.
+        
+        Returns:
+            List[BaseMessage]: Result value produced by this routine.
         """
         summary = self.get_summary_sync(session_id)
         profile = self.get_profile_sync(session_id)
@@ -273,9 +355,16 @@ class AgentMemoryManager:
         return context
 
     async def clear_session_messages(self, session_id: str) -> bool:
-        """Clear session messages.
+        """Execute clear session messages in the backend runtime workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            session_id: Session identifier used to isolate memory/checkpoint scope.
+        
+        Returns:
+            bool: Result value produced by this routine.
         """
         async with self._lock:
             with self._sync_lock:
@@ -290,9 +379,16 @@ class AgentMemoryManager:
             return True
 
     async def delete_session(self, session_id: str) -> bool:
-        """Delete session.
+        """Execute delete session in the backend runtime workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            session_id: Session identifier used to isolate memory/checkpoint scope.
+        
+        Returns:
+            bool: Result value produced by this routine.
         """
         async with self._lock:
             with self._sync_lock:
@@ -302,9 +398,16 @@ class AgentMemoryManager:
             return existed
 
     def get_profile_sync(self, session_id: str) -> Dict[str, Any]:
-        """Get profile sync.
+        """Get profile sync from current runtime context.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            session_id: Session identifier used to isolate memory/checkpoint scope.
+        
+        Returns:
+            Dict[str, Any]: Result value produced by this routine.
         """
         with self._sync_lock:
             session = self._sessions.get(session_id)
@@ -326,26 +429,49 @@ class AgentMemoryManager:
             return flattened
 
     async def get_profile(self, session_id: str) -> Dict[str, Any]:
-        """Get profile.
+        """Get profile from current runtime context.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            session_id: Session identifier used to isolate memory/checkpoint scope.
+        
+        Returns:
+            Dict[str, Any]: Result value produced by this routine.
         """
         async with self._lock:
             return self.get_profile_sync(session_id)
 
     def _trim_messages(self, session: Dict[str, Any]) -> None:
-        """Trim messages.
+        """Trim per-session message history while preserving the configured recency window.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            session: Mutable session record containing messages/summary/profile fields.
+        
+        Returns:
+            None: Result value produced by this routine.
         """
         keep = max(self.max_history * 3, self.max_history + 6)
         if len(session["messages"]) > keep:
             session["messages"] = session["messages"][-keep:]
 
     def _update_profile(self, session: Dict[str, Any], role: str, content: str) -> None:
-        """Update profile.
+        """Extract and merge long-term preference signals from incoming conversation text.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            session: Mutable session record containing messages/summary/profile fields.
+            role: Input `role` consumed by this routine.
+            content: Raw text content being normalized or analyzed.
+        
+        Returns:
+            None: Result value produced by this routine.
         """
         if role != "user":
             return
@@ -453,17 +579,28 @@ class AgentMemoryManager:
         profile["updated_at"] = datetime.now().isoformat()
 
     def _enforce_capacity_locked(self) -> None:
-        """Enforce capacity locked.
+        """Evict oldest sessions when global in-memory capacity exceeds configured limits.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Returns:
+            None: Result value produced by this routine.
         """
         if len(self._sessions) <= self._max_sessions:
             return
 
         def _latest_ts(session_data: Dict[str, Any]) -> str:
-            """Latest ts.
+            """Execute latest ts in the backend runtime workflow.
             
-            This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+            Purpose:
+                Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            
+            Args:
+                session_data: Input `session_data` consumed by this routine.
+            
+            Returns:
+                str: Result value produced by this routine.
             """
             messages = session_data.get("messages", [])
             if messages:
@@ -476,9 +613,13 @@ class AgentMemoryManager:
             self._sessions.pop(session_id, None)
 
     def _cleanup_expired_locked(self) -> None:
-        """Clean up expired locked.
+        """Execute cleanup expired locked in the backend runtime workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Returns:
+            None: Result value produced by this routine.
         """
         now = datetime.now(timezone.utc)
         ttl = timedelta(seconds=self._session_ttl_seconds)
@@ -503,9 +644,13 @@ class AgentMemoryManager:
             self._sessions.pop(session_id, None)
 
     def _load_from_disk(self) -> None:
-        """Load from disk.
+        """Load persisted memory snapshot and normalize schema before serving requests.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Returns:
+            None: Result value produced by this routine.
         """
         if not self._persist_path or not os.path.exists(self._persist_path):
             return
@@ -535,9 +680,13 @@ class AgentMemoryManager:
             self._enforce_capacity_locked()
 
     def _save_to_disk_locked(self) -> None:
-        """Save to disk locked.
+        """Persist in-memory sessions to disk under lock protection for crash recovery.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Returns:
+            None: Result value produced by this routine.
         """
         if not self._persist_path:
             return
@@ -575,9 +724,20 @@ class AgentMemoryManager:
         source: str,
         confidence: float,
     ) -> None:
-        """Merge profile attr.
+        """Execute merge profile attr in the backend runtime workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            profile: User preference profile snapshot stored in memory manager.
+            key: Input `key` consumed by this routine.
+            value: Candidate scalar value to normalize/validate.
+            source: Input `source` consumed by this routine.
+            confidence: Input `confidence` consumed by this routine.
+        
+        Returns:
+            None: Result value produced by this routine.
         """
         source = source if source in self.SOURCE_PRIORITY else "inferred"
         confidence = max(0.0, min(1.0, float(confidence)))
@@ -622,9 +782,13 @@ class AgentMemoryManager:
             }
 
     def _empty_profile(self) -> Dict[str, Any]:
-        """Build an empty profile.
+        """Execute empty profile in the backend runtime workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Returns:
+            Dict[str, Any]: Result value produced by this routine.
         """
         return {
             "schema_version": self.PROFILE_SCHEMA_VERSION,
@@ -637,9 +801,16 @@ class AgentMemoryManager:
         }
 
     def _normalize_profile(self, profile: Any) -> Dict[str, Any]:
-        """Normalize profile.
+        """Normalize profile into canonical format.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            profile: User preference profile snapshot stored in memory manager.
+        
+        Returns:
+            Dict[str, Any]: Result value produced by this routine.
         """
         if not isinstance(profile, dict):
             return self._empty_profile()
@@ -677,9 +848,16 @@ class AgentMemoryManager:
 
     @staticmethod
     def _to_number(value: Any) -> Optional[float]:
-        """To number.
+        """Execute to number in the backend runtime workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            value: Candidate scalar value to normalize/validate.
+        
+        Returns:
+            Optional[float]: Result value produced by this routine.
         """
         if value is None:
             return None
@@ -697,9 +875,19 @@ class AgentMemoryManager:
         new_value: Any,
         new_source: str,
     ) -> Optional[Dict[str, Any]]:
-        """Detect preference conflict.
+        """Detect contradictory preference updates and emit conflict metadata for clarification.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            key: Input `key` consumed by this routine.
+            existing: Input `existing` consumed by this routine.
+            new_value: Input `new_value` consumed by this routine.
+            new_source: Input `new_source` consumed by this routine.
+        
+        Returns:
+            Optional[Dict[str, Any]]: Result value produced by this routine.
         """
         old_value = existing.get("value")
         if old_value is None:
@@ -754,9 +942,19 @@ class AgentMemoryManager:
         return None
 
     def _record_conflict(self, profile: Dict[str, Any], key: str, conflict: Dict[str, Any], now: str) -> None:
-        """Record conflict.
+        """Record preference conflicts for later prompts and profile reconciliation.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            profile: User preference profile snapshot stored in memory manager.
+            key: Input `key` consumed by this routine.
+            conflict: Input `conflict` consumed by this routine.
+            now: Input `now` consumed by this routine.
+        
+        Returns:
+            None: Result value produced by this routine.
         """
         entry = {
             "key": key,
@@ -781,9 +979,16 @@ class AgentMemoryManager:
 
     @staticmethod
     def _time_decay_factor(timestamp: str) -> float:
-        """Time decay factor.
+        """Execute time decay factor in the backend runtime workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            timestamp: Input `timestamp` consumed by this routine.
+        
+        Returns:
+            float: Result value produced by this routine.
         """
         try:
             ts = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
@@ -797,9 +1002,16 @@ class AgentMemoryManager:
             return 0.5
 
     def _decayed_confidence(self, attr: Dict[str, Any]) -> float:
-        """Decayed confidence.
+        """Execute decayed confidence in the backend runtime workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            attr: Input `attr` consumed by this routine.
+        
+        Returns:
+            float: Result value produced by this routine.
         """
         base = float(attr.get("confidence", 0.0) or 0.0)
         updated_at = str(attr.get("updated_at") or "")
@@ -807,9 +1019,16 @@ class AgentMemoryManager:
         return max(0.0, min(1.0, base * decay))
 
     def _attributes_with_decay(self, attrs: Dict[str, Any]) -> Dict[str, Any]:
-        """Attributes with decay.
+        """Execute attributes with decay in the backend runtime workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            attrs: Input `attrs` consumed by this routine.
+        
+        Returns:
+            Dict[str, Any]: Result value produced by this routine.
         """
         output: Dict[str, Any] = {}
         for key, item in attrs.items():
@@ -823,9 +1042,16 @@ class AgentMemoryManager:
 
     @staticmethod
     def _tokenize(text: str) -> set[str]:
-        """Tokenize.
+        """Execute tokenize in the backend runtime workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            text: Input `text` consumed by this routine.
+        
+        Returns:
+            set[str]: Result value produced by this routine.
         """
         tokens = re.findall(r"[\u4e00-\u9fff]{2,}|[a-zA-Z0-9]+", text or "")
         return {token.lower() for token in tokens if token}
@@ -842,9 +1068,20 @@ class AgentStateWithMemory:
         system_prompt: str,
         chat_mode: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Create.
+        """Execute create in the backend runtime workflow.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            user_message: Input `user_message` consumed by this routine.
+            session_id: Session identifier used to isolate memory/checkpoint scope.
+            memory_manager: Input `memory_manager` consumed by this routine.
+            system_prompt: Input `system_prompt` consumed by this routine.
+            chat_mode: Input `chat_mode` consumed by this routine.
+        
+        Returns:
+            Dict[str, Any]: Result value produced by this routine.
         """
         messages: List[BaseMessage] = [SystemMessage(content=system_prompt)]
 

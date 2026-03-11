@@ -51,17 +51,28 @@ def _extract_text_from_chunk(chunk: Any) -> str:
 
 
 def _resolve_stream_events_version() -> str:
-    """Resolve stream events version.
+    """Resolve the configured LangGraph stream-events version for compatibility across runtimes.
     
-    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    Purpose:
+        Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+    
+    Returns:
+        str: Result value produced by this routine.
     """
     return get_runtime_config().stream_events_version
 
 
 def _is_answer_complete(answer: str) -> bool:
-    """Return whether answer complete.
+    """Heuristically detect whether generated answer text appears complete for early-stop control.
     
-    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    Purpose:
+        Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+    
+    Args:
+        answer: Input `answer` consumed by this routine.
+    
+    Returns:
+        bool: Decision flag used by guards, routing, or policy checks.
     """
     text = str(answer or "").strip()
     if len(text) < 8:
@@ -82,9 +93,21 @@ class TravelAgentGraph:
         checkpointer: Any = None,
         routing_llm: Optional[Runnable] = None,
     ):
-        """Initialize TravelAgentGraph.
+        """Initialize the graph wrapper with LLMs, tool registry, prompts, and optional checkpoint integration.
         
-        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            llm: Input `llm` consumed by this routine.
+            tools: Input `tools` consumed by this routine.
+            system_prompt: Input `system_prompt` consumed by this routine.
+            planner_hooks: Input `planner_hooks` consumed by this routine.
+            checkpointer: Input `checkpointer` consumed by this routine.
+            routing_llm: Input `routing_llm` consumed by this routine.
+        
+        Returns:
+            Any: Result value produced by this routine.
         """
         self.llm = llm
         self.tools = tools
@@ -94,9 +117,13 @@ class TravelAgentGraph:
         self._graph: Optional[StateGraph] = None
 
     def build(self) -> StateGraph:
-        """Build.
+        """Construct and compile the LangGraph state machine used by the travel agent runtime.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Returns:
+            StateGraph: Result value produced by this routine.
         """
         graph = StateGraph(AgentState)
         graph.add_node("intent", self.nodes.intent_node)
@@ -142,18 +169,29 @@ class TravelAgentGraph:
 
     @property
     def graph(self) -> StateGraph:
-        """Graph.
+        """Return a compiled graph instance and lazily build it when first requested.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Returns:
+            StateGraph: Result value produced by this routine.
         """
         if self._graph is None:
             self.build()
         return self._graph
 
     def _build_thread_config(self, state: dict) -> dict[str, dict[str, str]]:
-        """Build thread config.
+        """Build per-session thread config so checkpoints and event streams remain session-scoped.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            state: Mutable LangGraph state snapshot passed between node stages.
+        
+        Returns:
+            dict[str, dict[str, str]]: Result value produced by this routine.
         """
         session_id = state.get("session_id")
         if not session_id:
@@ -161,9 +199,16 @@ class TravelAgentGraph:
         return {"configurable": {"thread_id": str(session_id)}}
 
     def invoke(self, state: dict) -> dict:
-        """Invoke.
+        """Execute one sync graph run and safely fall back to async invocation for async-only nodes.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            state: Mutable LangGraph state snapshot passed between node stages.
+        
+        Returns:
+            dict: Result value produced by this routine.
         """
         config = self._build_thread_config(state)
         resolved_config = config if config else None
@@ -176,26 +221,47 @@ class TravelAgentGraph:
             return self._run_ainvoke_sync(state, resolved_config)
 
     async def ainvoke(self, state: dict) -> dict:
-        """Ainvoke.
+        """Execute one async graph run and return the final merged state snapshot.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            state: Mutable LangGraph state snapshot passed between node stages.
+        
+        Returns:
+            dict: Result value produced by this routine.
         """
         config = self._build_thread_config(state)
         return await self.graph.ainvoke(state, config=config if config else None)
 
     async def astream(self, state: dict):
-        """Astream.
+        """Stream value-mode graph updates used by progressive UI rendering.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            state: Mutable LangGraph state snapshot passed between node stages.
+        
+        Returns:
+            Any: Result value produced by this routine.
         """
         config = self._build_thread_config(state)
         async for chunk in self.graph.astream(state, stream_mode="values", config=config if config else None):
             yield chunk
 
     async def astream_events(self, state: dict):
-        """Astream events.
+        """Stream structured graph events for telemetry, stage updates, and SSE transport.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            state: Mutable LangGraph state snapshot passed between node stages.
+        
+        Returns:
+            Any: Result value produced by this routine.
         """
         config = self._build_thread_config(state)
         async for event in self.graph.astream_events(
@@ -206,9 +272,17 @@ class TravelAgentGraph:
             yield event
 
     def _run_ainvoke_sync(self, state: dict, config: dict | None) -> dict:
-        """Run ainvoke sync.
+        """Bridge async graph execution into sync call-sites while preserving event-loop safety.
         
-        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        Purpose:
+            Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+        
+        Args:
+            state: Mutable LangGraph state snapshot passed between node stages.
+            config: Optional invocation config passed to LangGraph runtime.
+        
+        Returns:
+            dict: Result value produced by this routine.
         """
         try:
             asyncio.get_running_loop()
@@ -219,9 +293,13 @@ class TravelAgentGraph:
         error_holder: dict[str, Exception] = {}
 
         def _runner() -> None:
-            """Runner.
+            """Execute runner in the backend runtime workflow.
             
-            This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+            Purpose:
+                Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+            
+            Returns:
+                None: Result value produced by this routine.
             """
             try:
                 result_holder["result"] = asyncio.run(self.graph.ainvoke(state, config=config))
@@ -245,9 +323,21 @@ def build_travel_agent(
     checkpointer: Any = None,
     routing_llm: Optional[Runnable] = None,
 ) -> TravelAgentGraph:
-    """Build travel agent.
+    """Create and compile a travel-agent graph instance with runtime defaults.
     
-    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    Purpose:
+        Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+    
+    Args:
+        llm: Input `llm` consumed by this routine.
+        tools: Input `tools` consumed by this routine.
+        system_prompt: Input `system_prompt` consumed by this routine.
+        planner_hooks: Input `planner_hooks` consumed by this routine.
+        checkpointer: Input `checkpointer` consumed by this routine.
+        routing_llm: Input `routing_llm` consumed by this routine.
+    
+    Returns:
+        TravelAgentGraph: Result value produced by this routine.
     """
     return TravelAgentGraph(
         llm,
@@ -260,9 +350,13 @@ def build_travel_agent(
 
 
 def _create_default_checkpointer():
-    """Create default checkpointer.
+    """Execute create default checkpointer in the backend runtime workflow.
     
-    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    Purpose:
+        Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+    
+    Returns:
+        Any: Result value produced by this routine.
     """
     global _DEFAULT_CHECKPOINTER
     if _DEFAULT_CHECKPOINTER is not None:
@@ -310,9 +404,23 @@ async def run_travel_agent(
     chat_mode: str | None = None,
     routing_llm: Runnable | None = None,
 ) -> dict:
-    """Run travel agent.
+    """Run the graph once in non-streaming mode and return final answer/result fields.
     
-    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    Purpose:
+        Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+    
+    Args:
+        user_message: Input `user_message` consumed by this routine.
+        llm: Input `llm` consumed by this routine.
+        tools: Input `tools` consumed by this routine.
+        session_id: Session identifier used to isolate memory/checkpoint scope.
+        system_prompt: Input `system_prompt` consumed by this routine.
+        run_id: Input `run_id` consumed by this routine.
+        chat_mode: Input `chat_mode` consumed by this routine.
+        routing_llm: Input `routing_llm` consumed by this routine.
+    
+    Returns:
+        dict: Result value produced by this routine.
     """
     agent = build_travel_agent(
         llm,
@@ -352,9 +460,26 @@ async def run_travel_agent_streaming(
     on_tool_end: Callable | None = None,
     routing_llm: Runnable | None = None,
 ) -> dict:
-    """Run travel agent streaming.
+    """Run the graph in streaming mode and yield normalized chunks for UI consumption.
     
-    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    Purpose:
+        Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+    
+    Args:
+        user_message: Input `user_message` consumed by this routine.
+        llm: Input `llm` consumed by this routine.
+        tools: Input `tools` consumed by this routine.
+        session_id: Session identifier used to isolate memory/checkpoint scope.
+        system_prompt: Input `system_prompt` consumed by this routine.
+        run_id: Input `run_id` consumed by this routine.
+        chat_mode: Input `chat_mode` consumed by this routine.
+        on_token: Input `on_token` consumed by this routine.
+        on_tool_start: Input `on_tool_start` consumed by this routine.
+        on_tool_end: Input `on_tool_end` consumed by this routine.
+        routing_llm: Input `routing_llm` consumed by this routine.
+    
+    Returns:
+        dict: Result value produced by this routine.
     """
     agent = build_travel_agent(
         llm,
@@ -414,9 +539,28 @@ async def run_travel_agent_with_memory(
     run_id: str | None = None,
     routing_llm: Runnable | None = None,
 ) -> dict:
-    """Run travel agent with memory.
+    """Run non-streaming graph execution with memory context injection.
     
-    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    Purpose:
+        Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+    
+    Args:
+        user_message: Input `user_message` consumed by this routine.
+        llm: Input `llm` consumed by this routine.
+        tools: Input `tools` consumed by this routine.
+        session_id: Session identifier used to isolate memory/checkpoint scope.
+        memory_manager: Input `memory_manager` consumed by this routine.
+        system_prompt: Input `system_prompt` consumed by this routine.
+        chat_mode: Input `chat_mode` consumed by this routine.
+        on_token: Input `on_token` consumed by this routine.
+        on_tool_start: Input `on_tool_start` consumed by this routine.
+        on_tool_end: Input `on_tool_end` consumed by this routine.
+        persist_memory: Input `persist_memory` consumed by this routine.
+        run_id: Input `run_id` consumed by this routine.
+        routing_llm: Input `routing_llm` consumed by this routine.
+    
+    Returns:
+        dict: Result value produced by this routine.
     """
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
@@ -487,9 +631,25 @@ async def run_travel_agent_streaming_with_memory(
     chat_mode: str | None = None,
     routing_llm: Runnable | None = None,
 ):
-    """Run travel agent streaming with memory.
+    """Run streaming graph execution with memory context and normalized event payloads.
     
-    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    Purpose:
+        Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+    
+    Args:
+        user_message: Input `user_message` consumed by this routine.
+        llm: Input `llm` consumed by this routine.
+        tools: Input `tools` consumed by this routine.
+        session_id: Session identifier used to isolate memory/checkpoint scope.
+        memory_manager: Input `memory_manager` consumed by this routine.
+        system_prompt: Input `system_prompt` consumed by this routine.
+        persist_memory: Input `persist_memory` consumed by this routine.
+        run_id: Input `run_id` consumed by this routine.
+        chat_mode: Input `chat_mode` consumed by this routine.
+        routing_llm: Input `routing_llm` consumed by this routine.
+    
+    Returns:
+        Any: Result value produced by this routine.
     """
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
@@ -667,9 +827,23 @@ def generate_plan_preview_with_memory(
     chat_mode: str | None = None,
     routing_llm: Runnable | None = None,
 ) -> dict:
-    """Generate plan preview with memory.
+    """Generate a memory-aware plan preview without executing full tool orchestration.
     
-    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    Purpose:
+        Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+    
+    Args:
+        user_message: Input `user_message` consumed by this routine.
+        llm: Input `llm` consumed by this routine.
+        tools: Input `tools` consumed by this routine.
+        session_id: Session identifier used to isolate memory/checkpoint scope.
+        memory_manager: Input `memory_manager` consumed by this routine.
+        system_prompt: Input `system_prompt` consumed by this routine.
+        chat_mode: Input `chat_mode` consumed by this routine.
+        routing_llm: Input `routing_llm` consumed by this routine.
+    
+    Returns:
+        dict: Result value produced by this routine.
     """
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
@@ -702,9 +876,13 @@ def generate_plan_preview_with_memory(
 
 
 def get_tool_health_diagnostics() -> dict[str, Any]:
-    """Get tool health diagnostics.
+    """Return aggregated tool-health diagnostics for monitoring and health endpoints.
     
-    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    Purpose:
+        Clarify stage responsibilities and data contracts to reduce maintenance risk in complex backend flows.
+    
+    Returns:
+        dict[str, Any]: Result value produced by this routine.
     """
     return {
         "runtime_config": get_runtime_config().to_dict(),
