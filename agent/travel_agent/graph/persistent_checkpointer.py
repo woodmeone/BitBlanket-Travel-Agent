@@ -44,7 +44,7 @@ class PersistentSqliteSaver(InMemorySaver):
             compaction_interval: Time-related setting `compaction_interval` used by scheduling/retry windows.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         self._db_path = os.path.abspath(db_path)
         self._persist_lock = threading.RLock()
@@ -63,12 +63,12 @@ class PersistentSqliteSaver(InMemorySaver):
         
         Args:
             config: Configuration payload used to initialize runtime behavior.
-            checkpoint: Structured payload `checkpoint` used by this routine.
-            metadata: Structured payload `metadata` used by this routine.
+            checkpoint: Serialized checkpoint payload persisted for graph recovery.
+            metadata: Checkpoint metadata persisted alongside the state snapshot.
             new_versions: Collection `new_versions` iterated or aggregated by this routine.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         next_config = super().put(config, checkpoint, metadata, new_versions)
         thread_id, checkpoint_ns, checkpoint_id = self._resolve_checkpoint_key(next_config)
@@ -85,12 +85,12 @@ class PersistentSqliteSaver(InMemorySaver):
         
         Args:
             config: Configuration payload used to initialize runtime behavior.
-            checkpoint: Structured payload `checkpoint` used by this routine.
-            metadata: Structured payload `metadata` used by this routine.
+            checkpoint: Serialized checkpoint payload persisted for graph recovery.
+            metadata: Checkpoint metadata persisted alongside the state snapshot.
             new_versions: Collection `new_versions` iterated or aggregated by this routine.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         next_config = await super().aput(config, checkpoint, metadata, new_versions)
         thread_id, checkpoint_ns, checkpoint_id = self._resolve_checkpoint_key(next_config)
@@ -112,7 +112,7 @@ class PersistentSqliteSaver(InMemorySaver):
             task_path: Filesystem/resource path for `task_path` resolution.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         super().put_writes(config, writes, task_id, task_path=task_path)
         thread_id, checkpoint_ns, checkpoint_id = self._resolve_checkpoint_key(config)
@@ -132,7 +132,7 @@ class PersistentSqliteSaver(InMemorySaver):
             task_path: Filesystem/resource path for `task_path` resolution.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         await super().aput_writes(config, writes, task_id, task_path=task_path)
         thread_id, checkpoint_ns, checkpoint_id = self._resolve_checkpoint_key(config)
@@ -150,7 +150,7 @@ class PersistentSqliteSaver(InMemorySaver):
             checkpoint_ns: Checkpoint namespace that partitions persisted state records.
         
         Returns:
-            int: Numeric count/value returned to caller.
+            int: Numeric value used by quotas, counts, or status aggregation.
         """
         self._compact_thread(thread_id, checkpoint_ns)
         with self._persist_lock:
@@ -310,7 +310,7 @@ class PersistentSqliteSaver(InMemorySaver):
             payload: Structured payload used by API/service boundary.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         try:
             return pickle.loads(payload)

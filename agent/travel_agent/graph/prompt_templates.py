@@ -44,7 +44,7 @@ def build_system_prompt(base_prompt: str, intent: Optional[str]) -> str:
         intent: Detected intent label used for SLO bucket aggregation.
     
     Returns:
-        str: Normalized string value returned to caller.
+        str: Normalized text string used by downstream logic.
     """
     intent_key = (intent or "general").lower()
     guidance = INTENT_GUIDANCE.get(intent_key, INTENT_GUIDANCE["general"])
@@ -72,7 +72,7 @@ def build_answer_prompt(
         evidence_required: Whether generated answer prompt must enforce evidence statements.
     
     Returns:
-        str: Normalized string value returned to caller.
+        str: Normalized text string used by downstream logic.
     """
     guidance = INTENT_GUIDANCE.get((intent or "general").lower(), INTENT_GUIDANCE["general"])
     if tools_used:
@@ -107,7 +107,7 @@ def build_direct_prompt(user_question: str, intent: Optional[str]) -> str:
         intent: Detected intent label used for SLO bucket aggregation.
     
     Returns:
-        str: Normalized string value returned to caller.
+        str: Normalized text string used by downstream logic.
     """
     guidance = INTENT_GUIDANCE.get((intent or "general").lower(), INTENT_GUIDANCE["general"])
     return (

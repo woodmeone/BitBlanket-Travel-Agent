@@ -119,7 +119,7 @@ def _resolve_parallelism_default() -> int:
         Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
     
     Returns:
-        int: Numeric count/value returned to caller.
+        int: Numeric value used by quotas, counts, or status aggregation.
     """
     return get_runtime_config().default_max_parallelism
 
@@ -183,10 +183,10 @@ class ToolOrchestrator:
             Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            runtime_config: Structured payload `runtime_config` used by this routine.
+            runtime_config: Runtime config object with budget, retry, and timeout limits.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         self.runtime_config = runtime_config
 
@@ -373,7 +373,7 @@ class AgentNodes:
             routing_llm: Optional model used for intent/strategy routing when different from main llm.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         self.llm = llm
         self.routing_llm = routing_llm or llm
@@ -466,7 +466,7 @@ class AgentNodes:
             payload: Structured event payload serialized to one SSE data line.
         
         Returns:
-            dict[str, Any]: Structured metadata payload returned to caller.
+            dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
         validated = model.model_validate(payload)
         return validated.model_dump()
@@ -482,7 +482,7 @@ class AgentNodes:
             content: Raw text content being normalized or analyzed.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         if isinstance(content, str):
             return content
@@ -601,11 +601,11 @@ class AgentNodes:
             Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            response: Structured payload `response` used by this routine.
+            response: Raw model response payload used by fallback JSON parsing.
             user_text: Text input `user_text` used for parsing, prompt assembly, or display.
         
         Returns:
-            dict[str, Any]: Structured metadata payload returned to caller.
+            dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
         try:
             return self.intent_parser.invoke(response)
@@ -634,7 +634,7 @@ class AgentNodes:
             text: Text input `text` used for parsing, prompt assembly, or display.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         if not text:
             return ""
@@ -655,7 +655,7 @@ class AgentNodes:
             user_text: Text input `user_text` used for parsing, prompt assembly, or display.
         
         Returns:
-            dict[str, Any]: Structured metadata payload returned to caller.
+            dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
         text = (user_text or "").lower()
         intent = "general"
@@ -997,7 +997,7 @@ class AgentNodes:
             errors: Collection `errors` iterated or aggregated by this routine.
         
         Returns:
-            dict[str, Any]: Structured metadata payload returned to caller.
+            dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
         results: dict[str, Any] = {}
         for item in errors:
@@ -1085,7 +1085,7 @@ class AgentNodes:
                 payload: Structured event payload serialized to one SSE data line.
             
             Returns:
-                dict[str, Any]: Structured metadata payload returned to caller.
+                dict[str, Any]: Structured metadata dictionary for downstream stages.
             """
             if verify_result_update is not None:
                 payload["verify_result"] = verify_result_update
@@ -1950,7 +1950,7 @@ class AgentNodes:
             params: Normalized tool parameters after policy correction and validation.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         if hasattr(tool, "ainvoke"):
             return await tool.ainvoke(params)
@@ -2148,7 +2148,7 @@ class AgentNodes:
             params: Normalized tool parameters after policy correction and validation.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         try:
             rendered = json.dumps(params, ensure_ascii=False, sort_keys=True)
@@ -2172,12 +2172,12 @@ class AgentNodes:
         Args:
             state: Mutable LangGraph state snapshot passed between node stages.
             plan: Plan step list prepared by planner stage.
-            execution_state: Structured payload `execution_state` used by this routine.
+            execution_state: Execution state map with completed/failed/blocked steps.
             execution_summary: Aggregated execution metrics for diagnostics and UI.
             tool_results: Collection `tool_results` iterated or aggregated by this routine.
         
         Returns:
-            Optional[str]: Computed value returned to the caller.
+            Optional[str]: Optional reason string; `None` means no blocking condition.
         """
         finished = (
             len(execution_state.get("completed", []))
@@ -2209,10 +2209,10 @@ class AgentNodes:
             Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            verify_result: Structured payload `verify_result` used by this routine.
+            verify_result: Verification payload used to compute refresh targets.
         
         Returns:
-            list[str]: Computed value returned to the caller.
+            list[str]: List of normalized string entries for downstream use.
         """
         if not isinstance(verify_result, dict):
             return []
@@ -2242,7 +2242,7 @@ class AgentNodes:
             refresh_targets: Collection `refresh_targets` iterated or aggregated by this routine.
         
         Returns:
-            dict[str, Any]: Structured metadata payload returned to caller.
+            dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
         step_id = str(step.get("step_id") or "")
         tool_name = str(step.get("tool") or "")
@@ -2263,7 +2263,7 @@ class AgentNodes:
             intent: Detected intent label used for SLO bucket aggregation.
         
         Returns:
-            Optional[str]: Computed value returned to the caller.
+            Optional[str]: Optional reason string; `None` means no blocking condition.
         """
         mapping = {
             "recommend": "search_cities",
@@ -2330,10 +2330,10 @@ class AgentNodes:
         Args:
             primary_intent: Text input `primary_intent` used for parsing, prompt assembly, or display.
             user_text: Text input `user_text` used for parsing, prompt assembly, or display.
-            intent_detail: Structured payload `intent_detail` used by this routine.
+            intent_detail: Intent-detail payload containing entities and confidence.
         
         Returns:
-            Optional[str]: Computed value returned to the caller.
+            Optional[str]: Optional reason string; `None` means no blocking condition.
         """
         text = str(user_text or "")
         lowered = text.lower()
@@ -2431,7 +2431,7 @@ class AgentNodes:
             intent: Detected intent label used for SLO bucket aggregation.
         
         Returns:
-            float: Parsed float value returned to caller.
+            float: Parsed float value after validation and fallback handling.
         """
         if not isinstance(result, dict):
             return 0.0
@@ -2499,7 +2499,7 @@ class AgentNodes:
             payload: Structured event payload serialized to one SSE data line.
         
         Returns:
-            int: Numeric count/value returned to caller.
+            int: Numeric value used by quotas, counts, or status aggregation.
         """
         try:
             text = json.dumps(payload, ensure_ascii=False) if not isinstance(payload, str) else payload
@@ -2518,7 +2518,7 @@ class AgentNodes:
             tool_name: Registered tool identifier from the tool map.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         name = str(tool_name).split(":")[-1]
         if name in {"search_cities", "query_attractions", "query_hotels", "get_weather"}:
@@ -2542,7 +2542,7 @@ class AgentNodes:
             intent: Detected intent label used for SLO bucket aggregation.
         
         Returns:
-            dict[str, Any]: Structured metadata payload returned to caller.
+            dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
         ranked = self._rank_tool_results(tool_results, intent=intent)
         groups: dict[str, list[dict[str, Any]]] = {}
@@ -2641,7 +2641,7 @@ class AgentNodes:
             intent: Detected intent label used for SLO bucket aggregation.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         lowered = str(answer or "").lower()
         if "source" in lowered and "fetched_at" in lowered:
@@ -2671,7 +2671,7 @@ class AgentNodes:
             state: Mutable LangGraph state snapshot passed between node stages.
         
         Returns:
-            dict[str, Any]: Structured metadata payload returned to caller.
+            dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
         corrected = dict(params or {})
         entities = (state.get("intent_detail") or {}).get("entities", {}) or {}
@@ -2788,7 +2788,7 @@ class AgentNodes:
             payload: Structured event payload serialized to one SSE data line.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         if not isinstance(payload, dict):
             return payload
@@ -2822,7 +2822,7 @@ class AgentNodes:
             text: Text input `text` used for parsing, prompt assembly, or display.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         normalized = text
         normalized = re.sub(r"(?<!C)NY\s*", "CNY ", normalized, flags=re.IGNORECASE)
@@ -2843,7 +2843,7 @@ class AgentNodes:
             item: Raw list item being normalized into a comparable text fragment.
         
         Returns:
-            dict[str, Any]: Structured metadata payload returned to caller.
+            dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
         normalized = dict(item)
         for key in ("price", "ticket"):
@@ -2880,7 +2880,7 @@ class AgentNodes:
             default: Fallback value used when parsing fails or variable is missing.
         
         Returns:
-            int: Numeric count/value returned to caller.
+            int: Numeric value used by quotas, counts, or status aggregation.
         """
         try:
             parsed = int(value)
@@ -2900,7 +2900,7 @@ class AgentNodes:
             default: Fallback value used when parsing fails or variable is missing.
         
         Returns:
-            int: Numeric count/value returned to caller.
+            int: Numeric value used by quotas, counts, or status aggregation.
         """
         try:
             if value is None:
@@ -2920,7 +2920,7 @@ class AgentNodes:
             value: Candidate scalar value to normalize/validate.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         text = str(value or "").strip().lower()
         if text in {"economy", "budget", "low"}:
@@ -2941,7 +2941,7 @@ class AgentNodes:
             default: Fallback text returned when every candidate is empty.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         for value in values:
             text = str(value or "").strip()
@@ -2960,7 +2960,7 @@ class AgentNodes:
             state: Mutable LangGraph state snapshot passed between node stages.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         messages = list(state.get("messages", []) or [])
         for msg in reversed(messages):
@@ -2981,7 +2981,7 @@ class AgentNodes:
             user_text: Text input `user_text` used for parsing, prompt assembly, or display.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         for key in ("city", "destination", "query"):
             text = str(params.get(key) or entities.get(key) or "").strip()
@@ -3020,7 +3020,7 @@ class AgentNodes:
             tool_name: Registered tool identifier from the tool map.
         
         Returns:
-            int: Numeric count/value returned to caller.
+            int: Numeric value used by quotas, counts, or status aggregation.
         """
         override = step.get("timeout_seconds")
         if override is not None:
@@ -3091,7 +3091,7 @@ class AgentNodes:
             Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Returns:
-            dict[str, Any]: Structured metadata payload returned to caller.
+            dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
         now = time.time()
         tools: dict[str, dict[str, Any]] = {}
@@ -3157,7 +3157,7 @@ class AgentNodes:
             plan: Plan step list prepared by planner stage.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         if not plan:
             return f"intent={intent}, no tool plan required"
@@ -3176,7 +3176,7 @@ class AgentNodes:
             tools_used: Collection `tools_used` iterated or aggregated by this routine.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         plan_id = state.get("plan_id")
         stats = state.get("execution_stats", {}) or {}
@@ -3200,7 +3200,7 @@ class AgentNodes:
             params: Normalized tool parameters after policy correction and validation.
         
         Returns:
-            Optional[str]: Computed value returned to the caller.
+            Optional[str]: Optional reason string; `None` means no blocking condition.
         """
         schema = getattr(tool, "args_schema", None)
         if schema is None:
@@ -3225,7 +3225,7 @@ class AgentNodes:
             params: Normalized tool parameters after policy correction and validation.
         
         Returns:
-            Optional[str]: Computed value returned to the caller.
+            Optional[str]: Optional reason string; `None` means no blocking condition.
         """
         def _walk(value: Any) -> list[str]:
             """Walk nested parameter structures when scanning for unsafe payload patterns.
@@ -3237,7 +3237,7 @@ class AgentNodes:
                 value: Candidate scalar value to normalize/validate.
             
             Returns:
-                list[str]: Computed value returned to the caller.
+                list[str]: List of normalized string entries for downstream use.
             """
             found: list[str] = []
             if isinstance(value, str):
@@ -3269,7 +3269,7 @@ class AgentNodes:
             params: Normalized tool parameters after policy correction and validation.
         
         Returns:
-            dict[str, Any]: Structured metadata payload returned to caller.
+            dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
         def _sanitize(key: Optional[str], value: Any) -> Any:
             """Mask sensitive values recursively inside nested dict/list payloads.
@@ -3282,7 +3282,7 @@ class AgentNodes:
                 value: Candidate scalar value to normalize/validate.
             
             Returns:
-                Any: Runtime-dependent value returned for downstream processing.
+                Any: Runtime-dependent object returned to the calling layer.
             """
             if key and key.lower() in SENSITIVE_PARAM_KEYS:
                 return "***"
@@ -3309,7 +3309,7 @@ class AgentNodes:
             stats_steps: Collection `stats_steps` iterated or aggregated by this routine.
         
         Returns:
-            dict[str, Any]: Structured metadata payload returned to caller.
+            dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
         total_steps = len(stats_steps)
         success_steps = sum(1 for item in stats_steps if item.get("status") == "success")
@@ -3403,7 +3403,7 @@ class AgentNodes:
             percentile: Percentile ratio (0-1) used when selecting quantile index.
         
         Returns:
-            int: Numeric count/value returned to caller.
+            int: Numeric value used by quotas, counts, or status aggregation.
         """
         if not values:
             return 0
@@ -3480,10 +3480,10 @@ class AgentNodes:
             Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
         
         Args:
-            result_payload: Structured payload `result_payload` used by this routine.
+            result_payload: Raw tool-result payload from which metadata is extracted.
         
         Returns:
-            dict[str, Any]: Structured metadata payload returned to caller.
+            dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
         if not isinstance(result_payload, dict):
             return {}
@@ -3504,7 +3504,7 @@ class AgentNodes:
             error_code: Normalized error code used for diagnostics and telemetry clustering.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         if error_code == "TOOL_TIMEOUT":
             return f"{tool_name} 超时，建议使用缓存信息或提供不依赖实时数据的备选方案"

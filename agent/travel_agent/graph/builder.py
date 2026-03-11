@@ -57,7 +57,7 @@ def _resolve_stream_events_version() -> str:
         Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
     
     Returns:
-        str: Normalized string value returned to caller.
+        str: Normalized text string used by downstream logic.
     """
     return get_runtime_config().stream_events_version
 
@@ -107,7 +107,7 @@ class TravelAgentGraph:
             routing_llm: Optional model used for intent/strategy routing when different from main llm.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         self.llm = llm
         self.tools = tools
@@ -208,7 +208,7 @@ class TravelAgentGraph:
             state: Mutable LangGraph state snapshot passed between node stages.
         
         Returns:
-            dict: Structured dictionary payload returned to caller.
+            dict: Structured dictionary result for upstream callers.
         """
         config = self._build_thread_config(state)
         resolved_config = config if config else None
@@ -230,7 +230,7 @@ class TravelAgentGraph:
             state: Mutable LangGraph state snapshot passed between node stages.
         
         Returns:
-            dict: Structured dictionary payload returned to caller.
+            dict: Structured dictionary result for upstream callers.
         """
         config = self._build_thread_config(state)
         return await self.graph.ainvoke(state, config=config if config else None)
@@ -245,7 +245,7 @@ class TravelAgentGraph:
             state: Mutable LangGraph state snapshot passed between node stages.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         config = self._build_thread_config(state)
         async for chunk in self.graph.astream(state, stream_mode="values", config=config if config else None):
@@ -261,7 +261,7 @@ class TravelAgentGraph:
             state: Mutable LangGraph state snapshot passed between node stages.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         config = self._build_thread_config(state)
         async for event in self.graph.astream_events(
@@ -282,7 +282,7 @@ class TravelAgentGraph:
             config: Optional invocation config passed to LangGraph runtime.
         
         Returns:
-            dict: Structured dictionary payload returned to caller.
+            dict: Structured dictionary result for upstream callers.
         """
         try:
             asyncio.get_running_loop()
@@ -356,7 +356,7 @@ def _create_default_checkpointer():
         Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
     
     Returns:
-        Any: Runtime-dependent value returned for downstream processing.
+        Any: Runtime-dependent object returned to the calling layer.
     """
     global _DEFAULT_CHECKPOINTER
     if _DEFAULT_CHECKPOINTER is not None:
@@ -420,7 +420,7 @@ async def run_travel_agent(
         routing_llm: Optional model used for intent/strategy routing when different from main llm.
     
     Returns:
-        dict: Structured dictionary payload returned to caller.
+        dict: Structured dictionary result for upstream callers.
     """
     agent = build_travel_agent(
         llm,
@@ -479,7 +479,7 @@ async def run_travel_agent_streaming(
         routing_llm: Optional model used for intent/strategy routing when different from main llm.
     
     Returns:
-        dict: Structured dictionary payload returned to caller.
+        dict: Structured dictionary result for upstream callers.
     """
     agent = build_travel_agent(
         llm,
@@ -560,7 +560,7 @@ async def run_travel_agent_with_memory(
         routing_llm: Optional model used for intent/strategy routing when different from main llm.
     
     Returns:
-        dict: Structured dictionary payload returned to caller.
+        dict: Structured dictionary result for upstream callers.
     """
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
@@ -649,7 +649,7 @@ async def run_travel_agent_streaming_with_memory(
         routing_llm: Optional model used for intent/strategy routing when different from main llm.
     
     Returns:
-        Any: Runtime-dependent value returned for downstream processing.
+        Any: Runtime-dependent object returned to the calling layer.
     """
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
@@ -843,7 +843,7 @@ def generate_plan_preview_with_memory(
         routing_llm: Optional model used for intent/strategy routing when different from main llm.
     
     Returns:
-        dict: Structured dictionary payload returned to caller.
+        dict: Structured dictionary result for upstream callers.
     """
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
@@ -882,7 +882,7 @@ def get_tool_health_diagnostics() -> dict[str, Any]:
         Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
     
     Returns:
-        dict[str, Any]: Structured metadata payload returned to caller.
+        dict[str, Any]: Structured metadata dictionary for downstream stages.
     """
     return {
         "runtime_config": get_runtime_config().to_dict(),

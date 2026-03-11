@@ -24,7 +24,7 @@ class TravelAPIClient:
             use_cache: Boolean flag `use_cache` that toggles runtime behavior.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         self.use_cache = use_cache
         self._cache: Dict[str, Any] = {}
@@ -38,7 +38,7 @@ class TravelAPIClient:
             Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         return datetime.now(timezone.utc).isoformat()
 

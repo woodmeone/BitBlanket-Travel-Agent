@@ -48,7 +48,7 @@ class ConversationSummarizer:
             summary_threshold: Maximum message count before older dialogue turns are summarized.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         self.llm = llm
         self.summary_threshold = max(2, summary_threshold)
@@ -63,7 +63,7 @@ class ConversationSummarizer:
             messages: Chronological message list used as model/tool context.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         if not messages:
             return ""
@@ -122,7 +122,7 @@ class AgentMemoryManager:
             max_sessions: Numeric control parameter `max_sessions` used for bounds or pagination.
         
         Returns:
-            Any: Runtime-dependent value returned for downstream processing.
+            Any: Runtime-dependent object returned to the calling layer.
         """
         self.max_history = max(2, max_history)
         self.summarizer = ConversationSummarizer(llm=llm, summary_threshold=summary_threshold)
@@ -210,7 +210,7 @@ class AgentMemoryManager:
             session_id: Session identifier used to isolate memory/checkpoint scope.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         async with self._lock:
             with self._sync_lock:
@@ -250,7 +250,7 @@ class AgentMemoryManager:
             session_id: Session identifier used to isolate memory/checkpoint scope.
         
         Returns:
-            str: Normalized string value returned to caller.
+            str: Normalized text string used by downstream logic.
         """
         with self._sync_lock:
             session = self._sessions.get(session_id)
@@ -599,10 +599,10 @@ class AgentMemoryManager:
                 Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
             
             Args:
-                session_data: Structured payload `session_data` used by this routine.
+                session_data: Session snapshot containing messages and profile fields.
             
             Returns:
-                str: Normalized string value returned to caller.
+                str: Normalized text string used by downstream logic.
             """
             messages = session_data.get("messages", [])
             if messages:
@@ -990,7 +990,7 @@ class AgentMemoryManager:
             timestamp: Timestamp associated with a memory message for recency weighting.
         
         Returns:
-            float: Parsed float value returned to caller.
+            float: Parsed float value after validation and fallback handling.
         """
         try:
             ts = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
@@ -1013,7 +1013,7 @@ class AgentMemoryManager:
             attr: Input field `attr` used for normalization or matching rules.
         
         Returns:
-            float: Parsed float value returned to caller.
+            float: Parsed float value after validation and fallback handling.
         """
         base = float(attr.get("confidence", 0.0) or 0.0)
         updated_at = str(attr.get("updated_at") or "")
