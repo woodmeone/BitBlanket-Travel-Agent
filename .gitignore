@@ -72,6 +72,7 @@ session_*.json
 
 # Runtime data
 data/
+artifacts/
 
 # Frontend / Node.js
 frontend/node_modules/
