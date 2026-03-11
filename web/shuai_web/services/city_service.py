@@ -20,7 +20,7 @@ def _attraction(
         name: Environment variable name to read.
         attraction_type: Input field `attraction_type` used for normalization or matching rules.
         duration: Time-related setting `duration` used by scheduling/retry windows.
-        ticket: Input parameter `ticket` for this routine.
+        ticket: Ticket-budget preference used in city filtering logic.
         district: Text input `district` used for parsing, prompt assembly, or display.
         note: Text input `note` used for parsing, prompt assembly, or display.
     
@@ -65,15 +65,15 @@ def _city(
         name: Environment variable name to read.
         region: Text input `region` used for parsing, prompt assembly, or display.
         tags: Collection `tags` iterated or aggregated by this routine.
-        budget: Input parameter `budget` for this routine.
+        budget: Budget preference label used in recommendation filtering.
         seasons: Collection `seasons` iterated or aggregated by this routine.
         description: Text input `description` used for parsing, prompt assembly, or display.
         attractions: Collection `attractions` iterated or aggregated by this routine.
         trip_duration: Time-related setting `trip_duration` used by scheduling/retry windows.
         walk_intensity: Input field `walk_intensity` used for normalization or matching rules.
-        rain_friendly: Input parameter `rain_friendly` for this routine.
-        family_friendly: Input parameter `family_friendly` for this routine.
-        food_friendly: Input parameter `food_friendly` for this routine.
+        rain_friendly: Whether user prefers rain-friendly destinations/activities.
+        family_friendly: Whether user requires family-friendly destination traits.
+        food_friendly: Whether user prioritizes food-oriented destinations.
         style_label: Input field `style_label` used for normalization or matching rules.
         editorial_note: Text input `editorial_note` used for parsing, prompt assembly, or display.
     

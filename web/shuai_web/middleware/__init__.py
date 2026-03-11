@@ -57,8 +57,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            app: Input parameter `app` for this routine.
-            logger_name: Input parameter `logger_name` for this routine.
+            app: FastAPI application instance where middleware is registered.
+            logger_name: Logger namespace used to emit middleware diagnostics.
         
         Returns:
             Any: Runtime-dependent value returned for downstream processing.
@@ -75,7 +75,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         
         Args:
             request: Structured payload `request` used by this routine.
-            call_next: Input parameter `call_next` for this routine.
+            call_next: ASGI callback that forwards request handling to next middleware.
         
         Returns:
             Response: Computed value returned to the caller.
@@ -146,10 +146,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            app: Input parameter `app` for this routine.
+            app: FastAPI application instance where middleware is registered.
             max_requests: Numeric control parameter `max_requests` used for bounds or pagination.
             window: Numeric control parameter `window` used for bounds or pagination.
-            key_func: Input parameter `key_func` for this routine.
+            key_func: Callback that builds rate-limit key from incoming request.
             exclude_paths: Filesystem/resource path for `exclude_paths` resolution.
         
         Returns:
@@ -225,7 +225,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         
         Args:
             request: Structured payload `request` used by this routine.
-            call_next: Input parameter `call_next` for this routine.
+            call_next: ASGI callback that forwards request handling to next middleware.
         
         Returns:
             Response: Computed value returned to the caller.
@@ -288,7 +288,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
             Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            app: Input parameter `app` for this routine.
+            app: FastAPI application instance where middleware is registered.
             timeout: Numeric control parameter `timeout` used for bounds or pagination.
         
         Returns:
@@ -305,7 +305,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
         
         Args:
             request: Structured payload `request` used by this routine.
-            call_next: Input parameter `call_next` for this routine.
+            call_next: ASGI callback that forwards request handling to next middleware.
         
         Returns:
             Response: Computed value returned to the caller.

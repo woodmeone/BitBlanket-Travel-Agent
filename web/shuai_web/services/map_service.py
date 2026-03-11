@@ -69,7 +69,7 @@ class MapService:
             Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            spots: Input parameter `spots` for this routine.
+            spots: Ordered attraction/spot names used for geocoding and route preview.
             city: Target city name/code used by city or map operations.
             provider: Provider identifier used in fallback selection logic.
         

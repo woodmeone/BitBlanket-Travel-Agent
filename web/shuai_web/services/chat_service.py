@@ -591,7 +591,7 @@ class ChatService:
         Args:
             session_id: Session identifier used to isolate chat and memory state.
             limit: Numeric control parameter `limit` used for bounds or pagination.
-            exclude_last_user_message: Input parameter `exclude_last_user_message` for this routine.
+            exclude_last_user_message: Optional trailing user message removed to avoid duplicate context.
         
         Returns:
             list[Any]: Ordered message/context list returned to caller.

@@ -136,7 +136,7 @@ class ConfigManager:
                 Document service/API behavior, side effects, and integration expectations for maintainers.
             
             Args:
-                match: Input parameter `match` for this routine.
+                match: Regex match object containing parsed configuration placeholders.
             
             Returns:
                 Any: Runtime-dependent value returned for downstream processing.
@@ -204,7 +204,7 @@ class ConfigManager:
             Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            model_config: Input parameter `model_config` for this routine.
+            model_config: Model configuration payload loaded from runtime settings.
         
         Returns:
             bool: Boolean outcome flag used by guards or success checks.
