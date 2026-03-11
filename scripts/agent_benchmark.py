@@ -35,10 +35,18 @@ class _StructuredIntentLLM:
     """Structured-output stub that simulates deterministic intent extraction."""
 
     def __init__(self, schema, intent: str):
+        """Initialize _StructuredIntentLLM.
+        
+        This constructor wires dependencies and prepares runtime state for the script workflow.
+        """
         self._schema = schema
         self._intent = intent
 
     def invoke(self, _messages):
+        """Invoke.
+        
+        This helper isolates one execution step so benchmark/evaluation flows stay readable and maintainable.
+        """
         return self._schema(
             intent=self._intent,
             confidence=1.0,
@@ -51,15 +59,31 @@ class BenchmarkLLM:
     """Minimal fake LLM adapter used by benchmark script."""
 
     def __init__(self, intent: str):
+        """Initialize BenchmarkLLM.
+        
+        This constructor wires dependencies and prepares runtime state for the script workflow.
+        """
         self._intent = intent
 
     def bind_tools(self, _tools):
+        """Bind tools.
+        
+        This helper isolates one execution step so benchmark/evaluation flows stay readable and maintainable.
+        """
         return self
 
     def with_structured_output(self, schema, method=None):  # noqa: ARG002
+        """With structured output.
+        
+        This helper isolates one execution step so benchmark/evaluation flows stay readable and maintainable.
+        """
         return _StructuredIntentLLM(schema, self._intent)
 
     def invoke(self, _messages):
+        """Invoke.
+        
+        This helper isolates one execution step so benchmark/evaluation flows stay readable and maintainable.
+        """
         return AIMessage(content="benchmark-ok")
 
 

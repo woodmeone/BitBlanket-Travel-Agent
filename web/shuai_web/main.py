@@ -95,6 +95,10 @@ def create_app() -> FastAPI:
 
     @app.get("/")
     async def root() -> dict:
+        """Root.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return {
             "name": APP_NAME,
             "version": APP_VERSION,
@@ -106,6 +110,10 @@ def create_app() -> FastAPI:
 
     @app.get("/openapi.json", include_in_schema=False)
     async def get_openapi_spec(request: Request):
+        """Get openapi spec.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         openapi_schema = app.openapi()
         base_url = str(request.base_url).rstrip("/")
         openapi_schema["servers"] = [{"url": base_url, "description": "Current server"}]

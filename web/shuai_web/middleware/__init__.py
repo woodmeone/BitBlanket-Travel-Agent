@@ -51,11 +51,19 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
 
     def __init__(self, app: ASGIApp, logger_name: str = "web.request"):
+        """Initialize RequestLoggingMiddleware.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         super().__init__(app)
         self.logger = logging.getLogger(logger_name)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # 记录开始时间
+        """Dispatch.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         start_time = time.perf_counter()
 
         # 获取请求信息
@@ -116,6 +124,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         key_func: Optional[Callable[[Request], str]] = None,
         exclude_paths: Optional[list] = None
     ):
+        """Initialize RateLimitMiddleware.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         super().__init__(app)
         self.max_requests = max_requests
         self.window = window
@@ -179,6 +191,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # 排除的路径直接通过
+        """Dispatch.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if self._is_excluded(request.url.path):
             return await call_next(request)
 
@@ -231,10 +247,18 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
     """
 
     def __init__(self, app: ASGIApp, timeout: float = 30.0):
+        """Initialize TimeoutMiddleware.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         super().__init__(app)
         self.timeout = timeout
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Dispatch.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         import asyncio
 
         try:

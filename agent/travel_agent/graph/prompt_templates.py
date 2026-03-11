@@ -34,6 +34,10 @@ ReAct 约束：
 
 
 def build_system_prompt(base_prompt: str, intent: Optional[str]) -> str:
+    """Build system prompt.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     intent_key = (intent or "general").lower()
     guidance = INTENT_GUIDANCE.get(intent_key, INTENT_GUIDANCE["general"])
     react_prompt = INTENT_REACT_PROMPTS.get(intent_key, INTENT_REACT_PROMPTS["general"])
@@ -47,6 +51,10 @@ def build_answer_prompt(
     intent: Optional[str],
     evidence_required: bool = False,
 ) -> str:
+    """Build answer prompt.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     guidance = INTENT_GUIDANCE.get((intent or "general").lower(), INTENT_GUIDANCE["general"])
     if tools_used:
         evidence_instruction = (
@@ -70,6 +78,10 @@ def build_answer_prompt(
 
 
 def build_direct_prompt(user_question: str, intent: Optional[str]) -> str:
+    """Build direct prompt.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     guidance = INTENT_GUIDANCE.get((intent or "general").lower(), INTENT_GUIDANCE["general"])
     return (
         f"用户问题: {user_question}\n\n"

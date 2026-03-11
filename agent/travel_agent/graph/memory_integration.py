@@ -36,10 +36,18 @@ class ConversationSummarizer:
     """
 
     def __init__(self, llm: Any = None, summary_threshold: int = 20):
+        """Initialize ConversationSummarizer.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         self.llm = llm
         self.summary_threshold = max(2, summary_threshold)
 
     def summarize(self, messages: List[MemoryMessage]) -> str:
+        """Summarize.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not messages:
             return ""
 
@@ -83,6 +91,10 @@ class AgentMemoryManager:
         session_ttl_seconds: int = 7 * 24 * 3600,
         max_sessions: int = 5000,
     ):
+        """Initialize AgentMemoryManager.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         self.max_history = max(2, max_history)
         self.summarizer = ConversationSummarizer(llm=llm, summary_threshold=summary_threshold)
 
@@ -102,6 +114,10 @@ class AgentMemoryManager:
     MIN_DECAY_CONFIDENCE = 0.25
 
     async def add_message(self, session_id: str, role: str, content: str) -> None:
+        """Add message.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         async with self._lock:
             with self._sync_lock:
                 self._cleanup_expired_locked()
@@ -125,6 +141,10 @@ class AgentMemoryManager:
                 await asyncio.to_thread(self._save_to_disk_locked)
 
     async def get_recent_messages(self, session_id: str, limit: Optional[int] = None) -> List[MemoryMessage]:
+        """Get recent messages.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         async with self._lock:
             with self._sync_lock:
                 self._cleanup_expired_locked()
@@ -135,6 +155,10 @@ class AgentMemoryManager:
                 return list(session["messages"][-cap:])
 
     async def get_summary(self, session_id: str) -> str:
+        """Get summary.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         async with self._lock:
             with self._sync_lock:
                 self._cleanup_expired_locked()
@@ -144,6 +168,10 @@ class AgentMemoryManager:
                 return session.get("summary", "")
 
     def get_recent_messages_sync(self, session_id: str, limit: Optional[int] = None) -> List[MemoryMessage]:
+        """Get recent messages sync.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         with self._sync_lock:
             session = self._sessions.get(session_id)
             if not session:
@@ -152,6 +180,10 @@ class AgentMemoryManager:
             return list(session["messages"][-cap:])
 
     def get_summary_sync(self, session_id: str) -> str:
+        """Get summary sync.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         with self._sync_lock:
             session = self._sessions.get(session_id)
             if not session:
@@ -159,6 +191,10 @@ class AgentMemoryManager:
             return session.get("summary", "")
 
     def build_context_messages(self, session_id: str) -> List[BaseMessage]:
+        """Build context messages.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         summary = self.get_summary_sync(session_id)
         recent = self.get_recent_messages_sync(session_id, self.max_history)
         profile = self.get_profile_sync(session_id)
@@ -187,6 +223,10 @@ class AgentMemoryManager:
         user_message: str,
         max_messages: int = 8,
     ) -> List[BaseMessage]:
+        """Build context messages for query.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         summary = self.get_summary_sync(session_id)
         profile = self.get_profile_sync(session_id)
         candidates = self.get_recent_messages_sync(session_id, max(self.max_history * 2, max_messages))
@@ -233,6 +273,10 @@ class AgentMemoryManager:
         return context
 
     async def clear_session_messages(self, session_id: str) -> bool:
+        """Clear session messages.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         async with self._lock:
             with self._sync_lock:
                 session = self._sessions.get(session_id)
@@ -246,6 +290,10 @@ class AgentMemoryManager:
             return True
 
     async def delete_session(self, session_id: str) -> bool:
+        """Delete session.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         async with self._lock:
             with self._sync_lock:
                 existed = self._sessions.pop(session_id, None) is not None
@@ -254,6 +302,10 @@ class AgentMemoryManager:
             return existed
 
     def get_profile_sync(self, session_id: str) -> Dict[str, Any]:
+        """Get profile sync.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         with self._sync_lock:
             session = self._sessions.get(session_id)
             if not session:
@@ -274,15 +326,27 @@ class AgentMemoryManager:
             return flattened
 
     async def get_profile(self, session_id: str) -> Dict[str, Any]:
+        """Get profile.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         async with self._lock:
             return self.get_profile_sync(session_id)
 
     def _trim_messages(self, session: Dict[str, Any]) -> None:
+        """Trim messages.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         keep = max(self.max_history * 3, self.max_history + 6)
         if len(session["messages"]) > keep:
             session["messages"] = session["messages"][-keep:]
 
     def _update_profile(self, session: Dict[str, Any], role: str, content: str) -> None:
+        """Update profile.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if role != "user":
             return
 
@@ -389,10 +453,18 @@ class AgentMemoryManager:
         profile["updated_at"] = datetime.now().isoformat()
 
     def _enforce_capacity_locked(self) -> None:
+        """Enforce capacity locked.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if len(self._sessions) <= self._max_sessions:
             return
 
         def _latest_ts(session_data: Dict[str, Any]) -> str:
+            """Latest ts.
+            
+            This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+            """
             messages = session_data.get("messages", [])
             if messages:
                 return messages[-1].timestamp
@@ -404,6 +476,10 @@ class AgentMemoryManager:
             self._sessions.pop(session_id, None)
 
     def _cleanup_expired_locked(self) -> None:
+        """Clean up expired locked.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         now = datetime.now(timezone.utc)
         ttl = timedelta(seconds=self._session_ttl_seconds)
         expired: List[str] = []
@@ -427,6 +503,10 @@ class AgentMemoryManager:
             self._sessions.pop(session_id, None)
 
     def _load_from_disk(self) -> None:
+        """Load from disk.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not self._persist_path or not os.path.exists(self._persist_path):
             return
 
@@ -455,6 +535,10 @@ class AgentMemoryManager:
             self._enforce_capacity_locked()
 
     def _save_to_disk_locked(self) -> None:
+        """Save to disk locked.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not self._persist_path:
             return
 
@@ -491,6 +575,10 @@ class AgentMemoryManager:
         source: str,
         confidence: float,
     ) -> None:
+        """Merge profile attr.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         source = source if source in self.SOURCE_PRIORITY else "inferred"
         confidence = max(0.0, min(1.0, float(confidence)))
         now = datetime.now().isoformat()
@@ -534,6 +622,10 @@ class AgentMemoryManager:
             }
 
     def _empty_profile(self) -> Dict[str, Any]:
+        """Build an empty profile.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return {
             "schema_version": self.PROFILE_SCHEMA_VERSION,
             "updated_at": datetime.now().isoformat(),
@@ -545,6 +637,10 @@ class AgentMemoryManager:
         }
 
     def _normalize_profile(self, profile: Any) -> Dict[str, Any]:
+        """Normalize profile.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not isinstance(profile, dict):
             return self._empty_profile()
 
@@ -581,6 +677,10 @@ class AgentMemoryManager:
 
     @staticmethod
     def _to_number(value: Any) -> Optional[float]:
+        """To number.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if value is None:
             return None
         try:
@@ -597,6 +697,10 @@ class AgentMemoryManager:
         new_value: Any,
         new_source: str,
     ) -> Optional[Dict[str, Any]]:
+        """Detect preference conflict.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         old_value = existing.get("value")
         if old_value is None:
             return None
@@ -650,6 +754,10 @@ class AgentMemoryManager:
         return None
 
     def _record_conflict(self, profile: Dict[str, Any], key: str, conflict: Dict[str, Any], now: str) -> None:
+        """Record conflict.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         entry = {
             "key": key,
             "type": conflict.get("type"),
@@ -673,6 +781,10 @@ class AgentMemoryManager:
 
     @staticmethod
     def _time_decay_factor(timestamp: str) -> float:
+        """Time decay factor.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         try:
             ts = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
             if ts.tzinfo is None:
@@ -685,12 +797,20 @@ class AgentMemoryManager:
             return 0.5
 
     def _decayed_confidence(self, attr: Dict[str, Any]) -> float:
+        """Decayed confidence.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         base = float(attr.get("confidence", 0.0) or 0.0)
         updated_at = str(attr.get("updated_at") or "")
         decay = self._time_decay_factor(updated_at) if updated_at else 0.6
         return max(0.0, min(1.0, base * decay))
 
     def _attributes_with_decay(self, attrs: Dict[str, Any]) -> Dict[str, Any]:
+        """Attributes with decay.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         output: Dict[str, Any] = {}
         for key, item in attrs.items():
             if not isinstance(item, dict):
@@ -703,6 +823,10 @@ class AgentMemoryManager:
 
     @staticmethod
     def _tokenize(text: str) -> set[str]:
+        """Tokenize.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         tokens = re.findall(r"[\u4e00-\u9fff]{2,}|[a-zA-Z0-9]+", text or "")
         return {token.lower() for token in tokens if token}
 
@@ -718,6 +842,10 @@ class AgentStateWithMemory:
         system_prompt: str,
         chat_mode: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """Create.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         messages: List[BaseMessage] = [SystemMessage(content=system_prompt)]
 
         if memory_manager is not None:

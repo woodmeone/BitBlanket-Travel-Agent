@@ -15,15 +15,27 @@ class TravelAPIClient:
     """Unified travel data adapter. Currently backed by mock data."""
 
     def __init__(self, use_cache: bool = True):
+        """Initialize TravelAPIClient.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         self.use_cache = use_cache
         self._cache: Dict[str, Any] = {}
         self._cache_meta: Dict[str, str] = {}
 
     @staticmethod
     def _now_iso() -> str:
+        """Now iso.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return datetime.now(timezone.utc).isoformat()
 
     def _get_cache(self, key: str, *, bypass_cache: bool = False) -> Optional[Any]:
+        """Get cache.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if bypass_cache:
             return None
         if self.use_cache and key in self._cache:
@@ -31,11 +43,19 @@ class TravelAPIClient:
         return None
 
     def _set_cache(self, key: str, value: Any) -> None:
+        """Set cache.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if self.use_cache:
             self._cache[key] = value
             self._cache_meta[key] = self._now_iso()
 
     def _build_meta(self, key: str, source: str, ttl_seconds: int) -> Dict[str, Any]:
+        """Build meta.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         fetched_at = self._cache_meta.get(key, self._now_iso())
         is_stale = False
         try:
@@ -53,6 +73,10 @@ class TravelAPIClient:
 
     @staticmethod
     def _refresh_meta(refresh_attempted: bool, refresh_success: bool) -> Dict[str, Any]:
+        """Refresh meta.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return {
             "refresh_attempted": bool(refresh_attempted),
             "refresh_success": bool(refresh_success),
@@ -60,6 +84,10 @@ class TravelAPIClient:
 
     @staticmethod
     def _weather_provider_chain() -> List[str]:
+        """Weather provider chain.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         primary = os.getenv("WEATHER_API_PROVIDER", "mock-weather-provider").strip() or "mock-weather-provider"
         fallback = os.getenv("WEATHER_API_FALLBACK_PROVIDER", "mock-weather-fallback").strip() or "mock-weather-fallback"
         if primary == fallback:
@@ -68,11 +96,19 @@ class TravelAPIClient:
 
     @staticmethod
     def _is_provider_down(provider: str) -> bool:
+        """Return whether provIDer down.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         down_list = [item.strip() for item in os.getenv("WEATHER_DOWN_PROVIDERS", "").split(",") if item.strip()]
         return provider in down_list
 
     @staticmethod
     def _provider_chain(primary_env: str, fallback_env: str, primary_default: str, fallback_default: str) -> List[str]:
+        """Provider chain.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         primary = os.getenv(primary_env, primary_default).strip() or primary_default
         fallback = os.getenv(fallback_env, fallback_default).strip() or fallback_default
         if primary == fallback:
@@ -81,10 +117,18 @@ class TravelAPIClient:
 
     @staticmethod
     def _is_provider_down_by_env(provider: str, down_env: str) -> bool:
+        """Return whether provIDer down by env.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         down_list = [item.strip() for item in os.getenv(down_env, "").split(",") if item.strip()]
         return provider in down_list
 
     async def search_cities(self, query: str) -> Dict[str, Any]:
+        """Search cities.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         cache_key = f"city:{query}"
         providers = self._provider_chain(
             primary_env="CITIES_API_PROVIDER",
@@ -197,6 +241,10 @@ class TravelAPIClient:
         page: int = 1,
         page_size: int = 20,
     ) -> Dict[str, Any]:
+        """Search attractions.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         cache_key = f"attractions:{city}:{category}:{page}:{page_size}"
         providers = self._provider_chain(
             primary_env="ATTRACTIONS_API_PROVIDER",
@@ -296,6 +344,10 @@ class TravelAPIClient:
         page_size: int = 20,
         bypass_cache: bool = False,
     ) -> Dict[str, Any]:
+        """Search hotels.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         _ = (check_in, check_out)
         cache_key = f"hotels:{city}:{district}:{price_range}:{page}:{page_size}"
         providers = self._provider_chain(
@@ -371,6 +423,10 @@ class TravelAPIClient:
         return result
 
     async def get_weather(self, city: str, days: int = 7, bypass_cache: bool = False) -> Dict[str, Any]:
+        """Get weather.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         cache_key = f"weather:{city}:{days}"
         ttl_seconds = 1800
         providers = self._weather_provider_chain()

@@ -33,6 +33,10 @@ class PersistentSqliteSaver(InMemorySaver):
         max_checkpoints_per_thread_ns: int = 200,
         compaction_interval: int = 50,
     ):
+        """Initialize PersistentSqliteSaver.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         self._db_path = os.path.abspath(db_path)
         self._persist_lock = threading.RLock()
         self._max_checkpoints = max(1, int(max_checkpoints_per_thread_ns))
@@ -43,6 +47,10 @@ class PersistentSqliteSaver(InMemorySaver):
         self._load_from_db()
 
     def put(self, config, checkpoint, metadata, new_versions):
+        """Put.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         next_config = super().put(config, checkpoint, metadata, new_versions)
         thread_id, checkpoint_ns, checkpoint_id = self._resolve_checkpoint_key(next_config)
         self._persist_checkpoint(thread_id, checkpoint_ns, checkpoint_id)
@@ -51,6 +59,10 @@ class PersistentSqliteSaver(InMemorySaver):
         return next_config
 
     async def aput(self, config, checkpoint, metadata, new_versions):
+        """Aput.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         next_config = await super().aput(config, checkpoint, metadata, new_versions)
         thread_id, checkpoint_ns, checkpoint_id = self._resolve_checkpoint_key(next_config)
         self._persist_checkpoint(thread_id, checkpoint_ns, checkpoint_id)
@@ -59,18 +71,30 @@ class PersistentSqliteSaver(InMemorySaver):
         return next_config
 
     def put_writes(self, config, writes, task_id, task_path=""):
+        """Put writes.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         super().put_writes(config, writes, task_id, task_path=task_path)
         thread_id, checkpoint_ns, checkpoint_id = self._resolve_checkpoint_key(config)
         self._persist_writes(thread_id, checkpoint_ns, checkpoint_id)
         self._on_mutation(thread_id, checkpoint_ns)
 
     async def aput_writes(self, config, writes, task_id, task_path=""):
+        """Aput writes.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         await super().aput_writes(config, writes, task_id, task_path=task_path)
         thread_id, checkpoint_ns, checkpoint_id = self._resolve_checkpoint_key(config)
         self._persist_writes(thread_id, checkpoint_ns, checkpoint_id)
         self._on_mutation(thread_id, checkpoint_ns)
 
     def get_checkpoint_count(self, thread_id: str, checkpoint_ns: str = "") -> int:
+        """Get checkpoint count.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         self._compact_thread(thread_id, checkpoint_ns)
         with self._persist_lock:
             with sqlite3.connect(self._db_path) as conn:
@@ -84,6 +108,10 @@ class PersistentSqliteSaver(InMemorySaver):
                 return int(row[0] if row else 0)
 
     def _resolve_checkpoint_key(self, config) -> Key3:
+        """Resolve checkpoint key.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         configurable = (config or {}).get("configurable", {})
         thread_id = str(configurable.get("thread_id") or "default")
         checkpoint_ns = str(configurable.get("checkpoint_ns") or "")
@@ -91,6 +119,10 @@ class PersistentSqliteSaver(InMemorySaver):
         return thread_id, checkpoint_ns, checkpoint_id
 
     def _init_db(self) -> None:
+        """Init db.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         os.makedirs(os.path.dirname(self._db_path), exist_ok=True)
         with sqlite3.connect(self._db_path) as conn:
             conn.execute(
@@ -143,6 +175,10 @@ class PersistentSqliteSaver(InMemorySaver):
             conn.commit()
 
     def _load_from_db(self) -> None:
+        """Load from db.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         with self._persist_lock:
             with sqlite3.connect(self._db_path) as conn:
                 checkpoint_rows = conn.execute(
@@ -193,12 +229,20 @@ class PersistentSqliteSaver(InMemorySaver):
 
     @staticmethod
     def _safe_load(payload: bytes) -> Any:
+        """Safe load.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         try:
             return pickle.loads(payload)
         except Exception:
             return None
 
     def _persist_checkpoint(self, thread_id: str, checkpoint_ns: str, checkpoint_id: str) -> None:
+        """Persist checkpoint.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not checkpoint_id:
             return
 
@@ -222,6 +266,10 @@ class PersistentSqliteSaver(InMemorySaver):
                 conn.commit()
 
     def _persist_blobs(self, thread_id: str, checkpoint_ns: str, new_versions: Dict[str, Any]) -> None:
+        """Persist blobs.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not new_versions:
             return
 
@@ -251,6 +299,10 @@ class PersistentSqliteSaver(InMemorySaver):
                 conn.commit()
 
     def _persist_writes(self, thread_id: str, checkpoint_ns: str, checkpoint_id: str) -> None:
+        """Persist writes.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         outer_key: Key3 = (thread_id, checkpoint_ns, checkpoint_id)
         write_map = self.writes.get(outer_key, {})
         if not write_map:
@@ -287,12 +339,20 @@ class PersistentSqliteSaver(InMemorySaver):
                 conn.commit()
 
     def _on_mutation(self, thread_id: str, checkpoint_ns: str) -> None:
+        """On mutation.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         self._write_counter += 1
         if self._write_counter % self._compaction_interval != 0:
             return
         self._compact_thread(thread_id, checkpoint_ns)
 
     def _compact_thread(self, thread_id: str, checkpoint_ns: str) -> None:
+        """Compact thread.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         with self._persist_lock:
             with sqlite3.connect(self._db_path) as conn:
                 rows = conn.execute(
@@ -333,6 +393,10 @@ class PersistentSqliteSaver(InMemorySaver):
         self._compact_memory(thread_id, checkpoint_ns, keep)
 
     def _compact_memory(self, thread_id: str, checkpoint_ns: str, keep: Iterable[str]) -> None:
+        """Compact memory.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         keep_set = set(keep)
         ns_storage = self.storage.get(thread_id, {}).get(checkpoint_ns, {})
         for checkpoint_id in list(ns_storage.keys()):

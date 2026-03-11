@@ -56,10 +56,18 @@ from ..storage.session_storage import SessionStorage
 
 
 def _utc_now_iso() -> str:
+    """Utc now iso.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     return datetime.now(timezone.utc).isoformat()
 
 
 def _parse_iso_to_timestamp(value: Any) -> float:
+    """Parse iso to timestamp.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     if not value:
         return 0.0
     try:

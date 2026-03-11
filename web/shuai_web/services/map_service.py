@@ -30,9 +30,17 @@ class MapService:
     """Use Amap APIs only to build route preview payloads."""
 
     def __init__(self) -> None:
+        """Initialize MapService.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         self._amap_key = os.getenv("AMAP_KEY", "").strip()
 
     def _validate_config(self) -> None:
+        """Validate config.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not self._amap_key:
             raise ValueError("AMAP_KEY is not configured")
 
@@ -43,6 +51,10 @@ class MapService:
         city: str | None = None,
         provider: str | None = None,
     ) -> RoutePreview:
+        """Route preview.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         _ = provider  # Keep request compatibility; only Amap is supported now.
         self._validate_config()
 
@@ -111,6 +123,10 @@ class MapService:
         )
 
     def _build_amap_static_map(self, *, points: list[RoutePoint]) -> str:
+        """Build amap static map.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         markers = []
         for idx, point in enumerate(points):
             label = chr(ord("A") + (idx % 26))

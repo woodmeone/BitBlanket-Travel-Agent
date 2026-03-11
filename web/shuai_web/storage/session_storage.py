@@ -57,10 +57,18 @@ import os
 
 
 def _utc_now_iso() -> str:
+    """Utc now iso.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     return datetime.now(timezone.utc).isoformat()
 
 
 def _parse_iso_as_utc(value: Any) -> Optional[datetime]:
+    """Parse iso as utc.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     if not value:
         return None
     try:

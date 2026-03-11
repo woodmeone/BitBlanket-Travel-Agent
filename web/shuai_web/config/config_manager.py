@@ -30,6 +30,10 @@ class ConfigManager:
     """Configuration manager with agent-first delegation."""
 
     def __init__(self, config_path: str = "config/llm_config.yaml"):
+        """Initialize ConfigManager.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         self._delegate = None
         self.config_path = self._resolve_config_path(config_path)
 
@@ -46,11 +50,19 @@ class ConfigManager:
 
     @staticmethod
     def _resolve_config_path(config_path: str) -> str:
+        """Resolve config path.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if os.path.isabs(config_path):
             return config_path
         return str(os.path.join(str(PROJECT_ROOT), config_path))
 
     def _sync_from_delegate(self) -> None:
+        """Sync from delegate.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         self.config_path = self._delegate.config_path
         self.config = self._delegate.config
         self.models_config = self._delegate.models_config
@@ -58,6 +70,10 @@ class ConfigManager:
         self.travel_knowledge = getattr(self._delegate, "travel_knowledge", {})
 
     def _load_local_config(self) -> None:
+        """Load local config.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not os.path.exists(self.config_path):
             raise FileNotFoundError(f"Configuration file missing: {self.config_path}")
 
@@ -78,9 +94,17 @@ class ConfigManager:
 
     @staticmethod
     def _replace_env_vars(content: str) -> str:
+        """Replace env vars.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         pattern = r"\$\{([^}]+)\}"
 
         def replace(match):
+            """Replace.
+            
+            This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+            """
             var_name = match.group(1)
             env_value = os.environ.get(var_name, "")
             return env_value if env_value else match.group(0)
@@ -88,6 +112,10 @@ class ConfigManager:
         return re.sub(pattern, replace, content)
 
     def get_config(self, key: str, default: Any = None) -> Any:
+        """Get config.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         keys = key.split(".")
         value: Any = self.config
 
@@ -100,13 +128,25 @@ class ConfigManager:
         return value
 
     def get_city_info(self, city_name: str) -> Optional[Dict[str, Any]]:
+        """Get city info.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return self.travel_knowledge.get("cities", {}).get(city_name)
 
     def get_all_cities(self) -> List[str]:
+        """Get all cities.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return list(self.travel_knowledge.get("cities", {}).keys())
 
     @staticmethod
     def _is_model_active(model_config: Dict[str, Any]) -> bool:
+        """Return whether model active.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         api_key = model_config.get("api_key", "")
         if not api_key:
             return False
@@ -121,6 +161,10 @@ class ConfigManager:
         return True
 
     def get_available_models(self) -> List[Dict[str, Any]]:
+        """Get available models.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         models: List[Dict[str, Any]] = []
         for model_id, model_config in self.models_config.items():
             if not self._is_model_active(model_config):
@@ -137,27 +181,51 @@ class ConfigManager:
         return models
 
     def get_model_config(self, model_id: Optional[str] = None) -> Dict[str, Any]:
+        """Get model config.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         target = model_id or self.default_model_id
         if target not in self.models_config:
             raise ValueError(f"Model not found: {target}")
         return self.models_config[target]
 
     def get_default_model_id(self) -> str:
+        """Get default model ID.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return self.default_model_id
 
     def get_default_model_config(self) -> Dict[str, Any]:
+        """Get default model config.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return self.get_model_config(self.default_model_id)
 
     @property
     def agent_config(self) -> Dict[str, Any]:
+        """Agent config.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return self.config.get("agent", {})
 
     @property
     def web_config(self) -> Dict[str, Any]:
+        """Web config.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return self.config.get("web", {})
 
     @property
     def grpc_config(self) -> Dict[str, Any]:
+        """Grpc config.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return self.config.get("grpc", {})
 
 
@@ -165,6 +233,10 @@ _config_manager: Optional[ConfigManager] = None
 
 
 def get_config(config_path: str = "config/llm_config.yaml") -> ConfigManager:
+    """Get config.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     global _config_manager
     if _config_manager is None:
         _config_manager = ConfigManager(config_path)

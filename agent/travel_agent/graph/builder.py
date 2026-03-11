@@ -51,10 +51,18 @@ def _extract_text_from_chunk(chunk: Any) -> str:
 
 
 def _resolve_stream_events_version() -> str:
+    """Resolve stream events version.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     return get_runtime_config().stream_events_version
 
 
 def _is_answer_complete(answer: str) -> bool:
+    """Return whether answer complete.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     text = str(answer or "").strip()
     if len(text) < 8:
         return False
@@ -74,6 +82,10 @@ class TravelAgentGraph:
         checkpointer: Any = None,
         routing_llm: Optional[Runnable] = None,
     ):
+        """Initialize TravelAgentGraph.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         self.llm = llm
         self.tools = tools
         self.system_prompt = system_prompt
@@ -82,6 +94,10 @@ class TravelAgentGraph:
         self._graph: Optional[StateGraph] = None
 
     def build(self) -> StateGraph:
+        """Build.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         graph = StateGraph(AgentState)
         graph.add_node("intent", self.nodes.intent_node)
         graph.add_node("strategy", self.nodes.strategy_node)
@@ -126,17 +142,29 @@ class TravelAgentGraph:
 
     @property
     def graph(self) -> StateGraph:
+        """Graph.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if self._graph is None:
             self.build()
         return self._graph
 
     def _build_thread_config(self, state: dict) -> dict[str, dict[str, str]]:
+        """Build thread config.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         session_id = state.get("session_id")
         if not session_id:
             return {}
         return {"configurable": {"thread_id": str(session_id)}}
 
     def invoke(self, state: dict) -> dict:
+        """Invoke.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         config = self._build_thread_config(state)
         resolved_config = config if config else None
         try:
@@ -148,15 +176,27 @@ class TravelAgentGraph:
             return self._run_ainvoke_sync(state, resolved_config)
 
     async def ainvoke(self, state: dict) -> dict:
+        """Ainvoke.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         config = self._build_thread_config(state)
         return await self.graph.ainvoke(state, config=config if config else None)
 
     async def astream(self, state: dict):
+        """Astream.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         config = self._build_thread_config(state)
         async for chunk in self.graph.astream(state, stream_mode="values", config=config if config else None):
             yield chunk
 
     async def astream_events(self, state: dict):
+        """Astream events.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         config = self._build_thread_config(state)
         async for event in self.graph.astream_events(
             state,
@@ -166,6 +206,10 @@ class TravelAgentGraph:
             yield event
 
     def _run_ainvoke_sync(self, state: dict, config: dict | None) -> dict:
+        """Run ainvoke sync.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         try:
             asyncio.get_running_loop()
         except RuntimeError:
@@ -175,6 +219,10 @@ class TravelAgentGraph:
         error_holder: dict[str, Exception] = {}
 
         def _runner() -> None:
+            """Runner.
+            
+            This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+            """
             try:
                 result_holder["result"] = asyncio.run(self.graph.ainvoke(state, config=config))
             except Exception as inner_exc:  # pragma: no cover - defensive bridge
@@ -197,6 +245,10 @@ def build_travel_agent(
     checkpointer: Any = None,
     routing_llm: Optional[Runnable] = None,
 ) -> TravelAgentGraph:
+    """Build travel agent.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     return TravelAgentGraph(
         llm,
         tools,
@@ -208,6 +260,10 @@ def build_travel_agent(
 
 
 def _create_default_checkpointer():
+    """Create default checkpointer.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     global _DEFAULT_CHECKPOINTER
     if _DEFAULT_CHECKPOINTER is not None:
         return _DEFAULT_CHECKPOINTER
@@ -254,6 +310,10 @@ async def run_travel_agent(
     chat_mode: str | None = None,
     routing_llm: Runnable | None = None,
 ) -> dict:
+    """Run travel agent.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     agent = build_travel_agent(
         llm,
         tools,
@@ -292,6 +352,10 @@ async def run_travel_agent_streaming(
     on_tool_end: Callable | None = None,
     routing_llm: Runnable | None = None,
 ) -> dict:
+    """Run travel agent streaming.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     agent = build_travel_agent(
         llm,
         tools,
@@ -350,6 +414,10 @@ async def run_travel_agent_with_memory(
     run_id: str | None = None,
     routing_llm: Runnable | None = None,
 ) -> dict:
+    """Run travel agent with memory.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
     if memory_manager is None:
@@ -419,6 +487,10 @@ async def run_travel_agent_streaming_with_memory(
     chat_mode: str | None = None,
     routing_llm: Runnable | None = None,
 ):
+    """Run travel agent streaming with memory.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
     if memory_manager is None:
@@ -595,6 +667,10 @@ def generate_plan_preview_with_memory(
     chat_mode: str | None = None,
     routing_llm: Runnable | None = None,
 ) -> dict:
+    """Generate plan preview with memory.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
     if memory_manager is None:
@@ -626,6 +702,10 @@ def generate_plan_preview_with_memory(
 
 
 def get_tool_health_diagnostics() -> dict[str, Any]:
+    """Get tool health diagnostics.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     return {
         "runtime_config": get_runtime_config().to_dict(),
         **AgentNodes.get_global_tool_health_snapshot(),

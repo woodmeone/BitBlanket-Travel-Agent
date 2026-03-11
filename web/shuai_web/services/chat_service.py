@@ -46,6 +46,10 @@ class ChatService:
     }
 
     def __init__(self, repository: SessionRepository):
+        """Initialize ChatService.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         self._repository = repository
         self._init_lock = asyncio.Lock()
         self._initialized = False
@@ -78,6 +82,10 @@ class ChatService:
         self._health_metrics: deque[dict[str, Any]] = deque()
 
     async def initialize(self) -> None:
+        """Initialize.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if self._initialized:
             return
 
@@ -107,6 +115,10 @@ class ChatService:
             logger.info("Chat runtime initialized with model=%s tools=%d", self._llm_adapter.config.get("name"), len(self._tools))
 
     async def health_status(self) -> dict[str, Any]:
+        """Health status.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return {
             "initialized": self._initialized,
             "llm_adapter": self._llm_adapter is not None,
@@ -115,6 +127,10 @@ class ChatService:
         }
 
     async def tools_health_status(self) -> dict[str, Any]:
+        """Tools health status.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         status = await self.health_status()
         diagnostics = get_tool_health_diagnostics()
         health_metrics = self._build_health_metrics_snapshot()
@@ -130,6 +146,10 @@ class ChatService:
         }
 
     async def tools_intents_health_status(self) -> dict[str, Any]:
+        """Tools intents health status.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         status = await self.health_status()
         health_metrics = self._build_health_metrics_snapshot()
         slo = health_metrics.get("slo", {})
@@ -146,6 +166,10 @@ class ChatService:
         session_id: Optional[str] = None,
         mode: str = "react",
     ) -> AsyncGenerator[str, None]:
+        """Stream chat.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         await self.initialize()
 
         mode = self._normalize_mode(mode)
@@ -360,6 +384,10 @@ class ChatService:
             yield self._sse({"type": "done", "run_id": run_id})
 
     async def _stream_direct_response(self, session_id: str, message: str) -> AsyncGenerator[str, None]:
+        """Stream direct response.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         history = self._build_relevant_memory_context_messages(session_id, message)
         if not history:
             history = await self._build_history_messages(session_id, exclude_last_user_message=message)
@@ -374,6 +402,10 @@ class ChatService:
 
     @staticmethod
     def _extract_stream_text(chunk: Any) -> str:
+        """Extract stream text.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         content = getattr(chunk, "content", chunk)
         if content is None:
             return ""
@@ -403,6 +435,10 @@ class ChatService:
         mode: str = "react",
         run_id: Optional[str] = None,
     ) -> AsyncGenerator[dict[str, Any], None]:
+        """Stream agent events.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         async for event in run_travel_agent_streaming_with_memory(
             user_message=message,
             llm=self._llm,
@@ -420,6 +456,10 @@ class ChatService:
             yield event
 
     def _generate_plan_preview(self, session_id: str, message: str) -> dict[str, Any]:
+        """Generate plan preview.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return generate_plan_preview_with_memory(
             user_message=message,
             llm=self._llm,
@@ -432,6 +472,10 @@ class ChatService:
         )
 
     def _build_memory_context_messages(self, session_id: str) -> list[Any]:
+        """Build memory context messages.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if self._memory_manager is None:
             return []
         try:
@@ -441,6 +485,10 @@ class ChatService:
             return []
 
     def _build_relevant_memory_context_messages(self, session_id: str, user_message: str) -> list[Any]:
+        """Build relevant memory context messages.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if self._memory_manager is None:
             return []
         try:
@@ -455,6 +503,10 @@ class ChatService:
         limit: int = 12,
         exclude_last_user_message: Optional[str] = None,
     ) -> list[Any]:
+        """Build history messages.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         session = await self._repository.get(session_id)
         if not session:
             return []
@@ -478,6 +530,10 @@ class ChatService:
         return result
 
     async def _ensure_session(self, session_id: Optional[str]) -> str:
+        """Ensure session.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         normalized_session_id = session_id.strip() if session_id else None
 
         if normalized_session_id:
@@ -501,6 +557,10 @@ class ChatService:
 
     @staticmethod
     def _normalize_mode(mode: Optional[str]) -> str:
+        """Normalize mode.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not mode:
             return "react"
         mode = mode.strip().lower()
@@ -508,6 +568,10 @@ class ChatService:
 
     @staticmethod
     def _sse(payload: dict[str, Any]) -> str:
+        """Sse.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         import json
 
         return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
@@ -519,6 +583,10 @@ class ChatService:
         content: str,
         reasoning: Optional[str] = None,
     ) -> dict[str, Any]:
+        """Save message.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         session = await self._repository.get(session_id)
         if not session:
             return {"success": False, "error": "会话不存在"}
@@ -543,6 +611,10 @@ class ChatService:
         return {"success": True}
 
     async def get_messages(self, session_id: str) -> dict[str, Any]:
+        """Get messages.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         session = await self._repository.get(session_id)
         if not session:
             return {"success": False, "error": "会话不存在", "messages": []}
@@ -550,13 +622,25 @@ class ChatService:
         return {"success": True, "messages": session.get("messages", [])}
 
     async def cleanup_expired_sessions(self, max_age_seconds: int = 86400) -> int:
+        """Clean up expired sessions.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return await self._repository.cleanup_expired(max_age_seconds)
 
     @staticmethod
     def _get_timestamp() -> str:
+        """Get timestamp.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return datetime.now().strftime("%H:%M:%S")
 
     async def _write_memory_user(self, session_id: str, message: str) -> bool:
+        """Write memory user.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if self._memory_manager is None:
             return False
         try:
@@ -567,6 +651,10 @@ class ChatService:
             return False
 
     async def _write_memory_assistant(self, session_id: str, message: str) -> bool:
+        """Write memory assistant.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if self._memory_manager is None:
             return False
         try:
@@ -578,6 +666,10 @@ class ChatService:
 
     @staticmethod
     def _extract_failure_clusters(execution_stats: dict[str, Any]) -> dict[str, int]:
+        """Extract failure clusters.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         steps = list((execution_stats or {}).get("steps", []) or [])
         clusters = {"timeout": 0, "param_error": 0, "irrelevant_answer": 0, "tool_error": 0}
         for step in steps:
@@ -599,6 +691,10 @@ class ChatService:
         answer: str,
         hard_error: Optional[str] = None,
     ) -> None:
+        """Emit failure telemetry.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         clusters = self._extract_failure_clusters(execution_stats)
         if not answer.strip():
             clusters["irrelevant_answer"] += 1
@@ -624,6 +720,10 @@ class ChatService:
 
     @staticmethod
     def _parse_int_env(name: str, default: int, minimum: int) -> int:
+        """Parse int env.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         raw = str(os.getenv(name, str(default))).strip()
         try:
             value = int(raw)
@@ -635,6 +735,10 @@ class ChatService:
 
     @staticmethod
     def _parse_float_env(name: str, default: float) -> float:
+        """Parse float env.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         raw = str(os.getenv(name, str(default))).strip()
         try:
             value = float(raw)
@@ -645,6 +749,10 @@ class ChatService:
             return default
 
     def _record_run_metrics(self, intent: str, execution_stats: dict[str, Any], hard_error: bool) -> None:
+        """Record run metrics.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         steps = list((execution_stats or {}).get("steps", []) or [])
         has_timeout = any(str(step.get("error_code") or "") == "TOOL_TIMEOUT" for step in steps)
         has_failure = hard_error or any(str(step.get("status") or "") in {"failed", "blocked"} for step in steps)
@@ -661,6 +769,10 @@ class ChatService:
             self._prune_old_metrics_locked()
 
     def _prune_old_metrics_locked(self) -> None:
+        """Prune old metrics locked.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not self._health_metrics:
             return
         cutoff = datetime.now() - timedelta(minutes=self._health_window_minutes)
@@ -668,6 +780,10 @@ class ChatService:
             self._health_metrics.popleft()
 
     def _build_health_metrics_snapshot(self) -> dict[str, Any]:
+        """Build health metrics snapshot.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         with self._health_metrics_lock:
             self._prune_old_metrics_locked()
             records = list(self._health_metrics)

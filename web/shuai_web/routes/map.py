@@ -41,6 +41,10 @@ class RoutePreviewResponse(BaseModel):
 
 
 def _to_response(payload: RoutePreview) -> RoutePreviewResponse:
+    """To response.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     return RoutePreviewResponse(
         success=True,
         provider=payload.provider,

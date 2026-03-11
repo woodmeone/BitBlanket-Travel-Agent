@@ -11,6 +11,10 @@ def _attraction(
     district: str | None = None,
     note: str | None = None,
 ) -> dict[str, object]:
+    """Attraction.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     return {
         "name": name,
         "type": attraction_type,
@@ -39,6 +43,10 @@ def _city(
     style_label: str,
     editorial_note: str,
 ) -> dict[str, object]:
+    """City.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     return {
         "id": city_id,
         "name": name,
@@ -63,11 +71,19 @@ class CityService:
     """Encapsulates curated city list/filter/detail logic."""
 
     def __init__(self) -> None:
+        """Initialize CityService.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         self._cities = self._build_curated_cities()
         self._city_by_id = {str(item["id"]): item for item in self._cities}
         self._city_by_name = {str(item["name"]): item for item in self._cities}
 
     def list_cities(self, region: str | None = None, tags: str | None = None) -> list[dict[str, object]]:
+        """List cities.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         result = list(self._cities)
 
         if region:
@@ -82,23 +98,43 @@ class CityService:
         return [self._to_summary(item) for item in result]
 
     def find_city(self, city_id: str) -> dict[str, object] | None:
+        """Find city.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return self._city_by_id.get(city_id)
 
     def build_city_detail(self, city: dict[str, object]) -> dict[str, object]:
+        """Build city detail.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         city_id = str(city["id"])
         detail = self._city_by_id.get(city_id)
         return dict(detail) if detail else dict(city)
 
     def build_attractions(self, city_name: str) -> list[dict[str, object]]:
+        """Build attractions.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         city = self._city_by_name.get(city_name)
         if city:
             return list(city.get("attractions") or [])
         return []
 
     def list_regions(self) -> list[str]:
+        """List regions.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return sorted({str(item["region"]) for item in self._cities})
 
     def list_tags(self) -> list[str]:
+        """List tags.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         tags: set[str] = set()
         for city in self._cities:
             tags.update(city.get("tags") or [])
@@ -106,6 +142,10 @@ class CityService:
 
     @staticmethod
     def _to_summary(city: dict[str, object]) -> dict[str, object]:
+        """To summary.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return {
             "id": city["id"],
             "name": city["name"],
@@ -125,6 +165,10 @@ class CityService:
         }
 
     def _build_curated_cities(self) -> list[dict[str, object]]:
+        """Build curated cities.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return [
             _city(
                 "beijing",

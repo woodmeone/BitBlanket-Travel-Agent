@@ -37,12 +37,20 @@ class _StructuredIntentLLM:
     """Structured-output shim that emits deterministic intent payloads."""
 
     def __init__(self, schema, intent: str, entities: dict[str, Any], requires_tools: bool):
+        """Initialize _StructuredIntentLLM.
+        
+        This constructor wires dependencies and prepares runtime state for the script workflow.
+        """
         self._schema = schema
         self._intent = intent
         self._entities = entities
         self._requires_tools = requires_tools
 
     def invoke(self, _messages):
+        """Invoke.
+        
+        This helper isolates one execution step so benchmark/evaluation flows stay readable and maintainable.
+        """
         return self._schema(
             intent=self._intent,
             confidence=1.0,
@@ -55,12 +63,24 @@ class GoldenLLM:
     """Fake LLM used to make golden evaluation deterministic."""
 
     def __init__(self, case: GoldenCase):
+        """Initialize GoldenLLM.
+        
+        This constructor wires dependencies and prepares runtime state for the script workflow.
+        """
         self._case = case
 
     def bind_tools(self, _tools):
+        """Bind tools.
+        
+        This helper isolates one execution step so benchmark/evaluation flows stay readable and maintainable.
+        """
         return self
 
     def with_structured_output(self, schema, method=None):  # noqa: ARG002
+        """With structured output.
+        
+        This helper isolates one execution step so benchmark/evaluation flows stay readable and maintainable.
+        """
         return _StructuredIntentLLM(
             schema=schema,
             intent=self._case.intent,
@@ -69,6 +89,10 @@ class GoldenLLM:
         )
 
     def invoke(self, _messages):
+        """Invoke.
+        
+        This helper isolates one execution step so benchmark/evaluation flows stay readable and maintainable.
+        """
         return AIMessage(content="golden-ok")
 
 

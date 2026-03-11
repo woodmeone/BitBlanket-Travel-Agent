@@ -1,4 +1,4 @@
-﻿"""Core graph nodes implementing intent, planning, tooling, and answer stages."""
+"""Core graph nodes implementing intent, planning, tooling, and answer stages."""
 
 from __future__ import annotations
 
@@ -113,6 +113,10 @@ EN_CITY_HINTS = [
 
 
 def _resolve_parallelism_default() -> int:
+    """Resolve parallelism default.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     return get_runtime_config().default_max_parallelism
 
 
@@ -161,6 +165,10 @@ class ToolOrchestrator:
     """Central scheduler for tool execution constraints and degradation policies."""
 
     def __init__(self, runtime_config):
+        """Initialize ToolOrchestrator.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         self.runtime_config = runtime_config
 
     def select(
@@ -173,6 +181,10 @@ class ToolOrchestrator:
         max_parallelism: int,
         budget: dict[str, Any],
     ) -> ToolOrchestratorDecision:
+        """Select.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         selected: list[dict[str, Any]] = []
         skipped: list[dict[str, Any]] = []
         seen_signatures: set[str] = set()
@@ -296,6 +308,10 @@ class AgentNodes:
         planner_hooks: Optional[dict[str, Callable[[dict], list[dict]]]] = None,
         routing_llm: Optional[Runnable] = None,
     ):
+        """Initialize AgentNodes.
+        
+        This constructor wires dependencies and prepares the initial runtime state for subsequent method calls.
+        """
         self.llm = llm
         self.routing_llm = routing_llm or llm
         self.tools = tools
@@ -333,6 +349,10 @@ class AgentNodes:
         }
 
     def _build_intent_structured_llm(self) -> Optional[Runnable]:
+        """Build intent structured llm.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if self._should_disable_structured_intent():
             logger.info("[Intent Node] Structured output disabled for current routing model")
             return None
@@ -348,6 +368,10 @@ class AgentNodes:
         return None
 
     def _should_disable_structured_intent(self) -> bool:
+        """Determine whether disable structured intent.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         model_markers: list[str] = []
         for attr in ("model", "model_name", "name"):
             value = getattr(self.routing_llm, attr, None)
@@ -361,11 +385,19 @@ class AgentNodes:
 
     @staticmethod
     def _validate_stage_output(model: type[BaseModel], payload: dict[str, Any]) -> dict[str, Any]:
+        """Validate stage output.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         validated = model.model_validate(payload)
         return validated.model_dump()
 
     @staticmethod
     def _coerce_llm_content_to_text(content: Any) -> str:
+        """Coerce llm content to text.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if isinstance(content, str):
             return content
         if isinstance(content, list):
@@ -388,6 +420,10 @@ class AgentNodes:
         return str(content or "").strip()
 
     def intent_node(self, state: AgentState) -> AgentState:
+        """Intent node.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         logger.info("[Intent Node] Analyzing user intent...")
 
         messages = state["messages"]
@@ -466,6 +502,10 @@ class AgentNodes:
             )
 
     def _parse_intent_response_fallback(self, response: Any, user_text: str) -> dict[str, Any]:
+        """Parse intent response fallback.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         try:
             return self.intent_parser.invoke(response)
         except Exception as parser_exc:
@@ -484,6 +524,10 @@ class AgentNodes:
 
     @staticmethod
     def _extract_first_json_object(text: str) -> str:
+        """Extract first json object.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not text:
             return ""
         start = text.find("{")
@@ -494,6 +538,10 @@ class AgentNodes:
 
     @staticmethod
     def _infer_intent_by_keywords(user_text: str) -> dict[str, Any]:
+        """Infer intent by keywords.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         text = (user_text or "").lower()
         intent = "general"
         requires_tools = False
@@ -527,6 +575,10 @@ class AgentNodes:
         }
 
     def strategy_node(self, state: AgentState) -> AgentState:
+        """Strategy node.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         intent = state.get("intent", "general")
         intent_detail = state.get("intent_detail", {})
         requires_tools = bool(intent_detail.get("requires_tools", False))
@@ -606,9 +658,17 @@ class AgentNodes:
         )
 
     def router_node(self, state: AgentState) -> AgentState:
+        """Router node.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         return self.strategy_node(state)
 
     def routing_decision(self, state: AgentState) -> Literal["plan", "react", "direct"]:
+        """Routing decision.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         routing = state.get("routing", "direct")
         if routing != "plan":
             return "direct"
@@ -619,6 +679,10 @@ class AgentNodes:
         return "react"
 
     def plan_node(self, state: AgentState) -> AgentState:
+        """Plan node.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         logger.info("[Plan Node] Building execution plan...")
 
         intent = state.get("intent", "general")
@@ -696,6 +760,10 @@ class AgentNodes:
         )
 
     def _validate_plan_steps(self, plan: list[dict[str, Any]]) -> tuple[Literal["pass", "warn", "fail"], list[dict[str, Any]]]:
+        """Validate plan steps.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         errors: list[dict[str, Any]] = []
         for step in plan:
             tool_name = str(step.get("tool") or "").strip()
@@ -727,6 +795,10 @@ class AgentNodes:
         plan: list[dict[str, Any]],
         errors: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
+        """Build plan valIDation stats.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         error_by_step: dict[str, dict[str, Any]] = {}
         for item in errors:
             step_id = str(item.get("step_id") or "")
@@ -758,6 +830,10 @@ class AgentNodes:
         return stats_steps
 
     def _build_plan_validation_tool_results(self, errors: list[dict[str, Any]]) -> dict[str, Any]:
+        """Build plan valIDation tool results.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         results: dict[str, Any] = {}
         for item in errors:
             step_id = str(item.get("step_id") or "")
@@ -778,6 +854,10 @@ class AgentNodes:
         return results
 
     async def execute_node(self, state: AgentState) -> AgentState:
+        """Execute node.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         logger.info("[Execute Node] Executing tools...")
 
         plan = state.get("plan", []) or []
@@ -824,6 +904,10 @@ class AgentNodes:
             }
 
         def _with_refresh(payload: dict[str, Any]) -> dict[str, Any]:
+            """With refresh.
+            
+            This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+            """
             if verify_result_update is not None:
                 payload["verify_result"] = verify_result_update
             return payload
@@ -1028,6 +1112,10 @@ class AgentNodes:
         })
 
     def verify_node(self, state: AgentState) -> AgentState:
+        """Verify node.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         intent = str(state.get("intent") or "general")
         strategy_detail = state.get("strategy_detail", {}) or {}
         requires_verification = bool(strategy_detail.get("requires_verification", False))
@@ -1172,6 +1260,10 @@ class AgentNodes:
         )
 
     def verify_decision(self, state: AgentState) -> Literal["execute", "answer"]:
+        """Verify decision.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         result = state.get("verify_result", {}) or {}
         if bool(result.get("passed", False)):
             return "answer"
@@ -1180,6 +1272,10 @@ class AgentNodes:
         return "answer"
 
     def self_check_node(self, state: AgentState) -> AgentState:
+        """Self check node.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         answer = str(state.get("answer") or "").strip()
         tools_used = list(state.get("tools_used", []) or [])
         missing_items: list[str] = []
@@ -1205,6 +1301,10 @@ class AgentNodes:
         )
 
     def should_continue(self, state: AgentState) -> Literal["execute", "answer"]:
+        """Determine whether continue.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if state.get("early_stop_reason"):
             return "answer"
         if self._safe_int(state.get("execution_round"), 0) >= self.runtime_config.max_execution_rounds:
@@ -1218,6 +1318,10 @@ class AgentNodes:
         return "execute" if finished < len(plan) else "answer"
 
     def answer_node(self, state: AgentState) -> AgentState:
+        """Answer node.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         logger.info("[Answer Node] Generating answer...")
 
         messages = state["messages"]
@@ -1331,6 +1435,10 @@ class AgentNodes:
         )
 
     def direct_answer_node(self, state: AgentState) -> AgentState:
+        """Direct answer node.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         logger.info("[Direct Answer Node] Generating direct answer...")
 
         messages = state["messages"]
@@ -1387,6 +1495,10 @@ class AgentNodes:
 
     @staticmethod
     def _default_plan(intent: str, entities: dict) -> list[dict]:
+        """Default plan.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if intent == "recommend":
             return [
                 {
@@ -1477,6 +1589,10 @@ class AgentNodes:
 
     @staticmethod
     def _merge_plans(primary: list[dict[str, Any]], secondary: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Merge plans.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         merged = list(primary)
         existing_signatures = {
             f"{item.get('tool')}:{json.dumps(item.get('params', {}), ensure_ascii=False, sort_keys=True)}"
@@ -1496,6 +1612,10 @@ class AgentNodes:
         optional_tools: list[str],
         entities: dict[str, Any],
     ) -> list[dict[str, Any]]:
+        """Enforce tool policy.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         merged = list(plan)
         existing_tools = {str(item.get("tool", "")) for item in merged}
         next_step = len(merged) + 1
@@ -1526,6 +1646,10 @@ class AgentNodes:
 
     @staticmethod
     def _default_step_for_tool(step_num: int, tool_name: str, entities: dict[str, Any], required: bool) -> Optional[dict[str, Any]]:
+        """Default step for tool.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         city = entities.get("city") or entities.get("destination") or "北京"
         days = entities.get("days", 3)
         mapping: dict[str, dict[str, Any]] = {
@@ -1559,6 +1683,10 @@ class AgentNodes:
 
     @staticmethod
     async def _invoke_tool(tool: Tool, params: dict) -> Any:
+        """Invoke tool.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if hasattr(tool, "ainvoke"):
             return await tool.ainvoke(params)
         return await asyncio.to_thread(tool.invoke, params)
@@ -1571,6 +1699,10 @@ class AgentNodes:
         timeout_seconds: int,
         max_retries: int,
     ) -> ExecutionResult:
+        """Run tool with retry.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not self.runtime_config.reliability_controls_enabled:
             attempts = 1
         else:
@@ -1624,6 +1756,10 @@ class AgentNodes:
         )
 
     async def _execute_plan_step(self, step: dict[str, Any], state: AgentState) -> tuple[dict[str, Any], ExecutionResult, int]:
+        """Execute plan step.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         step_id = step.get("step_id", f"step-{step.get('step', 0)}")
         tool_name = str(step.get("tool", ""))
         params = dict(step.get("params", {}) or {})
@@ -1718,6 +1854,10 @@ class AgentNodes:
 
     @staticmethod
     def _step_signature(tool_name: str, params: dict[str, Any]) -> str:
+        """Step signature.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         try:
             rendered = json.dumps(params, ensure_ascii=False, sort_keys=True)
         except Exception:
@@ -1732,6 +1872,10 @@ class AgentNodes:
         execution_summary: dict[str, Any],
         tool_results: dict[str, Any],
     ) -> Optional[str]:
+        """Compute early stop reason.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         finished = (
             len(execution_state.get("completed", []))
             + len(execution_state.get("failed", []))
@@ -1756,6 +1900,10 @@ class AgentNodes:
 
     @staticmethod
     def _resolve_refresh_targets(verify_result: dict[str, Any]) -> list[str]:
+        """Resolve refresh targets.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not isinstance(verify_result, dict):
             return []
         if not bool(verify_result.get("should_retry", False)):
@@ -1774,6 +1922,10 @@ class AgentNodes:
 
     @staticmethod
     def _apply_refresh_params(step: dict[str, Any], refresh_targets: set[str]) -> dict[str, Any]:
+        """Apply refresh params.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         step_id = str(step.get("step_id") or "")
         tool_name = str(step.get("tool") or "")
         if step_id not in refresh_targets or tool_name not in STALE_REFRESHABLE_TOOLS:
@@ -1784,6 +1936,10 @@ class AgentNodes:
 
     @staticmethod
     def _terminal_tool_for_intent(intent: str) -> Optional[str]:
+        """Terminal tool for intent.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         mapping = {
             "recommend": "search_cities",
             "attractions": "query_attractions",
@@ -1796,6 +1952,10 @@ class AgentNodes:
 
     @staticmethod
     def _resolve_tool_policy(primary_intent: str, secondary_intent: Optional[str]) -> tuple[list[str], list[str]]:
+        """Resolve tool policy.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         primary = INTENT_TOOL_POLICY.get(primary_intent, INTENT_TOOL_POLICY["general"])
         required = list(primary.get("required", []))
         optional = list(primary.get("optional", []))
@@ -1811,12 +1971,20 @@ class AgentNodes:
 
     @staticmethod
     def _is_verify_required(primary_intent: str, secondary_intent: Optional[str]) -> bool:
+        """Return whether verify required.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         primary_required = bool(INTENT_TOOL_POLICY.get(primary_intent, {}).get("verify_required", False))
         secondary_required = bool(INTENT_TOOL_POLICY.get(str(secondary_intent), {}).get("verify_required", False)) if secondary_intent else False
         return primary_required or secondary_required
 
     @staticmethod
     def _infer_secondary_intent(primary_intent: str, user_text: str, intent_detail: dict[str, Any]) -> Optional[str]:
+        """Infer secondary intent.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         text = str(user_text or "")
         lowered = text.lower()
         entities = intent_detail.get("entities", {}) if isinstance(intent_detail, dict) else {}
@@ -1840,6 +2008,10 @@ class AgentNodes:
 
     @staticmethod
     def _is_consecutive_loop(execution_trace: list[dict[str, Any]], signature: str) -> bool:
+        """Return whether consecutive loop.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if len(execution_trace) < 2:
             return False
         latest = execution_trace[-2:]
@@ -1847,6 +2019,10 @@ class AgentNodes:
 
     @staticmethod
     def _is_high_risk_query(text: str, intent: str) -> bool:
+        """Return whether high risk query.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         intent_lower = str(intent or "").lower()
         if intent_lower in {"budget"}:
             return True
@@ -1858,6 +2034,10 @@ class AgentNodes:
         tool_results: dict[str, Any],
         intent: Optional[str],
     ) -> list[tuple[str, Any, float]]:
+        """Rank tool results.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         ranked: list[tuple[str, Any, float]] = []
         for tool_name, result in tool_results.items():
             score = self._score_tool_result(tool_name, result, intent=intent)
@@ -1866,6 +2046,10 @@ class AgentNodes:
         return ranked
 
     def _score_tool_result(self, tool_name: str, result: Any, intent: Optional[str]) -> float:
+        """Score tool result.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not isinstance(result, dict):
             return 0.0
         if not result.get("success"):
@@ -1923,6 +2107,10 @@ class AgentNodes:
 
     @staticmethod
     def _estimate_result_tokens(payload: Any) -> int:
+        """Estimate result tokens.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         try:
             text = json.dumps(payload, ensure_ascii=False) if not isinstance(payload, str) else payload
         except Exception:
@@ -1931,6 +2119,10 @@ class AgentNodes:
 
     @staticmethod
     def _tool_group(tool_name: str) -> str:
+        """Tool group.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         name = str(tool_name).split(":")[-1]
         if name in {"search_cities", "query_attractions", "query_hotels", "get_weather"}:
             return "discovery"
@@ -1943,6 +2135,10 @@ class AgentNodes:
         return "other"
 
     def _fuse_tool_results(self, tool_results: dict[str, Any], intent: Optional[str]) -> dict[str, Any]:
+        """Fuse tool results.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         ranked = self._rank_tool_results(tool_results, intent=intent)
         groups: dict[str, list[dict[str, Any]]] = {}
         for tool_name, result, score in ranked:
@@ -1988,6 +2184,10 @@ class AgentNodes:
         intent: Optional[str],
         limit: int = 4,
     ) -> list[dict[str, str]]:
+        """Build source evIDence entries.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         ranked = self._rank_tool_results(tool_results, intent=intent)
         entries: list[dict[str, str]] = []
         for tool_name, result, _score in ranked:
@@ -2016,6 +2216,10 @@ class AgentNodes:
         tool_results: dict[str, Any],
         intent: Optional[str],
     ) -> str:
+        """Ensure source evidence section.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         lowered = str(answer or "").lower()
         if "source" in lowered and "fetched_at" in lowered:
             return str(answer or "")
@@ -2033,6 +2237,10 @@ class AgentNodes:
         return section
 
     def _auto_correct_tool_params(self, tool_name: str, params: dict[str, Any], state: AgentState) -> dict[str, Any]:
+        """Auto correct tool params.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         corrected = dict(params or {})
         entities = (state.get("intent_detail") or {}).get("entities", {}) or {}
         user_text = self._last_user_text(state)
@@ -2109,6 +2317,10 @@ class AgentNodes:
 
     @staticmethod
     def _infer_budget_cny(params: dict[str, Any], entities: dict[str, Any], user_text: str) -> Optional[int]:
+        """Infer budget cny.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         for source in (params, entities):
             raw = source.get("budget_cny") or source.get("budget")
             if raw is None:
@@ -2125,6 +2337,10 @@ class AgentNodes:
         return None
 
     def _normalize_tool_result(self, tool_name: str, payload: Any) -> Any:
+        """Normalize tool result.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not isinstance(payload, dict):
             return payload
 
@@ -2148,6 +2364,10 @@ class AgentNodes:
         return normalized
 
     def _normalize_report_text(self, text: str) -> str:
+        """Normalize report text.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         normalized = text
         normalized = re.sub(r"(?<!C)NY\s*", "CNY ", normalized, flags=re.IGNORECASE)
         normalized = re.sub(r"(\d+)\s*元", r"CNY \1", normalized)
@@ -2158,6 +2378,10 @@ class AgentNodes:
         return normalized
 
     def _normalize_result_item(self, item: dict[str, Any]) -> dict[str, Any]:
+        """Normalize result item.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         normalized = dict(item)
         for key in ("price", "ticket"):
             value = normalized.get(key)
@@ -2181,6 +2405,10 @@ class AgentNodes:
 
     @staticmethod
     def _normalize_int(value: Any, minimum: int, maximum: int, default: int) -> int:
+        """Normalize int.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         try:
             parsed = int(value)
             return min(maximum, max(minimum, parsed))
@@ -2189,6 +2417,10 @@ class AgentNodes:
 
     @staticmethod
     def _safe_int(value: Any, default: int) -> int:
+        """Safe int.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         try:
             if value is None:
                 return default
@@ -2198,6 +2430,10 @@ class AgentNodes:
 
     @staticmethod
     def _normalize_accommodation_level(value: Any) -> str:
+        """Normalize accommodation level.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         text = str(value or "").strip().lower()
         if text in {"economy", "budget", "low"}:
             return "economy"
@@ -2207,6 +2443,10 @@ class AgentNodes:
 
     @staticmethod
     def _coalesce_text(*values: Any, default: str = "") -> str:
+        """Coalesce text.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         for value in values:
             text = str(value or "").strip()
             if text:
@@ -2215,6 +2455,10 @@ class AgentNodes:
 
     @staticmethod
     def _last_user_text(state: AgentState) -> str:
+        """Last user text.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         messages = list(state.get("messages", []) or [])
         for msg in reversed(messages):
             if isinstance(msg, HumanMessage):
@@ -2223,6 +2467,10 @@ class AgentNodes:
 
     @staticmethod
     def _infer_city(params: dict[str, Any], entities: dict[str, Any], user_text: str) -> str:
+        """Infer city.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         for key in ("city", "destination", "query"):
             text = str(params.get(key) or entities.get(key) or "").strip()
             if text in CITY_HINTS:
@@ -2250,12 +2498,20 @@ class AgentNodes:
         return ""
 
     def _resolve_timeout_seconds(self, step: dict[str, Any], tool_name: str) -> int:
+        """Resolve timeout seconds.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         override = step.get("timeout_seconds")
         if override is not None:
             return max(1, int(override))
         return self._tool_timeout_sla.get(tool_name, self.runtime_config.default_tool_timeout_seconds)
 
     def _is_tool_circuit_open(self, tool_name: str) -> bool:
+        """Return whether tool circuit open.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not self.runtime_config.reliability_controls_enabled:
             return False
         item = self._tool_health.get(tool_name)
@@ -2265,6 +2521,10 @@ class AgentNodes:
         return time.time() < open_until
 
     def _mark_tool_failure(self, tool_name: str) -> None:
+        """Mark tool failure.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not self.runtime_config.reliability_controls_enabled:
             return
         now = time.time()
@@ -2274,12 +2534,20 @@ class AgentNodes:
             health["open_until"] = now + self.runtime_config.tool_cooldown_seconds
 
     def _mark_tool_success(self, tool_name: str) -> None:
+        """Mark tool success.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not self.runtime_config.reliability_controls_enabled:
             return
         self._tool_health[tool_name] = {"consecutive_failures": 0, "open_until": 0}
 
     @classmethod
     def get_global_tool_health_snapshot(cls) -> dict[str, Any]:
+        """Get global tool health snapshot.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         now = time.time()
         tools: dict[str, dict[str, Any]] = {}
         for name, item in cls._GLOBAL_TOOL_HEALTH.items():
@@ -2299,6 +2567,10 @@ class AgentNodes:
 
     @staticmethod
     def _normalize_plan(plan: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Normalize plan.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         normalized: list[dict[str, Any]] = []
         used_step_ids: set[str] = set()
         for idx, raw in enumerate(plan, start=1):
@@ -2323,6 +2595,10 @@ class AgentNodes:
 
     @staticmethod
     def _build_plan_explanation(intent: str, plan: list[dict[str, Any]]) -> str:
+        """Build plan explanation.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not plan:
             return f"intent={intent}, no tool plan required"
         steps = [f"{item['step_id']}:{item['tool']}" for item in plan]
@@ -2330,6 +2606,10 @@ class AgentNodes:
 
     @staticmethod
     def _render_reasoning(state: AgentState, tools_used: list[str]) -> str:
+        """Render reasoning.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         plan_id = state.get("plan_id")
         stats = state.get("execution_stats", {}) or {}
         step_count = len(stats.get("steps", []))
@@ -2342,6 +2622,10 @@ class AgentNodes:
 
     @staticmethod
     def _validate_tool_params(tool: Tool, params: dict[str, Any]) -> Optional[str]:
+        """Validate tool params.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         schema = getattr(tool, "args_schema", None)
         if schema is None:
             return None
@@ -2356,7 +2640,15 @@ class AgentNodes:
 
     @staticmethod
     def _detect_unsafe_params(params: dict[str, Any]) -> Optional[str]:
+        """Detect unsafe params.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         def _walk(value: Any) -> list[str]:
+            """Walk.
+            
+            This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+            """
             found: list[str] = []
             if isinstance(value, str):
                 text = value.lower()
@@ -2378,7 +2670,15 @@ class AgentNodes:
 
     @staticmethod
     def _sanitize_params_for_log(params: dict[str, Any]) -> dict[str, Any]:
+        """Sanitize params for log.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         def _sanitize(key: Optional[str], value: Any) -> Any:
+            """Sanitize.
+            
+            This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+            """
             if key and key.lower() in SENSITIVE_PARAM_KEYS:
                 return "***"
             if isinstance(value, str):
@@ -2395,6 +2695,10 @@ class AgentNodes:
 
     @staticmethod
     def _build_execution_summary(stats_steps: list[dict[str, Any]]) -> dict[str, Any]:
+        """Build execution summary.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         total_steps = len(stats_steps)
         success_steps = sum(1 for item in stats_steps if item.get("status") == "success")
         failed_steps = sum(1 for item in stats_steps if item.get("status") == "failed")
@@ -2477,6 +2781,10 @@ class AgentNodes:
 
     @staticmethod
     def _percentile(values: list[int], percentile: int) -> int:
+        """Percentile.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not values:
             return 0
         sorted_values = sorted(values)
@@ -2488,6 +2796,10 @@ class AgentNodes:
         return sorted_values[rank]
 
     def _attach_execution_metadata(self, result: ExecutionResult, tool_name: str) -> None:
+        """Attach execution metadata.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         profile = self._tool_source_profile.get(
             tool_name,
             {"source": f"tool:{tool_name}", "ttl_seconds": DEFAULT_TOOL_TIMEOUT_SECONDS * 30},
@@ -2534,6 +2846,10 @@ class AgentNodes:
 
     @staticmethod
     def _extract_result_meta(result_payload: Any) -> dict[str, Any]:
+        """Extract result meta.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if not isinstance(result_payload, dict):
             return {}
         raw_meta = result_payload.get("_meta") or result_payload.get("meta")
@@ -2543,6 +2859,10 @@ class AgentNodes:
 
     @staticmethod
     def _build_fallback_suggestion(tool_name: str, error_code: Optional[str]) -> str:
+        """Build fallback suggestion.
+        
+        This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+        """
         if error_code == "TOOL_TIMEOUT":
             return f"{tool_name} 超时，建议使用缓存信息或提供不依赖实时数据的备选方案"
         if error_code == "CIRCUIT_OPEN":
@@ -2557,5 +2877,9 @@ class AgentNodes:
 
 
 def create_nodes(llm: Runnable, tools: list[Tool]) -> AgentNodes:
+    """Create nodes.
+    
+    This helper keeps a focused responsibility so the surrounding workflow remains easier to read, test, and evolve.
+    """
     return AgentNodes(llm, tools)
 
