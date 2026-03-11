@@ -19,14 +19,14 @@ class SessionService:
         """Initialize session lifecycle service with repository and memory manager dependencies.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             repository: Session repository abstraction used for persistence operations.
             memory_manager: Memory manager used to keep cross-turn profile and summary data in sync.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         self._repository = repository
         self._default_model_id = self._resolve_default_model_id()
@@ -37,10 +37,10 @@ class SessionService:
         """Resolve default model ID from config manager with fallback constant.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Returns:
-            str: Result value produced by this method.
+            str: Normalized string value returned to caller.
         """
         try:
             return get_model_config_manager().get_default_model_id()
@@ -51,13 +51,13 @@ class SessionService:
         """Create a new session record with normalized display name and default model.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             name: Session display name provided by API caller.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         session_name = (name or self.DEFAULT_SESSION_NAME).strip() or self.DEFAULT_SESSION_NAME
         session_id = await self._repository.create(
@@ -72,13 +72,13 @@ class SessionService:
         """List sessions and include total count for API response payload.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             include_empty: Whether empty sessions should be included in listing results.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         sessions = await self._repository.list_all(include_empty=include_empty)
         return {"success": True, "sessions": sessions, "total": len(sessions)}
@@ -87,13 +87,13 @@ class SessionService:
         """Delete session data and associated memory snapshot when session exists.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         deleted = await self._repository.delete(session_id)
         if deleted:
@@ -108,14 +108,14 @@ class SessionService:
         """Update session display name after existence validation.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
             name: Session display name provided by API caller.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         session = await self._repository.get(session_id)
         if not session:
@@ -128,14 +128,14 @@ class SessionService:
         """Update model binding for one existing session.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
             model_id: Model identifier to bind with target session.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         session = await self._repository.get(session_id)
         if not session:
@@ -148,13 +148,13 @@ class SessionService:
         """Return active model ID configured for the target session.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         session = await self._repository.get(session_id)
         if not session:
@@ -166,13 +166,13 @@ class SessionService:
         """Clear persisted chat messages and in-memory conversation cache for the session.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         session = await self._repository.get(session_id)
         if not session:
@@ -189,13 +189,13 @@ class SessionService:
         """Return full session metadata payload by session ID.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         session = await self._repository.get(session_id)
         if not session:

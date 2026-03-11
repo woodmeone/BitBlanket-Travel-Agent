@@ -54,14 +54,14 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         """Initialize RequestLoggingMiddleware and prepare runtime dependencies.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            app: Input `app` consumed by this method.
-            logger_name: Input `logger_name` consumed by this method.
+            app: Input parameter `app` for this routine.
+            logger_name: Input parameter `logger_name` for this routine.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         super().__init__(app)
         self.logger = logging.getLogger(logger_name)
@@ -71,14 +71,14 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         """Execute dispatch in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            request: Input `request` consumed by this method.
-            call_next: Input `call_next` consumed by this method.
+            request: Structured payload `request` used by this routine.
+            call_next: Input parameter `call_next` for this routine.
         
         Returns:
-            Response: Result value produced by this method.
+            Response: Computed value returned to the caller.
         """
         start_time = time.perf_counter()
 
@@ -143,17 +143,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """Initialize RateLimitMiddleware and prepare runtime dependencies.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            app: Input `app` consumed by this method.
-            max_requests: Input `max_requests` consumed by this method.
-            window: Input `window` consumed by this method.
-            key_func: Input `key_func` consumed by this method.
-            exclude_paths: Input `exclude_paths` consumed by this method.
+            app: Input parameter `app` for this routine.
+            max_requests: Numeric control parameter `max_requests` used for bounds or pagination.
+            window: Numeric control parameter `window` used for bounds or pagination.
+            key_func: Input parameter `key_func` for this routine.
+            exclude_paths: Filesystem/resource path for `exclude_paths` resolution.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         super().__init__(app)
         self.max_requests = max_requests
@@ -221,14 +221,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """Execute dispatch in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            request: Input `request` consumed by this method.
-            call_next: Input `call_next` consumed by this method.
+            request: Structured payload `request` used by this routine.
+            call_next: Input parameter `call_next` for this routine.
         
         Returns:
-            Response: Result value produced by this method.
+            Response: Computed value returned to the caller.
         """
         if self._is_excluded(request.url.path):
             return await call_next(request)
@@ -285,14 +285,14 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
         """Initialize TimeoutMiddleware and prepare runtime dependencies.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            app: Input `app` consumed by this method.
-            timeout: Input `timeout` consumed by this method.
+            app: Input parameter `app` for this routine.
+            timeout: Numeric control parameter `timeout` used for bounds or pagination.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         super().__init__(app)
         self.timeout = timeout
@@ -301,14 +301,14 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
         """Execute dispatch in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            request: Input `request` consumed by this method.
-            call_next: Input `call_next` consumed by this method.
+            request: Structured payload `request` used by this routine.
+            call_next: Input parameter `call_next` for this routine.
         
         Returns:
-            Response: Result value produced by this method.
+            Response: Computed value returned to the caller.
         """
         import asyncio
 

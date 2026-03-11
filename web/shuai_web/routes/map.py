@@ -44,13 +44,13 @@ def _to_response(payload: RoutePreview) -> RoutePreviewResponse:
     """Execute to response in backend support workflow.
     
     Purpose:
-        Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        Document service/API behavior, side effects, and integration expectations for maintainers.
     
     Args:
         payload: Structured payload used by API/service boundary.
     
     Returns:
-        RoutePreviewResponse: Result value produced by this method.
+        RoutePreviewResponse: Computed value returned to the caller.
     """
     return RoutePreviewResponse(
         success=True,

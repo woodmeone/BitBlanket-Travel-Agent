@@ -33,13 +33,13 @@ class ConfigManager:
         """Initialize config manager and hydrate runtime cache from source files/environment.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            config_path: Input `config_path` consumed by this method.
+            config_path: Filesystem/resource path for `config_path` resolution.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         self._delegate = None
         self.config_path = self._resolve_config_path(config_path)
@@ -60,13 +60,13 @@ class ConfigManager:
         """Resolve effective config path with environment override and fallback defaults.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            config_path: Input `config_path` consumed by this method.
+            config_path: Filesystem/resource path for `config_path` resolution.
         
         Returns:
-            str: Result value produced by this method.
+            str: Normalized string value returned to caller.
         """
         if os.path.isabs(config_path):
             return config_path
@@ -76,10 +76,10 @@ class ConfigManager:
         """Sync cached config fields from delegated source manager.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         self.config_path = self._delegate.config_path
         self.config = self._delegate.config
@@ -91,10 +91,10 @@ class ConfigManager:
         """Load local yaml/json config and merge with environment substitutions.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         if not os.path.exists(self.config_path):
             raise FileNotFoundError(f"Configuration file missing: {self.config_path}")
@@ -119,13 +119,13 @@ class ConfigManager:
         """Replace ${ENV_VAR} placeholders recursively inside config payload.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             content: Text content to normalize or persist.
         
         Returns:
-            str: Result value produced by this method.
+            str: Normalized string value returned to caller.
         """
         pattern = r"\$\{([^}]+)\}"
 
@@ -133,13 +133,13 @@ class ConfigManager:
             """Execute replace in backend support workflow.
             
             Purpose:
-                Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+                Document service/API behavior, side effects, and integration expectations for maintainers.
             
             Args:
-                match: Input `match` consumed by this method.
+                match: Input parameter `match` for this routine.
             
             Returns:
-                Any: Result value produced by this method.
+                Any: Runtime-dependent value returned for downstream processing.
             """
             var_name = match.group(1)
             env_value = os.environ.get(var_name, "")
@@ -151,14 +151,14 @@ class ConfigManager:
         """Get config from current backend context.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            key: Input `key` consumed by this method.
-            default: Input `default` consumed by this method.
+            key: Input field `key` used for normalization or matching rules.
+            default: Fallback value used when parsing fails or variable is missing.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         keys = key.split(".")
         value: Any = self.config
@@ -175,13 +175,13 @@ class ConfigManager:
         """Get city info from current backend context.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            city_name: Input `city_name` consumed by this method.
+            city_name: Text input `city_name` used for parsing, prompt assembly, or display.
         
         Returns:
-            Optional[Dict[str, Any]]: Result value produced by this method.
+            Optional[Dict[str, Any]]: Computed value returned to the caller.
         """
         return self.travel_knowledge.get("cities", {}).get(city_name)
 
@@ -189,10 +189,10 @@ class ConfigManager:
         """Get all cities from current backend context.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            List[str]: Result value produced by this method.
+            List[str]: Computed value returned to the caller.
         """
         return list(self.travel_knowledge.get("cities", {}).keys())
 
@@ -201,13 +201,13 @@ class ConfigManager:
         """Execute is model active in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            model_config: Input `model_config` consumed by this method.
+            model_config: Input parameter `model_config` for this routine.
         
         Returns:
-            bool: Result value produced by this method.
+            bool: Boolean outcome flag used by guards or success checks.
         """
         api_key = model_config.get("api_key", "")
         if not api_key:
@@ -226,10 +226,10 @@ class ConfigManager:
         """Return active model list filtered by runtime flags and model status.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            List[Dict[str, Any]]: Result value produced by this method.
+            List[Dict[str, Any]]: Computed value returned to the caller.
         """
         models: List[Dict[str, Any]] = []
         for model_id, model_config in self.models_config.items():
@@ -250,13 +250,13 @@ class ConfigManager:
         """Return model config for one model ID with fallback to default model.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             model_id: Model identifier used for lookup/update operations.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         target = model_id or self.default_model_id
         if target not in self.models_config:
@@ -267,10 +267,10 @@ class ConfigManager:
         """Get default model id from current backend context.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            str: Result value produced by this method.
+            str: Normalized string value returned to caller.
         """
         return self.default_model_id
 
@@ -278,10 +278,10 @@ class ConfigManager:
         """Get default model config from current backend context.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         return self.get_model_config(self.default_model_id)
 
@@ -290,10 +290,10 @@ class ConfigManager:
         """Execute agent config in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         return self.config.get("agent", {})
 
@@ -302,10 +302,10 @@ class ConfigManager:
         """Execute web config in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         return self.config.get("web", {})
 
@@ -314,10 +314,10 @@ class ConfigManager:
         """Execute grpc config in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            Dict[str, Any]: Result value produced by this method.
+            Dict[str, Any]: Computed value returned to the caller.
         """
         return self.config.get("grpc", {})
 
@@ -329,13 +329,13 @@ def get_config(config_path: str = "config/llm_config.yaml") -> ConfigManager:
     """Get config from current backend context.
     
     Purpose:
-        Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        Document service/API behavior, side effects, and integration expectations for maintainers.
     
     Args:
-        config_path: Input `config_path` consumed by this method.
+        config_path: Filesystem/resource path for `config_path` resolution.
     
     Returns:
-        ConfigManager: Result value produced by this method.
+        ConfigManager: Computed value returned to the caller.
     """
     global _config_manager
     if _config_manager is None:

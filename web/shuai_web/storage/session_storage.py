@@ -60,10 +60,10 @@ def _utc_now_iso() -> str:
     """Execute utc now iso in backend support workflow.
     
     Purpose:
-        Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        Document service/API behavior, side effects, and integration expectations for maintainers.
     
     Returns:
-        str: Result value produced by this method.
+        str: Normalized string value returned to caller.
     """
     return datetime.now(timezone.utc).isoformat()
 
@@ -72,13 +72,13 @@ def _parse_iso_as_utc(value: Any) -> Optional[datetime]:
     """Execute parse iso as utc in backend support workflow.
     
     Purpose:
-        Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        Document service/API behavior, side effects, and integration expectations for maintainers.
     
     Args:
-        value: Input `value` consumed by this method.
+        value: Input field `value` used for normalization or matching rules.
     
     Returns:
-        Optional[datetime]: Result value produced by this method.
+        Optional[datetime]: Computed value returned to the caller.
     """
     if not value:
         return None

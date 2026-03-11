@@ -37,10 +37,10 @@ class MapService:
         """Initialize map service with provider config and validation checks.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         self._amap_key = os.getenv("AMAP_KEY", "").strip()
 
@@ -48,10 +48,10 @@ class MapService:
         """Validate map provider config and required keys before requests.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         if not self._amap_key:
             raise ValueError("AMAP_KEY is not configured")
@@ -66,15 +66,15 @@ class MapService:
         """Return route preview payload including geometry summary and static-map URL.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            spots: Input `spots` consumed by this method.
+            spots: Input parameter `spots` for this routine.
             city: Target city name/code used by city or map operations.
             provider: Provider identifier used in fallback selection logic.
         
         Returns:
-            RoutePreview: Result value produced by this method.
+            RoutePreview: Computed value returned to the caller.
         """
         _ = provider  # Keep request compatibility; only Amap is supported now.
         self._validate_config()
@@ -147,13 +147,13 @@ class MapService:
         """Build amap static map for downstream processing.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            points: Input `points` consumed by this method.
+            points: Collection `points` iterated or aggregated by this routine.
         
         Returns:
-            str: Result value produced by this method.
+            str: Normalized string value returned to caller.
         """
         markers = []
         for idx, point in enumerate(points):

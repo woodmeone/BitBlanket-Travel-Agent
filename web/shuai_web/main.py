@@ -98,10 +98,10 @@ def create_app() -> FastAPI:
         """Execute root in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            dict: Result value produced by this method.
+            dict: Structured dictionary payload returned to caller.
         """
         return {
             "name": APP_NAME,
@@ -117,13 +117,13 @@ def create_app() -> FastAPI:
         """Get openapi spec from current backend context.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            request: Input `request` consumed by this method.
+            request: Structured payload `request` used by this routine.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         openapi_schema = app.openapi()
         base_url = str(request.base_url).rstrip("/")

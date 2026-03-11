@@ -14,10 +14,10 @@ def _utc_now_iso() -> str:
     """Execute utc now iso in backend support workflow.
     
     Purpose:
-        Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        Document service/API behavior, side effects, and integration expectations for maintainers.
     
     Returns:
-        str: Result value produced by this method.
+        str: Normalized string value returned to caller.
     """
     return datetime.now(timezone.utc).isoformat()
 
@@ -29,13 +29,13 @@ class ShareService:
         """Initialize share service and load persisted share-link index from disk.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            file_path: Input `file_path` consumed by this method.
+            file_path: Filesystem/resource path for `file_path` resolution.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         self._file_path = file_path
@@ -46,10 +46,10 @@ class ShareService:
         """Load share-link records from persistence file into memory cache.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            dict[str, dict[str, Any]]: Result value produced by this method.
+            dict[str, dict[str, Any]]: Computed value returned to the caller.
         """
         try:
             with open(self._file_path, "r", encoding="utf-8") as handle:
@@ -66,10 +66,10 @@ class ShareService:
         """Persist current share-link cache to disk.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         with open(self._file_path, "w", encoding="utf-8") as handle:
             json.dump(self._items, handle, ensure_ascii=False, indent=2)
@@ -78,14 +78,14 @@ class ShareService:
         """Create a share record and return generated share URL metadata.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            title: Input `title` consumed by this method.
+            title: Text input `title` used for parsing, prompt assembly, or display.
             content: Text content to normalize or persist.
         
         Returns:
-            tuple[str, dict[str, Any]]: Result value produced by this method.
+            tuple[str, dict[str, Any]]: Computed value returned to the caller.
         """
         if not content.strip():
             raise ValueError("content cannot be empty")
@@ -106,13 +106,13 @@ class ShareService:
         """Return one share record by token with expiration checks.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            share_id: Input `share_id` consumed by this method.
+            share_id: Unique identifier for `share_id` used in lookup/tracing logic.
         
         Returns:
-            dict[str, Any] | None: Result value produced by this method.
+            dict[str, Any] | None: Computed value returned to the caller.
         """
         async with self._lock:
             return self._items.get(share_id)

@@ -14,18 +14,18 @@ def _attraction(
     """Execute attraction in backend support workflow.
     
     Purpose:
-        Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        Document service/API behavior, side effects, and integration expectations for maintainers.
     
     Args:
-        name: Input `name` consumed by this method.
-        attraction_type: Input `attraction_type` consumed by this method.
-        duration: Input `duration` consumed by this method.
-        ticket: Input `ticket` consumed by this method.
-        district: Input `district` consumed by this method.
-        note: Input `note` consumed by this method.
+        name: Environment variable name to read.
+        attraction_type: Input field `attraction_type` used for normalization or matching rules.
+        duration: Time-related setting `duration` used by scheduling/retry windows.
+        ticket: Input parameter `ticket` for this routine.
+        district: Text input `district` used for parsing, prompt assembly, or display.
+        note: Text input `note` used for parsing, prompt assembly, or display.
     
     Returns:
-        dict[str, object]: Result value produced by this method.
+        dict[str, object]: Computed value returned to the caller.
     """
     return {
         "name": name,
@@ -58,27 +58,27 @@ def _city(
     """Execute city in backend support workflow.
     
     Purpose:
-        Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+        Document service/API behavior, side effects, and integration expectations for maintainers.
     
     Args:
-        city_id: Input `city_id` consumed by this method.
-        name: Input `name` consumed by this method.
-        region: Input `region` consumed by this method.
-        tags: Input `tags` consumed by this method.
-        budget: Input `budget` consumed by this method.
-        seasons: Input `seasons` consumed by this method.
-        description: Input `description` consumed by this method.
-        attractions: Input `attractions` consumed by this method.
-        trip_duration: Input `trip_duration` consumed by this method.
-        walk_intensity: Input `walk_intensity` consumed by this method.
-        rain_friendly: Input `rain_friendly` consumed by this method.
-        family_friendly: Input `family_friendly` consumed by this method.
-        food_friendly: Input `food_friendly` consumed by this method.
-        style_label: Input `style_label` consumed by this method.
-        editorial_note: Input `editorial_note` consumed by this method.
+        city_id: Unique identifier for `city_id` used in lookup/tracing logic.
+        name: Environment variable name to read.
+        region: Text input `region` used for parsing, prompt assembly, or display.
+        tags: Collection `tags` iterated or aggregated by this routine.
+        budget: Input parameter `budget` for this routine.
+        seasons: Collection `seasons` iterated or aggregated by this routine.
+        description: Text input `description` used for parsing, prompt assembly, or display.
+        attractions: Collection `attractions` iterated or aggregated by this routine.
+        trip_duration: Time-related setting `trip_duration` used by scheduling/retry windows.
+        walk_intensity: Input field `walk_intensity` used for normalization or matching rules.
+        rain_friendly: Input parameter `rain_friendly` for this routine.
+        family_friendly: Input parameter `family_friendly` for this routine.
+        food_friendly: Input parameter `food_friendly` for this routine.
+        style_label: Input field `style_label` used for normalization or matching rules.
+        editorial_note: Text input `editorial_note` used for parsing, prompt assembly, or display.
     
     Returns:
-        dict[str, object]: Result value produced by this method.
+        dict[str, object]: Computed value returned to the caller.
     """
     return {
         "id": city_id,
@@ -107,10 +107,10 @@ class CityService:
         """Initialize curated city service and in-memory city catalog.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         self._cities = self._build_curated_cities()
         self._city_by_id = {str(item["id"]): item for item in self._cities}
@@ -120,14 +120,14 @@ class CityService:
         """Return filtered city summaries for region/tag query parameters.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            region: Input `region` consumed by this method.
-            tags: Input `tags` consumed by this method.
+            region: Text input `region` used for parsing, prompt assembly, or display.
+            tags: Collection `tags` iterated or aggregated by this routine.
         
         Returns:
-            list[dict[str, object]]: Result value produced by this method.
+            list[dict[str, object]]: Computed value returned to the caller.
         """
         result = list(self._cities)
 
@@ -146,13 +146,13 @@ class CityService:
         """Execute find city in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            city_id: Input `city_id` consumed by this method.
+            city_id: Unique identifier for `city_id` used in lookup/tracing logic.
         
         Returns:
-            dict[str, object] | None: Result value produced by this method.
+            dict[str, object] | None: Computed value returned to the caller.
         """
         return self._city_by_id.get(city_id)
 
@@ -160,13 +160,13 @@ class CityService:
         """Build detail payload for one city including attractions and metadata.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             city: Target city name/code used by city or map operations.
         
         Returns:
-            dict[str, object]: Result value produced by this method.
+            dict[str, object]: Computed value returned to the caller.
         """
         city_id = str(city["id"])
         detail = self._city_by_id.get(city_id)
@@ -176,13 +176,13 @@ class CityService:
         """Build attractions for downstream processing.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
-            city_name: Input `city_name` consumed by this method.
+            city_name: Text input `city_name` used for parsing, prompt assembly, or display.
         
         Returns:
-            list[dict[str, object]]: Result value produced by this method.
+            list[dict[str, object]]: Computed value returned to the caller.
         """
         city = self._city_by_name.get(city_name)
         if city:
@@ -193,10 +193,10 @@ class CityService:
         """List regions for API consumption.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            list[str]: Result value produced by this method.
+            list[str]: Computed value returned to the caller.
         """
         return sorted({str(item["region"]) for item in self._cities})
 
@@ -204,10 +204,10 @@ class CityService:
         """List tags for API consumption.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            list[str]: Result value produced by this method.
+            list[str]: Computed value returned to the caller.
         """
         tags: set[str] = set()
         for city in self._cities:
@@ -219,13 +219,13 @@ class CityService:
         """Execute to summary in backend support workflow.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Args:
             city: Target city name/code used by city or map operations.
         
         Returns:
-            dict[str, object]: Result value produced by this method.
+            dict[str, object]: Computed value returned to the caller.
         """
         return {
             "id": city["id"],
@@ -249,10 +249,10 @@ class CityService:
         """Build curated cities for downstream processing.
         
         Purpose:
-            Provide explicit backend contracts and side-effect notes for maintainers and API integrators.
+            Document service/API behavior, side effects, and integration expectations for maintainers.
         
         Returns:
-            list[dict[str, object]]: Result value produced by this method.
+            list[dict[str, object]]: Computed value returned to the caller.
         """
         return [
             _city(

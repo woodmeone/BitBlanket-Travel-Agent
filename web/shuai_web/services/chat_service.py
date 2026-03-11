@@ -49,13 +49,13 @@ class ChatService:
         """Initialize chat orchestration dependencies, runtime thresholds, and health-metric buffers.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             repository: Session repository abstraction used for persistence operations.
         
         Returns:
-            Any: Result value produced by this method.
+            Any: Runtime-dependent value returned for downstream processing.
         """
         self._repository = repository
         self._init_lock = asyncio.Lock()
@@ -92,10 +92,10 @@ class ChatService:
         """Lazily initialize LLM adapter, router model, tool registry, and memory manager.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         if self._initialized:
             return
@@ -129,10 +129,10 @@ class ChatService:
         """Return lightweight runtime readiness status used by health endpoints.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Returns:
-            dict[str, Any]: Result value produced by this method.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         return {
             "initialized": self._initialized,
@@ -145,10 +145,10 @@ class ChatService:
         """Return detailed tool-health diagnostics with SLO counters and circuit states.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Returns:
-            dict[str, Any]: Result value produced by this method.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         status = await self.health_status()
         diagnostics = get_tool_health_diagnostics()
@@ -168,10 +168,10 @@ class ChatService:
         """Return intent-level aggregate health metrics for monitoring dashboards.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Returns:
-            dict[str, Any]: Result value produced by this method.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         status = await self.health_status()
         health_metrics = self._build_health_metrics_snapshot()
@@ -192,7 +192,7 @@ class ChatService:
         """Run one chat request and stream normalized SSE events (reasoning/chunk/stage/metadata).
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             message: User message text for this chat run.
@@ -419,14 +419,14 @@ class ChatService:
         """Stream direct LLM output tokens when mode bypasses tool orchestration.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
             message: User message text for this chat run.
         
         Returns:
-            AsyncGenerator[str, None]: Result value produced by this method.
+            AsyncGenerator[str, None]: Async stream of SSE-formatted string payloads.
         """
         history = self._build_relevant_memory_context_messages(session_id, message)
         if not history:
@@ -445,13 +445,13 @@ class ChatService:
         """Extract text token from heterogeneous streaming chunk payloads.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
-            chunk: Input `chunk` consumed by this method.
+            chunk: Streaming chunk object emitted by LangChain model events.
         
         Returns:
-            str: Result value produced by this method.
+            str: Normalized string value returned to caller.
         """
         content = getattr(chunk, "content", chunk)
         if content is None:
@@ -485,13 +485,13 @@ class ChatService:
         """Bridge graph streaming events into service-level normalized event dictionaries.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
             message: User message text for this chat run.
             mode: Requested chat mode (direct/react/plan).
-            run_id: Input `run_id` consumed by this method.
+            run_id: Unique run identifier used for observability and event correlation.
         
         Returns:
             AsyncGenerator[str, None]: Streamed SSE/event payload sequence.
@@ -516,14 +516,14 @@ class ChatService:
         """Generate plan preview payload shown before full execution in plan mode.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
             message: User message text for this chat run.
         
         Returns:
-            dict[str, Any]: Result value produced by this method.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         return generate_plan_preview_with_memory(
             user_message=message,
@@ -540,13 +540,13 @@ class ChatService:
         """Build baseline memory context messages for graph invocation.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
         
         Returns:
-            list[Any]: Result value produced by this method.
+            list[Any]: Ordered message/context list returned to caller.
         """
         if self._memory_manager is None:
             return []
@@ -560,14 +560,14 @@ class ChatService:
         """Build query-relevant memory context messages to reduce token footprint.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
-            user_message: Input `user_message` consumed by this method.
+            user_message: Raw user request text for this run.
         
         Returns:
-            list[Any]: Result value produced by this method.
+            list[Any]: Ordered message/context list returned to caller.
         """
         if self._memory_manager is None:
             return []
@@ -586,15 +586,15 @@ class ChatService:
         """Convert persisted session chat history into model message objects.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
-            limit: Input `limit` consumed by this method.
-            exclude_last_user_message: Input `exclude_last_user_message` consumed by this method.
+            limit: Numeric control parameter `limit` used for bounds or pagination.
+            exclude_last_user_message: Input parameter `exclude_last_user_message` for this routine.
         
         Returns:
-            list[Any]: Result value produced by this method.
+            list[Any]: Ordered message/context list returned to caller.
         """
         session = await self._repository.get(session_id)
         if not session:
@@ -622,13 +622,13 @@ class ChatService:
         """Resolve or create a session identifier before writing chat data.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
         
         Returns:
-            str: Result value produced by this method.
+            str: Normalized string value returned to caller.
         """
         normalized_session_id = session_id.strip() if session_id else None
 
@@ -656,13 +656,13 @@ class ChatService:
         """Normalize requested mode and fall back to safe default when invalid.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             mode: Requested chat mode (direct/react/plan).
         
         Returns:
-            str: Result value produced by this method.
+            str: Normalized string value returned to caller.
         """
         if not mode:
             return "react"
@@ -674,13 +674,13 @@ class ChatService:
         """Serialize one SSE envelope line from a structured payload object.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             payload: Structured payload serialized into SSE format.
         
         Returns:
-            str: Result value produced by this method.
+            str: Normalized string value returned to caller.
         """
         import json
 
@@ -696,16 +696,16 @@ class ChatService:
         """Persist one chat message into repository and optionally sync memory profile.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
-            role: Input `role` consumed by this method.
+            role: Message role label (user/assistant/system).
             content: Text content being streamed, persisted, or analyzed.
-            reasoning: Input `reasoning` consumed by this method.
+            reasoning: Optional reasoning text captured separately from final answer.
         
         Returns:
-            dict[str, Any]: Result value produced by this method.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         session = await self._repository.get(session_id)
         if not session:
@@ -734,13 +734,13 @@ class ChatService:
         """Return persisted messages for a session, ordered by repository contract.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
         
         Returns:
-            dict[str, Any]: Result value produced by this method.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         session = await self._repository.get(session_id)
         if not session:
@@ -752,13 +752,13 @@ class ChatService:
         """Run repository cleanup for expired sessions and stale data.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
-            max_age_seconds: Input `max_age_seconds` consumed by this method.
+            max_age_seconds: Maximum allowed age for session records before cleanup.
         
         Returns:
-            int: Result value produced by this method.
+            int: Numeric count/value returned to caller.
         """
         return await self._repository.cleanup_expired(max_age_seconds)
 
@@ -767,10 +767,10 @@ class ChatService:
         """Return current timestamp string used by persisted message records.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Returns:
-            str: Result value produced by this method.
+            str: Normalized string value returned to caller.
         """
         return datetime.now().strftime("%H:%M:%S")
 
@@ -778,14 +778,14 @@ class ChatService:
         """Write user message into memory manager and swallow non-fatal memory errors.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
             message: User message text for this chat run.
         
         Returns:
-            bool: Result value produced by this method.
+            bool: Boolean outcome flag used by guards or success checks.
         """
         if self._memory_manager is None:
             return False
@@ -800,14 +800,14 @@ class ChatService:
         """Write assistant answer into memory manager and swallow non-fatal memory errors.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
             message: User message text for this chat run.
         
         Returns:
-            bool: Result value produced by this method.
+            bool: Boolean outcome flag used by guards or success checks.
         """
         if self._memory_manager is None:
             return False
@@ -823,13 +823,13 @@ class ChatService:
         """Extract clustered failure patterns from execution metadata for telemetry.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
-            execution_stats: Input `execution_stats` consumed by this method.
+            execution_stats: Execution metadata containing step-level status and error codes.
         
         Returns:
-            dict[str, int]: Result value produced by this method.
+            dict[str, int]: Computed value returned to the caller.
         """
         steps = list((execution_stats or {}).get("steps", []) or [])
         clusters = {"timeout": 0, "param_error": 0, "irrelevant_answer": 0, "tool_error": 0}
@@ -855,18 +855,18 @@ class ChatService:
         """Emit summarized failure telemetry into service health metric buffers.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             session_id: Session identifier used to isolate chat and memory state.
-            run_id: Input `run_id` consumed by this method.
+            run_id: Unique run identifier used for observability and event correlation.
             mode: Requested chat mode (direct/react/plan).
-            execution_stats: Input `execution_stats` consumed by this method.
-            answer: Input `answer` consumed by this method.
-            hard_error: Input `hard_error` consumed by this method.
+            execution_stats: Execution metadata containing step-level status and error codes.
+            answer: Generated answer text being validated for completeness or post-processing.
+            hard_error: Whether this run failed due to an unhandled runtime exception.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         clusters = self._extract_failure_clusters(execution_stats)
         if not answer.strip():
@@ -896,7 +896,7 @@ class ChatService:
         """Parse integer environment variable with fallback and lower-bound protection.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             name: Session display name provided by API caller.
@@ -904,7 +904,7 @@ class ChatService:
             minimum: Lower bound enforced for parsed integer environment values.
         
         Returns:
-            int: Result value produced by this method.
+            int: Numeric count/value returned to caller.
         """
         raw = str(os.getenv(name, str(default))).strip()
         try:
@@ -920,14 +920,14 @@ class ChatService:
         """Parse float environment variable with fallback protection.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
             name: Session display name provided by API caller.
             default: Fallback value used when environment variable is missing or invalid.
         
         Returns:
-            float: Result value produced by this method.
+            float: Parsed float value returned to caller.
         """
         raw = str(os.getenv(name, str(default))).strip()
         try:
@@ -942,15 +942,15 @@ class ChatService:
         """Record per-run metrics into bounded in-memory buffers for SLO snapshots.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Args:
-            intent: Input `intent` consumed by this method.
-            execution_stats: Input `execution_stats` consumed by this method.
-            hard_error: Input `hard_error` consumed by this method.
+            intent: Detected intent label used for SLO bucket aggregation.
+            execution_stats: Execution metadata containing step-level status and error codes.
+            hard_error: Whether this run failed due to an unhandled runtime exception.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         steps = list((execution_stats or {}).get("steps", []) or [])
         has_timeout = any(str(step.get("error_code") or "") == "TOOL_TIMEOUT" for step in steps)
@@ -971,10 +971,10 @@ class ChatService:
         """Prune old metrics outside configured health window under lock.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Returns:
-            None: Result value produced by this method.
+            None: No explicit return value; side effects happen in-place.
         """
         if not self._health_metrics:
             return
@@ -986,10 +986,10 @@ class ChatService:
         """Build current health snapshot including SLO rates and intent aggregates.
         
         Purpose:
-            Document service-level contracts, side effects, and response semantics for easier API/backend maintenance.
+            Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
         
         Returns:
-            dict[str, Any]: Result value produced by this method.
+            dict[str, Any]: Structured metadata payload returned to caller.
         """
         with self._health_metrics_lock:
             self._prune_old_metrics_locked()
