@@ -229,6 +229,27 @@ python scripts/docstring_audit.py --strict
 
 ## 文档导航
 
+### 教学入口：按任务场景跳转
+
+- 系统学习整个项目：
+  先看 [docs/teaching/README.md](docs/teaching/README.md)
+- `30 分钟速览`：
+  看 [docs/teaching/01-total-plan-and-learning-method.md](docs/teaching/01-total-plan-and-learning-method.md)
+- `半天上手`：
+  依次看 [docs/teaching/01-total-plan-and-learning-method.md](docs/teaching/01-total-plan-and-learning-method.md)、[docs/teaching/02-chat-mainline-and-frontend.md](docs/teaching/02-chat-mainline-and-frontend.md)、[docs/teaching/03-web-api-session-and-storage.md](docs/teaching/03-web-api-session-and-storage.md)
+- `改 Bug 前先找主链`：
+  先看 [docs/teaching/02-chat-mainline-and-frontend.md](docs/teaching/02-chat-mainline-and-frontend.md)，再按故障落点跳到 [docs/teaching/03-web-api-session-and-storage.md](docs/teaching/03-web-api-session-and-storage.md)、[docs/teaching/04-agent-core-tools-memory-checkpoint.md](docs/teaching/04-agent-core-tools-memory-checkpoint.md)、[docs/teaching/05-testing-debugging-and-change-practice.md](docs/teaching/05-testing-debugging-and-change-practice.md)
+- `我要改前端`：
+  优先看 [docs/teaching/02-chat-mainline-and-frontend.md](docs/teaching/02-chat-mainline-and-frontend.md) 和 [docs/teaching/05-testing-debugging-and-change-practice.md](docs/teaching/05-testing-debugging-and-change-practice.md)
+- `我要改 Web API`：
+  优先看 [docs/teaching/03-web-api-session-and-storage.md](docs/teaching/03-web-api-session-and-storage.md) 和 [docs/teaching/05-testing-debugging-and-change-practice.md](docs/teaching/05-testing-debugging-and-change-practice.md)
+- `我要改 Agent`：
+  优先看 [docs/teaching/04-agent-core-tools-memory-checkpoint.md](docs/teaching/04-agent-core-tools-memory-checkpoint.md) 和 [docs/teaching/05-testing-debugging-and-change-practice.md](docs/teaching/05-testing-debugging-and-change-practice.md)
+- `面试前 2 小时复习`：
+  优先看 [docs/teaching/01-total-plan-and-learning-method.md](docs/teaching/01-total-plan-and-learning-method.md)、[docs/teaching/06-interview-highlights-and-system-evolution.md](docs/teaching/06-interview-highlights-and-system-evolution.md)、[docs/teaching/07-thinking-questions-homework-and-answers.md](docs/teaching/07-thinking-questions-homework-and-answers.md)
+
+### 其他文档入口
+
 - [docs/README.md](docs/README.md): 文档总入口
 - [docs/getting-started/quick-start.md](docs/getting-started/quick-start.md): 快速启动
 - [docs/getting-started/ai-travel-agent-zero-to-one.md](docs/getting-started/ai-travel-agent-zero-to-one.md): 面向新人的 AI 旅游 Agent 从 0 到 1 教学教程
