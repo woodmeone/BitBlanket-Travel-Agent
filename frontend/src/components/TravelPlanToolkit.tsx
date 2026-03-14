@@ -292,27 +292,43 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
     setRouteByDay({});
   }, [baseCards]);
 
-  if (cards.length === 0 || !looksLikeItineraryContent(content, baseCards)) return null;
+  const hasItineraryContent = useMemo(() => looksLikeItineraryContent(content, baseCards), [content, baseCards]);
 
-  const cardEntries = cards.map((day, dayIndex) => ({
-    day,
-    dayIndex,
-    dayKey: `${day.dayLabel}-${dayIndex}`,
-  }));
+  const cardEntries = useMemo(
+    () =>
+      cards.map((day, dayIndex) => ({
+        day,
+        dayIndex,
+        // Use index-only keys to avoid duplicate labels causing key collisions.
+        dayKey: `day-${dayIndex + 1}`,
+      })),
+    [cards]
+  );
 
-  const totalBaseBudget = cards.reduce((sum, day) => sum + day.baseBudget, 0);
-  const budgetProjection = getBudgetProjection(totalBaseBudget / cards.length, cards.length, modeToSliderValue(budgetMode));
+  const totalBaseBudget = useMemo(() => cards.reduce((sum, day) => sum + day.baseBudget, 0), [cards]);
+  const budgetProjection = useMemo(() => {
+    const dayCount = Math.max(cards.length, 1);
+    return getBudgetProjection(totalBaseBudget / dayCount, dayCount, modeToSliderValue(budgetMode));
+  }, [cards.length, totalBaseBudget, budgetMode]);
   const familyBudget = Math.round(budgetProjection.totalBudget * 2.4);
   const childFriendlyBudget = Math.round(budgetProjection.totalBudget * 1.7);
-  const favoriteSpotList = Object.values(favoriteSpots);
+  const favoriteSpotList = useMemo(() => Object.values(favoriteSpots), [favoriteSpots]);
 
-  const conflictMap = new Map<string, ItineraryConflict[]>();
-  cardEntries.forEach(({ day, dayKey }) => {
-    const distanceM = routeByDay[dayKey]?.distance_m;
-    conflictMap.set(dayKey, detectDayConflicts(day, distanceM));
-  });
+  const conflictMap = useMemo(() => {
+    const map = new Map<string, ItineraryConflict[]>();
+    cardEntries.forEach(({ day, dayKey }) => {
+      const distanceM = routeByDay[dayKey]?.distance_m;
+      map.set(dayKey, detectDayConflicts(day, distanceM));
+    });
+    return map;
+  }, [cardEntries, routeByDay]);
 
-  const totalConflicts = Array.from(conflictMap.values()).reduce((sum, list) => sum + list.length, 0);
+  const totalConflicts = useMemo(
+    () => Array.from(conflictMap.values()).reduce((sum, list) => sum + list.length, 0),
+    [conflictMap]
+  );
+
+  if (cards.length === 0 || !hasItineraryContent) return null;
 
   const togglePeriod = (periodKey: string) => {
     setExpandedPeriods((prev) => ({ ...prev, [periodKey]: !prev[periodKey] }));

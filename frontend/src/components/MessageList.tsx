@@ -36,67 +36,6 @@ interface Props {
   onContinuePrompt?: (prompt: string) => void;
 }
 
-function normalizeInlinePseudoTables(input: string): string {
-  const lines = input.split('\n');
-
-  return lines
-    .map((line) => {
-      const raw = line.trim();
-      if (!raw.includes('|')) return line;
-
-      const firstPipeIndex = raw.indexOf('|');
-      const prefix = firstPipeIndex > 0 ? raw.slice(0, firstPipeIndex).trim() : '';
-      const tableCandidate = raw.slice(firstPipeIndex).trim();
-
-      const pipeCount = (tableCandidate.match(/\|/g) || []).length;
-      const hasSeparator = /\|\s*:?-{3,}:?\s*\|/.test(tableCandidate);
-      const hasInlineRowJoin = /\|\s+\|/.test(tableCandidate);
-
-      if (pipeCount < 6 || (!hasSeparator && !hasInlineRowJoin)) return line;
-
-      const normalizedTable = tableCandidate
-        .replace(/\|\s+\|(?=\s*[:\-]{3,}|[^\n|])/g, '|\n|')
-        .replace(/\n{2,}/g, '\n')
-        .trim();
-
-      if (!normalizedTable.includes('\n|')) return line;
-      return prefix ? `${prefix}\n${normalizedTable}` : normalizedTable;
-    })
-    .join('\n');
-}
-
-// Some model outputs contain loosely formatted table separators split across lines.
-// This pass normalizes those fragments into valid markdown table blocks.
-function normalizeLooseTableBlocks(input: string): string {
-  const lines = input.split('\n');
-  const output: string[] = [];
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const currentLine = lines[index].trim();
-    const nextLine = lines[index + 1]?.trim() || '';
-
-    const hasHeaderLikePipes = currentLine.startsWith('|') && currentLine.endsWith('|');
-    const hasSeparatorLikeLine = /^\|?\s*:?-{3,}:?(\s*\|\s*:?-{3,}:?)+\s*\|?$/.test(nextLine);
-
-    if (!hasHeaderLikePipes || !hasSeparatorLikeLine) {
-      output.push(lines[index]);
-      continue;
-    }
-
-    output.push(lines[index]);
-
-    if (!nextLine.startsWith('|')) {
-      output.push(`| ${nextLine.replace(/^\|?\s*/, '').replace(/\s*\|?$/, '')} |`);
-    } else {
-      output.push(lines[index + 1]);
-    }
-
-    index += 1;
-  }
-
-  return output.join('\n');
-}
-
 function parsePipeCells(line: string): string[] {
   return line
     .trim()
@@ -336,6 +275,19 @@ const markdownComponents: Components = {
   ),
 };
 
+const MARKDOWN_PREPARE_CACHE_LIMIT = 160;
+const markdownPrepareCache = new Map<string, string>();
+
+function cachePreparedMarkdownContent(content: string, prepared: string): string {
+  markdownPrepareCache.set(content, prepared);
+  // Keep the cache bounded to avoid long-running memory growth in chat sessions.
+  if (markdownPrepareCache.size > MARKDOWN_PREPARE_CACHE_LIMIT) {
+    const oldestKey = markdownPrepareCache.keys().next().value;
+    if (oldestKey) markdownPrepareCache.delete(oldestKey);
+  }
+  return prepared;
+}
+
 // Keep code fences untouched and only normalize surrounding markdown text.
 function transformOutsideCodeFences(input: string, transformer: (segment: string) => string): string {
   return input
@@ -348,15 +300,20 @@ function transformOutsideCodeFences(input: string, transformer: (segment: string
 }
 
 function prepareMarkdownContent(content: string): string {
+  if (!content) return '';
+  const cached = markdownPrepareCache.get(content);
+  if (cached !== undefined) return cached;
+
   // `cleanContent` handles broad normalization; this stage focuses on markdown-specific
   // cleanup that should not affect fenced code content.
   const cleaned = cleanContent(content);
 
-  return transformOutsideCodeFences(cleaned, (segment) =>
+  const prepared = transformOutsideCodeFences(cleaned, (segment) =>
     segment
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/(证据来源\s*\n(?:\|.*\n)+)(?!\n)/g, '$1\n')
   );
+  return cachePreparedMarkdownContent(content, prepared);
 }
 
 interface ThinkExtractResult {
@@ -694,11 +651,16 @@ const ReasoningBlock: React.FC<{
   onToggle: (messageId: string) => void;
   isStreaming?: boolean;
 }> = ({ reasoning, messageId, isExpanded, onToggle, isStreaming = false }) => {
-  if (!reasoning) return null;
-
+  const hasReasoning = Boolean(reasoning);
   const timestampMatch = reasoning.match(/\[Timestamp: ([^\]]+)\]/);
   const timestamp = timestampMatch ? timestampMatch[1] : null;
   const cleaned = reasoning.replace(/\[Timestamp: [^\]]+\]\n?\n?/g, '').trim();
+  const preparedReasoning = useMemo(
+    () => (hasReasoning ? prepareMarkdownContent(cleaned) : ''),
+    [cleaned, hasReasoning]
+  );
+
+  if (!hasReasoning) return null;
 
   return (
     <div
@@ -755,7 +717,7 @@ const ReasoningBlock: React.FC<{
           }}
         >
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={enhancedMarkdownComponents}>
-            {prepareMarkdownContent(cleaned)}
+            {preparedReasoning}
           </ReactMarkdown>
         </div>
       )}
@@ -765,6 +727,7 @@ const ReasoningBlock: React.FC<{
 
 const ThinkBlock: React.FC<{ content: string; isStreaming?: boolean }> = ({ content, isStreaming = false }) => {
   const [expanded, setExpanded] = useState(false);
+  const preparedThinkContent = useMemo(() => prepareMarkdownContent(content), [content]);
   if (!content) return null;
 
   return (
@@ -812,7 +775,7 @@ const ThinkBlock: React.FC<{ content: string; isStreaming?: boolean }> = ({ cont
           }}
         >
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={enhancedMarkdownComponents}>
-            {prepareMarkdownContent(content)}
+            {preparedThinkContent}
           </ReactMarkdown>
         </div>
       )}
@@ -871,9 +834,12 @@ const MessageItem = memo(function MessageItem({
   const thinkData = useMemo(() => extractThinkBlocks(msg.content), [msg.content]);
   const thinkContent = useMemo(() => formatThinkContent(thinkData.thinkBlocks), [thinkData.thinkBlocks]);
   const visibleMessageContent = thinkData.visibleContent || '';
+  const visibleRenderSource = isUser ? msg.content : visibleMessageContent;
+  const preparedVisibleMessageContent = useMemo(() => prepareMarkdownContent(visibleRenderSource), [visibleRenderSource]);
+  const copySource = isUser ? msg.content : visibleMessageContent || msg.content;
   const exportTitle = useMemo(
-    () => deriveExportTitle(isUser ? msg.content : visibleMessageContent || msg.content),
-    [isUser, msg.content, visibleMessageContent]
+    () => deriveExportTitle(copySource),
+    [copySource]
   );
 
   return (
@@ -948,7 +914,7 @@ const MessageItem = memo(function MessageItem({
             <div style={{ lineHeight: 1.7, fontSize: '14px' }}>
               {isUser || visibleMessageContent ? (
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={enhancedMarkdownComponents}>
-                  {prepareMarkdownContent(isUser ? msg.content : visibleMessageContent)}
+                  {preparedVisibleMessageContent}
                 </ReactMarkdown>
               ) : (
                 <div style={{ fontSize: '12px', color: '#64748b' }}>已折叠思考过程，正文内容为空。</div>
@@ -977,7 +943,7 @@ const MessageItem = memo(function MessageItem({
               exportedAt={new Date().toLocaleString('zh-CN', { hour12: false })}
             />
           )}
-          <CopyButton content={isUser ? msg.content : visibleMessageContent || msg.content} />
+          <CopyButton content={copySource} />
         </div>
       </div>
     </div>
@@ -1003,8 +969,9 @@ const StreamingMessageItem = memo(function StreamingMessageItem({
     [streamingThinkData.thinkBlocks]
   );
   const visibleStreamingContent = streamingThinkData.visibleContent;
+  const preparedStreamingContent = useMemo(() => prepareMarkdownContent(visibleStreamingContent), [visibleStreamingContent]);
   const hasContent = Boolean(visibleStreamingContent && visibleStreamingContent.length > 0);
-  const cleanReasoning = prepareMarkdownContent(reasoning || '');
+  const cleanReasoning = useMemo(() => prepareMarkdownContent(reasoning || ''), [reasoning]);
   const showReasoning = Boolean(cleanReasoning);
   const statusLabel = hasContent ? '生成中' : isThinking ? '思考中' : '等待响应';
   const statusColor = hasContent ? '#2563eb' : '#7c3aed';
@@ -1160,7 +1127,7 @@ const StreamingMessageItem = memo(function StreamingMessageItem({
           {hasContent && (
             <div style={{ lineHeight: 1.7, fontSize: '14px', color: '#1f2937', wordBreak: 'break-word' }}>
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={enhancedMarkdownComponents}>
-                {prepareMarkdownContent(visibleStreamingContent)}
+                {preparedStreamingContent}
               </ReactMarkdown>
               {(isWaiting || isThinking) && (
                 <span
@@ -1208,7 +1175,7 @@ const MessageList: React.FC<Props> = ({
 
         return (
           <MessageItem
-            key={`${msg.role}-${msg.timestamp}-${index}`}
+            key={messageId}
             msg={msg}
             messageId={messageId}
             reasoningExpanded={reasoningExpanded}
