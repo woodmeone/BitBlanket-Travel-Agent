@@ -97,6 +97,15 @@
 
 - [01-total-plan-and-learning-method.md](01-total-plan-and-learning-method.md)
 
+源码绑定：
+
+- 必读文件：
+  [README.md](D:/projects/shuai/ShuaiTravelAgent/README.md)、[docs/README.md](D:/projects/shuai/ShuaiTravelAgent/docs/README.md)、[quick-start.md](D:/projects/shuai/ShuaiTravelAgent/docs/getting-started/quick-start.md)、[main.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/main.py)
+- 建议搜索词：
+  `33001`、`38000`、`rapidoc`、`health`、`Home`
+- 做题提醒：
+  Phase 0 的重点不是背端口，而是建立“项目入口、服务入口、文档入口”三张地图。
+
 #### 题 0-1
 
 - 类型：`口头题`
@@ -169,6 +178,15 @@
 配套章节：
 
 - [02-chat-mainline-and-frontend.md](02-chat-mainline-and-frontend.md)
+
+源码绑定：
+
+- 必读文件：
+  [page.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/app/page.tsx)、[ChatArea.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)、[api.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)、[chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)、[chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)、[builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)、[MessageList.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)、[TravelPlanToolkit.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)
+- 建议搜索词：
+  `handleSend`、`fetchStreamChat`、`stream_chat`、`plan_preview`、`stage`、`metadata`、`onComplete`
+- 做题提醒：
+  回答 Phase 1 时，最好不要只说“前端发请求、后端回消息”，而要明确说出中间事件怎么流动。
 
 #### 题 1-1
 
@@ -254,6 +272,15 @@
 
 - [02-chat-mainline-and-frontend.md](02-chat-mainline-and-frontend.md)
 
+源码绑定：
+
+- 必读文件：
+  [AppContext.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/context/AppContext.tsx)、[ChatArea.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)、[MessageList.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)、[TravelPlanToolkit.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)、[travelPlan.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/utils/travelPlan.ts)
+- 建议搜索词：
+  `streamingMessage`、`streamingReasoning`、`metadataRef`、`prepareMarkdownContent`、`extractThinkBlocks`、`looksLikeItineraryContent`、`runQuickRefine`
+- 做题提醒：
+  Phase 2 最容易答浅。一定要把“状态所有权”和“文本被加工成产品结果”这两层都讲出来。
+
 #### 题 2-1
 
 - 类型：`书面题`
@@ -328,6 +355,15 @@
 
 - [03-web-api-session-and-storage.md](03-web-api-session-and-storage.md)
 
+源码绑定：
+
+- 必读文件：
+  [main.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/main.py)、[container.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/dependencies/container.py)、[chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)、[chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)、[session_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/session_service.py)、[session_repository_impl.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/repositories/session_repository_impl.py)、[session_storage.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage/session_storage.py)
+- 建议搜索词：
+  `StreamingResponse`、`stream_chat`、`_ensure_session`、`create_session`、`list_sessions`、`cleanup_expired`、`_atomic_write_json`
+- 做题提醒：
+  Phase 3 回答“为什么会跨层联动”时，最好直接点名 route / service / repository / storage 各自要改什么。
+
 #### 题 3-1
 
 - 类型：`书面题`
@@ -395,6 +431,15 @@
 配套章节：
 
 - [04-agent-core-tools-memory-checkpoint.md](04-agent-core-tools-memory-checkpoint.md)
+
+源码绑定：
+
+- 必读文件：
+  [state.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/state.py)、[builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py)
+- 建议搜索词：
+  `AgentState`、`create_initial_state`、`routing_decision`、`execute_node`、`verify_node`、`verify_decision`、`should_continue`、`self_check_node`
+- 做题提醒：
+  Phase 4 不要用抽象语言糊过去。至少要能说出一个条件边和一个回环是怎么落到代码里的。
 
 #### 题 4-1
 
@@ -482,6 +527,15 @@
 
 - [04-agent-core-tools-memory-checkpoint.md](04-agent-core-tools-memory-checkpoint.md)
 
+源码绑定：
+
+- 必读文件：
+  [travel_api.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/tools/travel_api.py)、[travel_tools.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/tools/travel_tools.py)、[memory_integration.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/memory_integration.py)、[persistent_checkpointer.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/persistent_checkpointer.py)
+- 建议搜索词：
+  `_meta`、`stale`、`fallback`、`refresh`、`build_context_messages`、`add_message`、`checkpoint`
+- 做题提醒：
+  这一阶段的表格题最好都把“面向谁”“何时写”“何时读”“何时恢复”四列写出来。
+
 #### 题 5-1
 
 - 类型：`书面题`
@@ -550,6 +604,15 @@ memory、checkpoint、session 的核心差异是什么？
 
 - [05-testing-debugging-and-change-practice.md](05-testing-debugging-and-change-practice.md)
 
+源码绑定：
+
+- 必读文件：
+  [test_sse_streaming.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_sse_streaming.py)、[test_api_integration.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_api_integration.py)、[test_agent_memory_unit.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_memory_unit.py)、[test_agent_execution_optimization_integration.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_execution_optimization_integration.py)、[test_agent_p0_guardrails_unit.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_p0_guardrails_unit.py)、[agent_quality_gate.py](D:/projects/shuai/ShuaiTravelAgent/scripts/agent_quality_gate.py)
+- 建议搜索词：
+  `text/event-stream`、`quality_gate`、`benchmark`、`golden eval`、`replay`、`fallback_steps`
+- 做题提醒：
+  Phase 6 最容易停留在“跑哪些命令”。更好的答案要解释“这些命令为什么和这次风险匹配”。
+
 #### 题 6-1
 
 - 类型：`书面题`
@@ -617,6 +680,15 @@ memory、checkpoint、session 的核心差异是什么？
 配套章节：
 
 - [06-interview-highlights-and-system-evolution.md](06-interview-highlights-and-system-evolution.md)
+
+源码绑定：
+
+- 必读文件：
+  [ChatArea.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)、[chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)、[builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py)、[session_storage.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage/session_storage.py)、[agent_quality_gate.py](D:/projects/shuai/ShuaiTravelAgent/scripts/agent_quality_gate.py)
+- 建议搜索词：
+  `verify`、`StreamingResponse`、`streamingMessage`、`_meta`、`checkpoint`、`quality gate`
+- 做题提醒：
+  Phase 7 的核心不是“讲更多名词”，而是把亮点、取舍、代码锚点和演进路线串成一个完整故事。
 
 #### 题 7-1
 

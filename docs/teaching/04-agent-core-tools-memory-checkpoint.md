@@ -98,6 +98,37 @@ flowchart LR
     L --> M["END"]
 ```
 
+### 3.2 源码辅助学习：按状态 -> 图 -> 节点的顺序读
+
+这一章最怕“函数很多但不知道先抓什么”。最推荐直接按下面这个顺序对着源码看：
+
+| 阅读阶段 | 文件 | 最值得先看的符号 | 学习目标 |
+| --- | --- | --- | --- |
+| 第一步：看状态 | [state.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/state.py) | `AgentState`、`create_initial_state` | 先搞清一次运行里到底共享了哪些信息。 |
+| 第二步：看图 | [builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py) | `build`、`_build_thread_config` | 先搞清节点怎么连、session 怎样和 graph thread 绑定。 |
+| 第三步：看节点 | [nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py) | `intent_node`、`strategy_node`、`routing_decision`、`plan_node`、`execute_node`、`verify_node`、`verify_decision`、`answer_node`、`self_check_node`、`direct_answer_node`、`should_continue` | 逐段理解状态机每一步的职责和决策点。 |
+| 第四步：看工具契约 | [travel_api.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/tools/travel_api.py) | 与 `_meta`、stale、fallback 相关的返回结构 | 看“证据链”到底怎么被表达。 |
+| 第五步：看长期上下文 | [memory_integration.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/memory_integration.py) | memory 写入、摘要、上下文构建相关逻辑 | 看长期记忆怎样进入一次运行。 |
+| 第六步：看恢复能力 | [persistent_checkpointer.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/persistent_checkpointer.py) | 初始化、保存、恢复入口 | 看 checkpoint 为什么不等于 memory。 |
+
+### 3.3 源码辅助学习：建议边看边搜的关键字
+
+```text
+AgentState
+create_initial_state
+build
+routing_decision
+should_continue
+verify_decision
+execute_node
+tool_results
+_meta
+build_context_messages
+checkpoint
+```
+
+这组关键字能帮助你把“状态定义 -> 图连接 -> 节点执行 -> 证据与验证 -> 记忆与恢复”完整串起来。
+
 ## 4. 先建立正确的 Agent 心智模型
 
 当前项目里的 Agent 不是一条普通的线性调用链，而是一个有状态、有路由、有回环、有验证、有自检的执行系统。
@@ -147,6 +178,17 @@ Agent 最忌讳的读法是：
 ### 为什么一定要再看 `builder.py`
 
 因为它定义了“节点怎么连起来”。
+
+### 5.1 `builder.py` 最推荐的读法
+
+打开 [builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py) 后，最推荐只盯 3 个块：
+
+1. `graph.add_node(...)`
+先确认系统到底有哪些核心阶段。
+2. `graph.add_conditional_edges(...)`
+再确认哪些地方存在分叉和回环。
+3. `_build_thread_config(...)`
+最后理解 session 和 checkpoint 为什么能绑定到同一个 graph thread。
 
 ### 为什么最后才看 `nodes.py`
 
@@ -328,6 +370,15 @@ flowchart TD
 这说明当前节点不是“写点 prompt 字符串”那么简单，而是尝试把关键阶段结构化。
 
 ## 9. 节点逐个怎么学
+
+### 9.0 节点阅读建议
+
+读 [nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py) 时，最稳的方法不是一口气顺着看，而是每读一个节点都固定回答 4 个问题：
+
+1. 它读了哪些状态字段？
+2. 它改了哪些状态字段？
+3. 它依赖了哪些工具或模型能力？
+4. 它把决策权交给了哪一个后继节点？
 
 ### 9.1 `intent_node`
 

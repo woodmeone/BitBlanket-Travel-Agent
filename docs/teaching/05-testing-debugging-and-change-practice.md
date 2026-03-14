@@ -155,6 +155,33 @@ python scripts/agent_replay.py --session-id <session_id> --db data/langgraph_che
 
 这说明项目不仅能做测试，还能做运行复盘。
 
+### 4.5 源码辅助学习：测试文件要和实现文件对着看
+
+这一章最适合“测试文件 + 实现文件”成对阅读，而不是只看测试名。
+
+| 测试文件 | 推荐对照看的实现文件 | 读这一对时最该问的问题 |
+| --- | --- | --- |
+| [test_sse_streaming.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_sse_streaming.py) | [chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)、[chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)、[api.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts) | SSE 契约到底由谁发、由谁解、由谁保证结束？ |
+| [test_api_integration.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_api_integration.py) | [chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)、[chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py) | 参数校验、模式切换、session 复用是谁在负责？ |
+| [test_agent_memory_unit.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_memory_unit.py) | [memory_integration.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/memory_integration.py) | memory 真正在保护哪些长期行为边界？ |
+| [test_agent_execution_optimization_integration.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_execution_optimization_integration.py) | [builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py) | 执行轮次、验证回环和结果聚合有没有退化？ |
+| [test_agent_p0_guardrails_unit.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_p0_guardrails_unit.py) | [nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py)、相关工具与验证逻辑 | 当前系统最不允许坏掉的底线是什么？ |
+
+### 4.6 源码辅助学习：建议边看边搜的关键字
+
+```text
+text/event-stream
+StreamingResponse
+stream_chat
+handleSSELine
+verify_decision
+quality_gate
+agent_replay
+fallback_steps
+```
+
+如果你边看测试边搜这些词，会比只跑命令更容易建立“断言在保护哪层行为”的感觉。
+
 ```mermaid
 flowchart TB
     A["前端 lint / build / test"] --> D["局部改动可信度"]

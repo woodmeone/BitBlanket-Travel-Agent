@@ -200,6 +200,84 @@ flowchart LR
 3. 再看分层实现，补内部结构
 4. 最后看 Agent、测试和演进，攻克最难的部分
 
+### 按源码路径学习的总索引
+
+如果你希望把这篇总纲直接当成“源码学习首页”，最推荐按下面这个方法使用这份总索引：
+
+1. 先顺着黄金主链读一遍，不追求第一次就看懂全部细节。
+2. 再回到这张总表里，按你的角色或任务挑出 3-5 个文件精读。
+3. 每读一行，都固定回答 4 个问题：这个文件解决什么问题、关键函数怎么协作、输入输出是什么、改这里最可能影响哪里。
+4. 当你在某一层读不下去时，不要原地死磕，直接跳去 02-07 的对应章节看时序图、分层图、面试追问和配套练习。
+
+这份索引的目标不是把所有文件都讲完，而是帮你抓住“最值得优先读、最容易形成系统理解、最适合作为改动入口”的核心路径。
+
+#### 最推荐先精读的 12 个文件
+
+如果你时间有限，优先把下面 12 个文件读熟，它们几乎已经覆盖了整条聊天主链和最核心的工程设计：
+
+1. `frontend/src/components/ChatArea.tsx`：前端主链入口，负责发送请求、消费 SSE、管理流式状态和停止逻辑。
+2. `frontend/src/services/api.ts`：前端和 Web 之间的事件协议入口，决定 SSE 事件如何被解析和分发。
+3. `frontend/src/components/MessageList.tsx`：决定最终答案、推理片段和诊断信息如何被产品化展示。
+4. `web/shuai_web/routes/chat.py`：HTTP 聊天入口，最适合用来理解前端请求在 Web 层怎么落地。
+5. `web/shuai_web/services/chat_service.py`：整个 Web 编排核心，负责 session、memory、Agent、SSE 输出的统一调度。
+6. `web/shuai_web/storage/session_storage.py`：最适合理解“当前会话数据到底怎么落盘、怎么恢复、怎么清理”。
+7. `agent/travel_agent/graph/state.py`：Agent 学习的第一站，先搞懂状态字段，再谈节点行为。
+8. `agent/travel_agent/graph/builder.py`：负责把图结构、streaming、checkpointer 和调用入口串起来。
+9. `agent/travel_agent/graph/nodes.py`：整个 Agent 的决策核心，意图识别、路由、计划、执行、验证、答案生成都在这里。
+10. `agent/travel_agent/graph/memory_integration.py`：理解长期记忆写入、摘要、偏好注入和跨 session 提示的关键文件。
+11. `agent/travel_agent/graph/persistent_checkpointer.py`：理解恢复点、checkpoint 压缩和持久化语义的关键文件。
+12. `tests/test_sse_streaming.py`：最适合反推“这个系统到底要求 SSE 稳定成什么样”的测试入口。
+
+#### 全项目核心文件与关键函数总表
+
+| 分层 | 文件 | 关键函数 / 类 | 进入文件后先搜什么 | 主要学习目标 | 适合什么时候读 | 深挖章节 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 前端 | `frontend/src/app/page.tsx` | `Home` | `Home`、`AppProvider`、`ChatArea` | 理解页面级装配、顶层布局和上下文入口 | 第一次跑主链前 | [02-chat-mainline-and-frontend.md](02-chat-mainline-and-frontend.md) |
+| 前端 | `frontend/src/context/AppContext.tsx` | `AppProvider` | `AppProvider`、`messages`、`currentSessionId`、`chatMode` | 理解全局状态所有权，以及哪些状态放 Context、哪些留在局部组件 | 读完 `page.tsx` 后 | [02-chat-mainline-and-frontend.md](02-chat-mainline-and-frontend.md) |
+| 前端 | `frontend/src/components/ChatArea.tsx` | `ChatArea`、`handleSend`、`drainStreamingQueueToRefs`、`flushStreamingQueue`、`handleStop` | `handleSend`、`flushStreamingQueue`、`drainStreamingQueueToRefs`、`handleStop` | 理解输入发送、流式队列、停止逻辑、UI 状态和 ref 状态为什么分离 | 追黄金主链时必读 | [02-chat-mainline-and-frontend.md](02-chat-mainline-and-frontend.md) |
+| 前端 | `frontend/src/services/api.ts` | `SSEConnectionStatus`、`APIService.fetchStreamChat`、`executeStreamRequest`、`handleSSELine` | `fetchStreamChat`、`executeStreamRequest`、`handleSSELine` | 理解请求重试、SSE 行解析、事件分发和连接状态管理 | 读完 `ChatArea.tsx` 立刻读 | [02-chat-mainline-and-frontend.md](02-chat-mainline-and-frontend.md) |
+| 前端 | `frontend/src/components/MessageList.tsx` | `prepareMarkdownContent`、`extractThinkBlocks`、`MessageItem`、`StreamingMessageItem`、`DiagnosticsPanel`、`MessageList` | `extractThinkBlocks`、`StreamingMessageItem`、`DiagnosticsPanel` | 理解答案、思考过程和诊断信息如何分别渲染，以及为什么前端不只是“显示字符串” | 看完 SSE 事件之后 | [02-chat-mainline-and-frontend.md](02-chat-mainline-and-frontend.md) |
+| 前端 | `frontend/src/components/TravelPlanToolkit.tsx` | `looksLikeItineraryContent`、`TravelPlanToolkit`、`runQuickRefine`、`handleChooseVariant` | `looksLikeItineraryContent`、`runQuickRefine`、`handleChooseVariant` | 理解文本答案如何被进一步加工成行程卡片、快速改写和交互式产品能力 | 看完 `MessageList.tsx` 后 | [02-chat-mainline-and-frontend.md](02-chat-mainline-and-frontend.md) |
+| Web | `web/shuai_web/main.py` | `create_app`、`main` | `create_app` | 理解 FastAPI 应用怎么启动、路由怎么注册、全局依赖怎么被装配 | 读 Web 层前先看 | [03-web-api-session-and-storage.md](03-web-api-session-and-storage.md) |
+| Web | `web/shuai_web/dependencies/container.py` | `Container.register`、`resolve`、`get_container`、`_setup_default_providers` | `register`、`resolve`、`_setup_default_providers` | 理解依赖注入和服务装配，避免把依赖关系误解成“到处直接 new” | 看完 `main.py` 后 | [03-web-api-session-and-storage.md](03-web-api-session-and-storage.md) |
+| Web | `web/shuai_web/routes/chat.py` | `ChatRequest`、`stream_chat` | `ChatRequest`、`stream_chat` | 理解聊天接口的 HTTP 契约、入参模型和流式返回入口 | 追黄金主链时必读 | [03-web-api-session-and-storage.md](03-web-api-session-and-storage.md) |
+| Web | `web/shuai_web/services/chat_service.py` | `initialize`、`stream_chat`、`_stream_agent_events`、`_generate_plan_preview`、`_build_history_messages`、`_ensure_session`、`_sse` | `stream_chat`、`_stream_agent_events`、`_ensure_session`、`_sse` | 理解 session、memory、history、Agent 调用和 SSE 输出如何统一编排 | 读完 `routes/chat.py` 立刻读 | [03-web-api-session-and-storage.md](03-web-api-session-and-storage.md) |
+| Web | `web/shuai_web/routes/session.py` | `create_session`、`list_sessions`、`update_session_name`、`set_session_model`、`clear_chat` | `create_session`、`list_sessions`、`set_session_model`、`clear_chat` | 理解会话层 API 面向前端暴露了哪些能力，哪些字段属于 session 元信息 | 聊天主链看完后补读 | [03-web-api-session-and-storage.md](03-web-api-session-and-storage.md) |
+| Web | `web/shuai_web/services/session_service.py` | `create_session`、`list_sessions`、`update_session_model`、`clear_chat`、`get_session_info` | `create_session`、`list_sessions`、`update_session_model`、`clear_chat` | 理解 session 业务语义、默认模型解析和“删消息不等于删 session”这类边界 | 准备改 session 时必读 | [03-web-api-session-and-storage.md](03-web-api-session-and-storage.md) |
+| Web | `web/shuai_web/repositories/session_repository_impl.py` | `create`、`get`、`update`、`list_all`、`cleanup_expired` | `create`、`update`、`list_all`、`cleanup_expired` | 理解 repository 如何承接业务语义，而不是直接暴露底层存储细节 | 学分层边界时读 | [03-web-api-session-and-storage.md](03-web-api-session-and-storage.md) |
+| Web | `web/shuai_web/storage/session_storage.py` | `FileSessionStorage._load_from_file`、`_atomic_write_json`、`_save_to_file`、`save`、`list_all`、`cleanup` | `FileSessionStorage`、`_atomic_write_json`、`_load_from_file`、`cleanup` | 理解文件存储、原子写、备份恢复、过期清理和 JSON 持久化边界 | 准备改存储或排查脏数据时必读 | [03-web-api-session-and-storage.md](03-web-api-session-and-storage.md) |
+| Web | `web/shuai_web/routes/model.py` | `list_models`、`get_model` | `list_models`、`get_model` | 理解模型列表和模型详情是怎么作为辅助能力对外暴露的 | 补全 API 全貌时读 | [03-web-api-session-and-storage.md](03-web-api-session-and-storage.md) |
+| Web | `web/shuai_web/routes/health.py` | `health_check`、`llm_health_check`、`tools_health_check`、`tools_intents_health_check`、`readiness_check`、`liveness_check` | `health_check`、`tools_health_check`、`readiness_check` | 理解健康检查、依赖状态和上线前的最小可观测面 | 学可观测性时读 | [03-web-api-session-and-storage.md](03-web-api-session-and-storage.md) |
+| Agent | `agent/travel_agent/graph/state.py` | `AgentState`、`create_initial_state` | `AgentState`、`create_initial_state` | 理解 Agent 的状态字段是怎么分层组织的，先搞清状态再读节点 | 学 Agent 的第一站 | [04-agent-core-tools-memory-checkpoint.md](04-agent-core-tools-memory-checkpoint.md) |
+| Agent | `agent/travel_agent/graph/builder.py` | `TravelAgentGraph.build`、`graph`、`astream_events`、`_build_thread_config`、`generate_plan_preview_with_memory`、`get_tool_health_diagnostics` | `build`、`astream_events`、`_build_thread_config`、`generate_plan_preview_with_memory` | 理解图是怎么搭起来的、为什么会有 streaming 包装、thread config 和 health 入口 | 读完 `state.py` 后立刻读 | [04-agent-core-tools-memory-checkpoint.md](04-agent-core-tools-memory-checkpoint.md) |
+| Agent | `agent/travel_agent/graph/nodes.py` | `AgentNodes.intent_node`、`strategy_node`、`routing_decision`、`plan_node`、`execute_node`、`verify_node`、`verify_decision`、`self_check_node`、`answer_node`、`direct_answer_node` | `routing_decision`、`execute_node`、`verify_node`、`self_check_node` | 理解 direct / react / plan、执行与验证回环、最终答案生成和自检 | 这是 Agent 最难的一步，放在 `builder.py` 后 | [04-agent-core-tools-memory-checkpoint.md](04-agent-core-tools-memory-checkpoint.md) |
+| Agent | `agent/travel_agent/graph/memory_integration.py` | `AgentMemoryManager.add_message`、`build_context_messages`、`build_context_messages_for_query`、`get_summary`、`get_profile`、`get_memory_diagnostics` | `add_message`、`build_context_messages`、`get_profile`、`get_memory_diagnostics` | 理解长期记忆写入、摘要、画像、跨 session 提示和诊断数据 | 看完主图后读 | [04-agent-core-tools-memory-checkpoint.md](04-agent-core-tools-memory-checkpoint.md) |
+| Agent | `agent/travel_agent/graph/persistent_checkpointer.py` | `PersistentSqliteSaver.put`、`aput`、`get_checkpoint_count`、`_persist_checkpoint`、`_compact_thread`、`_compact_memory` | `put`、`aput`、`_persist_checkpoint`、`_compact_thread` | 理解 checkpoint 为什么存在、什么时候写、怎么压缩和恢复 | 学恢复语义时必读 | [04-agent-core-tools-memory-checkpoint.md](04-agent-core-tools-memory-checkpoint.md) |
+| Agent | `agent/travel_agent/tools/travel_api.py` | `TravelAPIClient.search_cities`、`search_attractions`、`search_hotels`、`get_weather`、`_build_meta`、`_refresh_meta` | `search_hotels`、`get_weather`、`_build_meta`、`_refresh_meta` | 理解工具客户端怎么构造结果、如何附带 `_meta`、如何做 freshness 和 refresh | 学工具契约时读 | [04-agent-core-tools-memory-checkpoint.md](04-agent-core-tools-memory-checkpoint.md) |
+| Agent | `agent/travel_agent/tools/travel_tools.py` | `search_cities`、`query_hotels`、`plan_itinerary`、`get_weather`、`get_travel_tools`、`get_tool_by_name` | `get_travel_tools`、`query_hotels`、`plan_itinerary` | 理解 LangChain Tool 包装层，知道 Agent 实际调的“工具入口”是什么 | 看完 `travel_api.py` 后读 | [04-agent-core-tools-memory-checkpoint.md](04-agent-core-tools-memory-checkpoint.md) |
+| Agent | `agent/travel_agent/llm/langchain_adapter.py` | `LangChainLLMAdapter`、`create_langchain_llm`、`create_from_yaml_config` | `LangChainLLMAdapter`、`create_langchain_llm` | 理解当前项目怎么把底层模型能力接进 LangChain / LangGraph | 需要理解模型适配时读 | [04-agent-core-tools-memory-checkpoint.md](04-agent-core-tools-memory-checkpoint.md) |
+| 测试 / 质量 | `tests/test_sse_streaming.py` | `TestSSEStreaming`、`TestSSEEventTypes` | `TestSSEStreaming`、`TestSSEEventTypes` | 反推 SSE 必须稳定输出哪些事件、哪些行为是流式契约的一部分 | 读完 02 和 03 后必读 | [05-testing-debugging-and-change-practice.md](05-testing-debugging-and-change-practice.md) |
+| 测试 / 质量 | `tests/test_api_integration.py` | `TestChatAPI`、`TestSessionAPI`、`TestModelAPI`、`TestHealthAPI` | `TestChatAPI`、`TestSessionAPI`、`TestHealthAPI` | 理解路由级契约、跨接口联动和最基础的 API 回归面 | 准备改 API 前读 | [05-testing-debugging-and-change-practice.md](05-testing-debugging-and-change-practice.md) |
+| 测试 / 质量 | `tests/test_agent_memory_unit.py` | `test_memory_cleanup_expired_sessions`、`test_memory_profile_extraction_from_user_messages`、`test_memory_conflict_detection_adds_pending_clarification`、`test_memory_context_respects_budget_guardrail` | `test_memory_profile_extraction_from_user_messages`、`test_memory_conflict_detection_adds_pending_clarification`、`test_memory_context_respects_budget_guardrail` | 反推 memory 真实规则，理解哪些行为是“设计承诺”而不是实现巧合 | 看完 `memory_integration.py` 后读 | [05-testing-debugging-and-change-practice.md](05-testing-debugging-and-change-practice.md) |
+| 测试 / 质量 | `scripts/agent_quality_gate.py` | `run_quality_gate`、`main` | `run_quality_gate`、`main` | 理解 benchmark、指标阈值和质量门禁如何把“感觉还行”变成“可验证标准” | 学质量治理时读 | [05-testing-debugging-and-change-practice.md](05-testing-debugging-and-change-practice.md) |
+
+#### 怎么用这张总表做真正的源码学习
+
+为了避免把这张表看成“文件名单”，建议每读完一行都留下一个非常小但可复用的结果：
+
+1. 给这个文件写一句职责定义。
+2. 画出它和前后两个文件的关系。
+3. 记下 2-4 个关键函数，并写明它们的输入、输出、状态变化。
+4. 补一句“改这里最容易影响什么”。
+
+如果你带着具体任务来，可以直接按下面方式跳转：
+
+- 想改聊天体验：优先读 `ChatArea.tsx`、`api.ts`、`MessageList.tsx`、`routes/chat.py`、`chat_service.py`
+- 想改 session：优先读 `routes/session.py`、`session_service.py`、`session_repository_impl.py`、`session_storage.py`
+- 想改 Agent 决策：优先读 `state.py`、`builder.py`、`nodes.py`
+- 想改 memory：优先读 `memory_integration.py`、`persistent_checkpointer.py`、`tests/test_agent_memory_unit.py`
+- 想做回归或排障：优先读 `tests/test_sse_streaming.py`、`tests/test_api_integration.py`、`scripts/agent_quality_gate.py`
+
 ## 5. 四种能力分级
 
 ### L1：能看懂

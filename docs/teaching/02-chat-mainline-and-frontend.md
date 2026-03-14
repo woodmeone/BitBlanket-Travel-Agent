@@ -92,6 +92,39 @@ flowchart LR
     J --> K["TravelPlanToolkit.tsx 做结果加工"]
 ```
 
+### 3.2 源码辅助学习：按文件和函数读
+
+这一章最适合“边看代码边学”。推荐直接按下面顺序打开文件，并且优先盯住这些函数或逻辑块：
+
+| 文件 | 先看什么 | 为什么先看这里 |
+| --- | --- | --- |
+| [page.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/app/page.tsx) | `Home` 组件 | 先确认聊天区在整页产品里处于什么位置。 |
+| [ChatArea.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx) | `handleSend`、`flushStreamingQueue`、`drainStreamingQueueToRefs`、`handleStop` | 这是前端主链最关键的 4 个读点，分别对应“发请求、平滑刷新、最终合并、主动停止”。 |
+| [api.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts) | `fetchStreamChat`、`executeStreamRequest`、`handleSSELine` | 这 3 个入口刚好回答“请求怎么发、连接怎么保、事件怎么解”。 |
+| [chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py) | `_get_chat_service`、`stream_chat` | 先确认真正的 HTTP / SSE 协议入口有多薄。 |
+| [MessageList.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx) | `prepareMarkdownContent`、`extractThinkBlocks`、`MessageList` | 这里能看清文本、`<think>`、诊断面板和最终展示是怎么被加工的。 |
+| [TravelPlanToolkit.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx) | `looksLikeItineraryContent`、`runQuickRefine`、`handleChooseVariant`、`TravelPlanToolkit` 组件本体 | 这里最能体现“答案如何被前端继续产品化”。 |
+
+### 3.3 源码辅助学习：建议边看边搜的关键字
+
+如果你在编辑器里跟读源码，最推荐直接搜索下面这些词：
+
+```text
+handleSend
+fetchStreamChat
+handleSSELine
+onStage
+onMetadata
+flushStreamingQueue
+drainStreamingQueueToRefs
+prepareMarkdownContent
+extractThinkBlocks
+looksLikeItineraryContent
+runQuickRefine
+```
+
+这组关键字几乎能把“请求发起 -> SSE 解析 -> 状态落地 -> 文本渲染 -> 结果加工”整条前端主链串起来。
+
 ## 4. 用一条真实请求建立心智模型
 
 最推荐观察的场景：
@@ -200,11 +233,39 @@ flowchart LR
 
 这能显著改善流式体验，也是一个很值得在面试里讲的“不是只有功能，还有体验工程”的点。
 
+### 6.4 对着 `ChatArea.tsx` 应该怎么逐段读
+
+最推荐的读法不是从第一行顺着看，而是按下面 4 段跳着读：
+
+1. 先读 `handleSend`
+理解用户点击发送后，到底初始化了哪些状态、注册了哪些回调、发起了哪一个 API 调用。
+2. 再读 `onStage / onPlanPreview / onChunk / onReasoning / onMetadata / onComplete`
+理解后端不同事件分别落进了哪条前端状态链。
+3. 再读 `flushStreamingQueue`、`enqueueAnswer`、`enqueueReasoning`
+理解为什么流式文本没有直接一到就 `setState`。
+4. 最后读 `drainStreamingQueueToRefs`、`handleStop`
+理解停止、结束、最终合并时怎样把队列里的权威内容落进正式消息。
+
 ## 7. `api.ts` 里到底做了什么
 
 `frontend/src/services/api.ts` 是“前端如何理解后端 SSE 协议”的中心文件。
 
 当前实现里你至少要看到下面 4 件事。
+
+### 7.0 推荐的阅读顺序
+
+如果你刚打开 [api.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)，最推荐按这个顺序读：
+
+1. `SSEConnectionStatus`
+先知道前端怎样理解连接生命周期。
+2. `StreamCallbacks`
+先知道后端事件在前端被拆成了哪些回调通道。
+3. `fetchStreamChat`
+再看真正的聊天入口。
+4. `executeStreamRequest`
+再看请求、超时、重试和 reader 循环。
+5. `handleSSELine`
+最后看每一类事件到底怎么被解出来。
 
 ### 7.1 API 基础地址和环境覆盖
 
