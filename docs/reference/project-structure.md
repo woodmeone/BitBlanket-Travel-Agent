@@ -155,6 +155,8 @@ ShuaiTravelAgent/
 - replay
 - quality gate
 - docstring audit
+- runtime backup / restore / prune / doctor
+- OpenAPI / SSE contract snapshot export
 
 ## 当前最常用的文件入口
 

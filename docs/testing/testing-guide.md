@@ -65,11 +65,13 @@ python scripts/agent_quality_gate.py --golden-report docs/benchmarks/agent_golde
 
 ```bash
 python scripts/export_openapi_snapshot.py
+python scripts/export_sse_contract_snapshot.py
 ```
 
 默认产物：
 
 - [`docs/reference/openapi.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/openapi.snapshot.json)
+- [`docs/reference/sse-contract.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/sse-contract.snapshot.json)
 
 它适合在这些场景使用：
 
@@ -138,7 +140,7 @@ python scripts/agent_quality_gate.py --golden-report docs/benchmarks/agent_golde
 
 ```bash
 python -m pytest tests/test_api_smoke_local.py tests/test_chat_stream_local.py -q
-python -m pytest tests/test_runtime_data_lifecycle_unit.py tests/test_export_openapi_snapshot_script_unit.py -q
+python -m pytest tests/test_runtime_data_lifecycle_unit.py tests/test_export_openapi_snapshot_script_unit.py tests/test_export_sse_contract_snapshot_script_unit.py tests/test_runtime_doctor_unit.py tests/test_share_service_unit.py -q
 ```
 
 ## CI 当前怎么跑

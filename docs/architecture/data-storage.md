@@ -27,6 +27,7 @@
 - `data/agent_memory.json.bak`
 - `data/langgraph_checkpoints.sqlite3`
 - `data/share_links.json`
+- `data/share_links.json.bak`
 - `data/runtime_failure_clusters.jsonl`
 
 这些文件现在已经被 `runtime_*` 维护脚本统一纳管。

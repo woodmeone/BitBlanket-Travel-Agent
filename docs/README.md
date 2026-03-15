@@ -79,6 +79,7 @@
 
 - [reference/api-reference.md](reference/api-reference.md): REST / SSE / 城市探索 / 分享接口
 - [reference/openapi.snapshot.json](reference/openapi.snapshot.json): 当前 OpenAPI 契约快照
+- [reference/sse-contract.snapshot.json](reference/sse-contract.snapshot.json): 当前 SSE 契约快照
 - [reference/configuration-reference.md](reference/configuration-reference.md): 配置文件与环境变量
 - [reference/project-structure.md](reference/project-structure.md): 目录结构与关键模块职责
 - [reference/naming-conventions.md](reference/naming-conventions.md): 命名约定
@@ -91,7 +92,9 @@
 - `scripts/runtime_backup.py`: 运行数据备份
 - `scripts/runtime_restore.py`: 运行数据恢复
 - `scripts/runtime_prune.py`: 运行数据清理
+- `scripts/runtime_doctor.py`: 运行态一键自检
 - `scripts/export_openapi_snapshot.py`: OpenAPI 契约快照导出
+- `scripts/export_sse_contract_snapshot.py`: SSE 契约快照导出
 - `scripts/docstring_audit.py`: Python docstring 覆盖率审计脚本
 - [benchmarks/agent_benchmark_latest.md](benchmarks/agent_benchmark_latest.md): 最新 benchmark 报告
 - [benchmarks/agent_benchmark_trend_latest.md](benchmarks/agent_benchmark_trend_latest.md): benchmark 趋势报告

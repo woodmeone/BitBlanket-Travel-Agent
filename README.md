@@ -266,6 +266,23 @@ set SHUAI_FAIL_FAST_STARTUP_VALIDATION=true
 - 结构化日志
 - SSE payload 的 `request_id / trace_id`
 
+### runtime doctor
+
+运行维护时，推荐先跑一遍：
+
+```bash
+python scripts/runtime_doctor.py --json
+python scripts/runtime_doctor.py --base-url http://localhost:38000 --strict
+```
+
+它会检查：
+
+- `config/server_config.yaml` / `config/llm_config.yaml`
+- `data/` 可写性与运行态文件
+- 备份归档目录
+- OpenAPI / SSE 契约快照
+- 可选的 live `/api/health`、`/api/ready`、`/api/metrics`
+
 ### Prometheus metrics
 
 当前默认暴露：
@@ -311,7 +328,16 @@ python scripts/docstring_audit.py --strict
 - `python scripts/runtime_backup.py`
 - `python scripts/runtime_restore.py --archive ...`
 - `python scripts/runtime_prune.py --keep-latest-backups 10 --max-backup-age-days 14`
+- `python scripts/runtime_doctor.py --json`
 - `python scripts/export_openapi_snapshot.py`
+- `python scripts/export_sse_contract_snapshot.py`
+
+### 契约与安全基线
+
+- OpenAPI snapshot: [docs/reference/openapi.snapshot.json](docs/reference/openapi.snapshot.json)
+- SSE snapshot: [docs/reference/sse-contract.snapshot.json](docs/reference/sse-contract.snapshot.json)
+- CI dependency audit: `pip-audit -r requirements.txt`
+- CI secret scan: Dockerized `gitleaks` with [`.gitleaks.toml`](/D:/projects/shuai/ShuaiTravelAgent/.gitleaks.toml)
 
 更多测试与回放说明见 [docs/testing/testing-guide.md](docs/testing/testing-guide.md)。
 

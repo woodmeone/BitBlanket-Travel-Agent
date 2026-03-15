@@ -47,10 +47,12 @@ python scripts/agent_quality_gate.py --golden-report docs/benchmarks/agent_golde
 
 # runtime data maintenance
 python scripts/runtime_backup.py
+python scripts/runtime_doctor.py --json
 python scripts/runtime_prune.py --keep-latest-backups 10 --max-backup-age-days 14
 
-# API contract snapshot
+# API contract snapshots
 python scripts/export_openapi_snapshot.py
+python scripts/export_sse_contract_snapshot.py
 
 # 前端
 cd frontend
@@ -77,6 +79,7 @@ npm run build
 3. `cd frontend && npm run build`
 4. 浏览器里确认 `/api/chat/stream` 仍能返回 `text/event-stream`
 5. 检查前端日志或网络面板中的 `X-Request-ID / X-Trace-ID`
+6. 如有运行态异常，先跑 `python scripts/runtime_doctor.py --base-url http://localhost:38000 --strict`
 
 ### 改 CI / 观测 / 启动校验后
 
@@ -85,6 +88,7 @@ npm run build
 3. 检查 [`web/shuai_web/observability.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/observability.py)
 4. 检查 [`web/shuai_web/startup_checks.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/startup_checks.py)
 5. 检查 [`web/shuai_web/routes/health.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/health.py)
+6. 检查 [`scripts/runtime_doctor.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/runtime_doctor.py) 与 [`.github/workflows/ci.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/ci.yml)
 
 ## 文档同步最小清单
 

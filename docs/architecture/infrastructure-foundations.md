@@ -50,12 +50,16 @@
   - [`scripts/runtime_backup.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/runtime_backup.py)
   - [`scripts/runtime_restore.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/runtime_restore.py)
   - [`scripts/runtime_prune.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/runtime_prune.py)
+  - [`scripts/runtime_doctor.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/runtime_doctor.py)
   - [`docs/architecture/data-storage.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/architecture/data-storage.md)
 - 安全与契约治理
   - [`SECURITY.md`](/D:/projects/shuai/ShuaiTravelAgent/SECURITY.md)
   - [`.github/dependabot.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/dependabot.yml)
+  - [`.gitleaks.toml`](/D:/projects/shuai/ShuaiTravelAgent/.gitleaks.toml)
   - [`scripts/export_openapi_snapshot.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/export_openapi_snapshot.py)
+  - [`scripts/export_sse_contract_snapshot.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/export_sse_contract_snapshot.py)
   - [`docs/reference/openapi.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/openapi.snapshot.json)
+  - [`docs/reference/sse-contract.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/sse-contract.snapshot.json)
 
 ## 2. 运行与部署收敛
 
@@ -219,6 +223,9 @@ SHUAI_FAIL_FAST_STARTUP_VALIDATION=true
 6. Benchmark trend
 7. Quality gate
 8. Frontend lint / test / build
+9. `pip-audit`
+10. Dockerized `gitleaks`
+11. OpenAPI / SSE snapshot verification
 
 ### 4.3 CI 产物
 
@@ -326,6 +333,8 @@ curl http://localhost:38000/api/metrics
 ```bash
 python scripts/runtime_backup.py
 python scripts/runtime_backup.py --label before-upgrade
+python scripts/runtime_doctor.py --json
+python scripts/runtime_doctor.py --base-url http://localhost:38000 --strict
 ```
 
 默认会备份：
@@ -369,6 +378,8 @@ python scripts/runtime_prune.py --max-session-age-seconds 2592000 --max-failure-
 - 安全问题上报入口说明
 - Python / npm 依赖更新建议机制
 - 敏感配置文件与模板文件边界说明
+- CI 中的 `pip-audit` 依赖审计
+- CI 中的 Dockerized `gitleaks` secret scan
 
 ### 8.2 OpenAPI 快照
 
@@ -387,6 +398,24 @@ python scripts/export_openapi_snapshot.py
 - 评审接口变更
 - 做 schema diff
 - 未来接入契约回归检查
+
+### 8.3 SSE 快照
+
+流式契约现在也会导出稳定快照：
+
+```bash
+python scripts/export_sse_contract_snapshot.py
+```
+
+默认产物：
+
+- [`docs/reference/sse-contract.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/sse-contract.snapshot.json)
+
+它重点保护：
+
+- `direct / react / plan` 三种模式的事件顺序
+- `session_id / reasoning_* / stage / tool_* / metadata / done` 的字段形状
+- `request_id / trace_id / run_id` 等动态值在快照中的归一化方式
 
 ## 9. 改基础设施时的文档同步矩阵
 

@@ -62,6 +62,22 @@
 - `config/server_config.yaml.example`
 - `.env.example`
 
+## Automated Checks
+
+当前 CI 还会执行：
+
+- `pip-audit -r requirements.txt`
+- Dockerized `gitleaks`
+- 契约快照校验（OpenAPI / SSE）
+
+本地同步命令：
+
+```bash
+python scripts/export_openapi_snapshot.py
+python scripts/export_sse_contract_snapshot.py
+python scripts/runtime_doctor.py --json
+```
+
 ## Next Hardening Steps
 
 下一阶段优先建议：

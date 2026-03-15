@@ -152,6 +152,16 @@ Prometheus 指标出口。
 - `error`
 - `done`
 
+当前仓库会额外维护一份稳定的 SSE 契约快照，便于评审字段和顺序变更：
+
+- [sse-contract.snapshot.json](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/sse-contract.snapshot.json)
+
+导出命令：
+
+```bash
+python scripts/export_sse_contract_snapshot.py
+```
+
 ### SSE 推荐事件顺序（典型）
 
 1. `session_id`
@@ -287,6 +297,7 @@ Prometheus 指标出口。
 当前仓库还会维护一份 OpenAPI 快照文件：
 
 - [`openapi.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/openapi.snapshot.json)
+- [`sse-contract.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/sse-contract.snapshot.json)
 
 ## 9. 调试建议
 

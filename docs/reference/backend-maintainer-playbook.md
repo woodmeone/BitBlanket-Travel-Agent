@@ -44,6 +44,7 @@
 2. `travel_api.py` 的 provider 优先级、缓存策略、fallback 判定。
 3. `chat_service.py` 的 SSE 事件顺序与字段命名。
 4. `session` 相关存储格式（影响历史兼容性）。
+5. `share_service.py` 的本地 JSON 落盘与 `.bak` 恢复逻辑。
 
 ## 4. 常见故障与定位建议
 
@@ -71,6 +72,23 @@
 2. `GET /api/health/tools/intents`
 3. `chat_service.py` 的 `_record_run_metrics` 与 `_build_health_metrics_snapshot`
 
+### 4.4 一键运行态自检
+
+推荐优先执行：
+
+```bash
+python scripts/runtime_doctor.py --json
+python scripts/runtime_doctor.py --base-url http://localhost:38000 --strict
+```
+
+它会帮你快速判断：
+
+1. `config/server_config.yaml` / `config/llm_config.yaml` 是否可用
+2. `data/` 是否可写，以及关键运行态文件是否存在
+3. runtime backup 目录里是否已经有归档
+4. OpenAPI / SSE 契约快照是否缺失或损坏
+5. live `/api/health`、`/api/ready`、`/api/metrics` 是否正常
+
 ## 5. 注释与文档约定
 
 后端代码保持以下约定：
@@ -85,12 +103,14 @@
 1. API 协议变更：更新 `docs/reference/api-reference.md`。
 2. 结构变更：更新 `docs/reference/project-structure.md`。
 3. 新增配置：更新 `docs/reference/configuration-reference.md`。
+4. 改运行脚本、契约快照或 CI 安全扫描：同步 `docs/testing/testing-guide.md` 与 `docs/architecture/infrastructure-foundations.md`。
 
 ## 6. 提交前最小检查
 
 ```bash
 python -m compileall -q agent web scripts
 python -m pytest tests -q
+python scripts/runtime_doctor.py --json
 ```
 
 如果改动涉及前端 SSE 渲染，也建议同时执行：
@@ -99,4 +119,3 @@ python -m pytest tests -q
 cd frontend
 npm run lint
 ```
-
