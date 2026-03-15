@@ -1,77 +1,219 @@
-﻿# Configuration Reference
+# Configuration Reference
 
-## 配置文件
+## 配置文件总览
 
-- `config/server_config.yaml`: 服务地址、端口、CORS
-- `config/llm_config.yaml`: LLM 模型配置（本地私有）
-- `config/llm_config.yaml.example`: LLM 示例模板
+当前与运行时相关的核心配置文件有：
 
-## 运行时基线
+- [`config/server_config.yaml`](/D:/projects/shuai/ShuaiTravelAgent/config/server_config.yaml)
+  - 服务端口、CORS、中间件、metrics、startup 校验
+- [`config/server_config.yaml.example`](/D:/projects/shuai/ShuaiTravelAgent/config/server_config.yaml.example)
+  - 服务配置模板
+- [`config/llm_config.yaml`](/D:/projects/shuai/ShuaiTravelAgent/config/llm_config.yaml)
+  - LLM provider / model 配置
+- [`config/llm_config.yaml.example`](/D:/projects/shuai/ShuaiTravelAgent/config/llm_config.yaml.example)
+  - LLM 配置模板
+- [`.env.example`](/D:/projects/shuai/ShuaiTravelAgent/.env.example)
+  - 常用环境变量参考
 
-- Python: `3.13.x`（通过 `uv` 管理）
-- 虚拟环境路径: 项目根目录 `.venv`
+## 配置来源优先级
+
+[`config/__init__.py`](/D:/projects/shuai/ShuaiTravelAgent/config/__init__.py) 当前采用：
+
+`环境变量 > YAML 配置 > 代码默认值`
+
+这意味着：
+
+1. 本地默认建议复制 `server_config.yaml.example` 和 `llm_config.yaml.example`
+2. 在 Docker 或 CI 中，优先通过环境变量覆盖端口、CORS、observability 等项
+3. 如果缺失 `server_config.yaml`，系统仍可回退到默认值，但 `/api/ready` 会把真实解析结果写出来
 
 ## server_config 关键项
+
+推荐模板：
 
 ```yaml
 web:
   host: "0.0.0.0"
   port: 38000
+  debug: false
+  cors_origins:
+    - "http://localhost:33001"
+    - "http://localhost:38000"
+
 frontend:
   port: 33001
+
+middleware:
+  request_timeout_seconds: 30.0
+  rate_limit_max_requests: 100
+  rate_limit_window_seconds: 60
+
+observability:
+  metrics_enabled: true
+  metrics_path: "/api/metrics"
+  structured_logging: true
+
+startup:
+  fail_fast_validation: false
 ```
+
+### `web`
+
+- `host`
+  - Web API 监听地址
+- `port`
+  - Web API 端口，当前统一为 `38000`
+- `debug`
+  - 是否以调试方式运行
+- `cors_origins`
+  - 允许的前端来源列表
+
+### `frontend`
+
+- `port`
+  - 前端开发和文档基线端口，当前统一为 `33001`
+
+### `middleware`
+
+- `request_timeout_seconds`
+  - 超时中间件阈值
+- `rate_limit_max_requests`
+  - 滑动窗口内允许的最大请求数
+- `rate_limit_window_seconds`
+  - 限流窗口大小
+
+### `observability`
+
+- `metrics_enabled`
+  - 是否启用 metrics 端点
+- `metrics_path`
+  - metrics 自定义路径，默认 `/api/metrics`
+- `structured_logging`
+  - 是否输出 JSON 结构化日志
+
+### `startup`
+
+- `fail_fast_validation`
+  - 当 readiness 校验失败时，应用是否在启动阶段直接抛错退出
+
+## Web / observability 环境变量
+
+这些变量主要由 [`config/__init__.py`](/D:/projects/shuai/ShuaiTravelAgent/config/__init__.py) 解析：
+
+- `SHUAI_WEB_HOST`
+- `SHUAI_WEB_PORT`
+- `SHUAI_WEB_DEBUG`
+- `SHUAI_FRONTEND_PORT`
+- `CORS_ORIGINS`
+- `SHUAI_CORS_ORIGINS`
+- `SHUAI_REQUEST_TIMEOUT_SECONDS`
+- `SHUAI_RATE_LIMIT_MAX_REQUESTS`
+- `SHUAI_RATE_LIMIT_WINDOW_SECONDS`
+- `SHUAI_METRICS_ENABLED`
+- `SHUAI_METRICS_PATH`
+- `SHUAI_STRUCTURED_LOGGING`
+- `SHUAI_FAIL_FAST_STARTUP_VALIDATION`
+
+### 推荐用途
+
+- 本地联调：优先复制 YAML
+- Docker / Compose：优先用 env 覆盖
+- CI：由 workflow 复制 example 文件并在必要时用 env 注入
+
+## LLM 相关配置
+
+LLM 配置路径由 [`web/shuai_web/config/runtime.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/config/runtime.py) 统一解析：
+
+- 默认路径：`config/llm_config.yaml`
+
+启动校验时会检查：
+
+1. 文件是否存在
+2. 能否被 `ConfigManager` 解析
+3. 是否至少有一个 active model
+
+如果这些条件不满足：
+
+- `/api/health` 仍可能返回 `healthy`
+- 但 `/api/ready` 会返回 `503`
 
 ## 前端环境变量
 
-- `NEXT_PUBLIC_API_BASE`: API 根地址，默认 `http://localhost:38000`
-- `NEXT_PUBLIC_APP_NAME`: 应用名称（可选）
+前端最关键的运行时变量：
 
-## 运行时环境变量
+- `NEXT_PUBLIC_API_BASE`
+  - 浏览器侧 API 根地址，默认 `http://localhost:38000`
+- `INTERNAL_API_BASE`
+  - Next.js server/runtime rewrite 使用的内部 API 地址
+- `NEXT_PUBLIC_APP_NAME`
+  - 可选，应用名展示
 
-- `SHUAI_WEB_PORT`: 手动运行 `uvicorn` 时可通过环境变量注入端口
-- `CORS_ORIGINS`: 逗号分隔，覆盖默认 CORS 白名单
-- `AGENT_CHECKPOINT_DB`: Agent checkpoint SQLite 文件路径（默认 `data/langgraph_checkpoints.sqlite3`）
-- `AGENT_CHECKPOINT_MAX_PER_THREAD`: 每个 thread 保留的 checkpoint 数（默认 `200`）
-- `AGENT_CHECKPOINT_COMPACTION_INTERVAL`: 触发 compaction 的写入间隔（默认 `50`）
+对应代码路径：
+
+- [`frontend/src/services/api.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
+- [`frontend/next.config.js`](/D:/projects/shuai/ShuaiTravelAgent/frontend/next.config.js)
 
 ## Agent 运行时配置分组（可灰度启停）
 
-以下变量由 [runtime_config.py](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/runtime_config.py) 统一读取。
+以下变量由 [`runtime_config.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/runtime_config.py) 统一读取。
 
 ### 可靠性（Reliability）
 
-- `AGENT_RELIABILITY_CONTROLS_ENABLED`：启停可靠性控制（默认 `true`）
-- `AGENT_TOOL_TIMEOUT_SECONDS`：工具默认超时秒数（默认 `20`）
-- `AGENT_TOOL_MAX_RETRIES`：工具默认重试次数（默认 `1`）
-- `AGENT_TOOL_COOLDOWN_SECONDS`：熔断冷却时间秒（默认 `45`）
-- `AGENT_CIRCUIT_BREAKER_THRESHOLD`：熔断阈值（默认 `3`）
-- `AGENT_MAX_EXECUTION_ROUNDS`：最大执行回合（默认 `8`）
+- `AGENT_RELIABILITY_CONTROLS_ENABLED`
+- `AGENT_TOOL_TIMEOUT_SECONDS`
+- `AGENT_TOOL_MAX_RETRIES`
+- `AGENT_TOOL_COOLDOWN_SECONDS`
+- `AGENT_CIRCUIT_BREAKER_THRESHOLD`
+- `AGENT_MAX_EXECUTION_ROUNDS`
 
 ### 时效性（Timeliness）
 
-- `AGENT_TIMELINESS_CONTROLS_ENABLED`：启停 stale 刷新链路（默认 `true`）
-- `AGENT_MAX_PLAN_STEPS`：计划最大步数（默认 `6`）
-- `AGENT_EARLY_STOP_CONFIDENCE`：高置信直答阈值（默认 `0.9`）
+- `AGENT_TIMELINESS_CONTROLS_ENABLED`
+- `AGENT_MAX_PLAN_STEPS`
+- `AGENT_EARLY_STOP_CONFIDENCE`
 
 ### 安全（Security）
 
-- `AGENT_SECURITY_CONTROLS_ENABLED`：启停参数安全拦截（默认 `true`）
-- `AGENT_INTENT_STRUCTURED_METHOD`：意图结构化输出首选方法（默认 `json_schema`）
-- `AGENT_STREAM_EVENTS_VERSION`：事件流协议版本（默认 `v1`）
+- `AGENT_SECURITY_CONTROLS_ENABLED`
+- `AGENT_INTENT_STRUCTURED_METHOD`
+- `AGENT_STREAM_EVENTS_VERSION`
 
 ### 成本（Cost）
 
-- `AGENT_COST_CONTROLS_ENABLED`：启停预算控制（默认 `true`）
-- `AGENT_ROUND_MAX_TOOLS`：每轮最大工具调用数（默认 `4`）
-- `AGENT_ROUND_MAX_ELAPSED_MS`：每轮最大累计耗时毫秒（默认 `15000`）
-- `AGENT_ROUND_MAX_TOKENS`：每轮最大估算 token（默认 `2500`）
-- `AGENT_MAX_PARALLELISM`：默认并发上限（默认 `2`）
+- `AGENT_COST_CONTROLS_ENABLED`
+- `AGENT_ROUND_MAX_TOOLS`
+- `AGENT_ROUND_MAX_ELAPSED_MS`
+- `AGENT_ROUND_MAX_TOKENS`
+- `AGENT_MAX_PARALLELISM`
 
 ### 健康诊断（SLO）
 
-以下变量由 [chat_service.py](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py) 使用：
+以下变量由 [`chat_service.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py) 使用：
 
-- `AGENT_HEALTH_WINDOW_MINUTES`：健康聚合窗口分钟数（默认 `60`）
-- `AGENT_SLO_TIMEOUT_RATE_THRESHOLD`：超时率阈值（默认 `0.1`）
-- `AGENT_SLO_FAILURE_RATE_THRESHOLD`：失败率阈值（默认 `0.2`）
-- `AGENT_SLO_FALLBACK_RATE_THRESHOLD`：fallback 率阈值（默认 `0.5`）
+- `AGENT_HEALTH_WINDOW_MINUTES`
+- `AGENT_SLO_TIMEOUT_RATE_THRESHOLD`
+- `AGENT_SLO_FAILURE_RATE_THRESHOLD`
+- `AGENT_SLO_FALLBACK_RATE_THRESHOLD`
+
+## 启动校验相关行为
+
+readiness 检查的核心实现：
+
+- [`web/shuai_web/startup_checks.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/startup_checks.py)
+- [`web/shuai_web/routes/health.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/health.py)
+
+启动后建议立即检查：
+
+```bash
+curl http://localhost:38000/api/health
+curl http://localhost:38000/api/ready
+curl http://localhost:38000/api/metrics
+```
+
+如果 `/api/ready` 返回 `503`，优先检查：
+
+- `config/llm_config.yaml`
+- `config/server_config.yaml`
+- `data/` 目录权限
+- `SHUAI_FAIL_FAST_STARTUP_VALIDATION`
+- 启动日志中的 `startup_validation`

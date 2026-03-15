@@ -1,28 +1,35 @@
-version: '3.8'
-
 services:
-  # 后端服务
   backend:
     build:
       context: ..
       dockerfile: Dockerfile.backend
     ports:
-      - "8000:8000"
+      - "38000:38000"
     environment:
       - PYTHONPATH=/app
+      - SHUAI_WEB_HOST=0.0.0.0
+      - SHUAI_WEB_PORT=38000
+      - SHUAI_FRONTEND_PORT=33001
+      - CORS_ORIGINS=http://localhost:33001,http://localhost:38000
+      - SHUAI_METRICS_ENABLED=true
     volumes:
       - ../config:/app/config
+      - ../data:/app/data
+      - ../logs:/app/logs
     restart: unless-stopped
 
-  # 前端服务 (Next.js)
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE: http://localhost:38000
+        INTERNAL_API_BASE: http://backend:38000
     ports:
-      - "3000:3000"
+      - "33001:33001"
     environment:
-      - NEXT_PUBLIC_API_BASE=http://backend:8000
+      - NEXT_PUBLIC_API_BASE=http://localhost:38000
+      - INTERNAL_API_BASE=http://backend:38000
     depends_on:
       - backend
     restart: unless-stopped

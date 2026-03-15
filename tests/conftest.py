@@ -16,6 +16,17 @@ EXTERNAL_API_TEST_FILES = {
     "test_sse_streaming.py",
     "test_e2e_streaming.py",
 }
+LOCAL_SMOKE_TEST_FILES = {
+    "test_api_smoke_local.py",
+    "test_chat_stream_local.py",
+}
+QUALITY_TEST_FILES = {
+    "test_agent_benchmark_script_unit.py",
+    "test_agent_benchmark_trend_script_unit.py",
+    "test_agent_golden_eval_script_unit.py",
+    "test_agent_quality_gate_script_unit.py",
+    "test_agent_replay_script_unit.py",
+}
 
 
 @lru_cache(maxsize=1)
@@ -84,3 +95,27 @@ def skip_external_api_tests_when_server_unavailable(request):
         "External API integration tests require http://localhost:38000; "
         "server is unavailable in current environment."
     )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Apply stable markers from filename conventions so CI can slice test layers."""
+    _ = config
+    for item in items:
+        file_name = Path(str(item.fspath)).name
+        if file_name in EXTERNAL_API_TEST_FILES:
+            item.add_marker(pytest.mark.external_api)
+            item.add_marker(pytest.mark.integration)
+            item.add_marker(pytest.mark.local)
+            continue
+        if file_name in LOCAL_SMOKE_TEST_FILES:
+            item.add_marker(pytest.mark.integration)
+            item.add_marker(pytest.mark.local)
+            continue
+        if file_name in QUALITY_TEST_FILES:
+            item.add_marker(pytest.mark.quality)
+            item.add_marker(pytest.mark.unit)
+            continue
+        if "integration" in file_name or "e2e" in file_name:
+            item.add_marker(pytest.mark.integration)
+            continue
+        item.add_marker(pytest.mark.unit)

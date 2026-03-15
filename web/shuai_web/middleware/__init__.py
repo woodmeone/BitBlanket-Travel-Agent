@@ -29,6 +29,15 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from ..observability import (
+    RequestMetricsTimer,
+    bind_request_context,
+    emit_structured_log,
+    new_request_id,
+    record_http_request,
+    reset_request_context,
+)
+
 logger = logging.getLogger(__name__)
 
 # 类型变量
@@ -67,7 +76,6 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         self.logger = logging.getLogger(logger_name)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # 记录开始时间
         """Process one HTTP request through middleware and return response.
         
         Purpose:
@@ -80,37 +88,54 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         Returns:
             Response: HTTP response returned by middleware after processing.
         """
-        start_time = time.perf_counter()
+        request_id = request.headers.get("X-Request-ID") or new_request_id()
+        trace_id = request.headers.get("X-Trace-ID") or request_id
+        request.state.request_id = request_id
+        request.state.trace_id = trace_id
+        context_tokens = bind_request_context(request_id, trace_id)
+        timer = RequestMetricsTimer()
 
-        # 获取请求信息
         method = request.method
         path = request.url.path
         client_ip = request.client.host if request.client else "unknown"
-        query_params = str(request.query_params) if request.query_params else ""
+        query_params = dict(request.query_params)
 
-        # 处理请求
         try:
             response = await call_next(request)
             status_code = response.status_code
-        except Exception as e:
+        except Exception:
             status_code = 500
-            self.logger.exception(f"Request failed: {method} {path}")
+            emit_structured_log(
+                self.logger,
+                "http_request_failed",
+                level=logging.ERROR,
+                method=method,
+                path=path,
+                client_ip=client_ip,
+                query_params=query_params,
+            )
+            reset_request_context(context_tokens)
             raise
+        finally:
+            duration_seconds = timer.stop()
+            record_http_request(method, getattr(request.scope.get("route"), "path", path), status_code, duration_seconds)
 
-        # 计算耗时
-        duration = (time.perf_counter() - start_time) * 1000
-
-        # 记录日志
-        self.logger.info(
-            f"{method} {path}{query_params} | "
-            f"status={status_code} | "
-            f"duration={duration:.2f}ms | "
-            f"client={client_ip}"
+        emit_structured_log(
+            self.logger,
+            "http_request",
+            method=method,
+            path=path,
+            route=getattr(request.scope.get("route"), "path", path),
+            status=status_code,
+            duration_ms=round(duration_seconds * 1000, 2),
+            client_ip=client_ip,
+            query_params=query_params,
         )
 
-        # 添加耗时 header
-        response.headers["X-Process-Time"] = f"{duration:.2f}ms"
-
+        response.headers["X-Process-Time"] = f"{duration_seconds * 1000:.2f}ms"
+        response.headers["X-Request-ID"] = request_id
+        response.headers["X-Trace-ID"] = trace_id
+        reset_request_context(context_tokens)
         return response
 
 
@@ -257,6 +282,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             response.headers["X-RateLimit-Limit"] = str(self.max_requests)
             response.headers["X-RateLimit-Remaining"] = "0"
             response.headers["X-RateLimit-Reset"] = str(int(time.time() + self.window))
+            if hasattr(request.state, "request_id"):
+                response.headers["X-Request-ID"] = request.state.request_id
+            if hasattr(request.state, "trace_id"):
+                response.headers["X-Trace-ID"] = request.state.trace_id
             return response
 
         # 处理请求
@@ -319,8 +348,15 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
             )
             return response
         except asyncio.TimeoutError:
-            logger.warning(f"Request timeout: {request.method} {request.url.path}")
-            return JSONResponse(
+            emit_structured_log(
+                logger,
+                "http_request_timeout",
+                level=logging.WARNING,
+                method=request.method,
+                path=request.url.path,
+                timeout_seconds=self.timeout,
+            )
+            response = JSONResponse(
                 status_code=504,
                 content={
                     "error": {
@@ -329,6 +365,11 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
                     }
                 }
             )
+            if hasattr(request.state, "request_id"):
+                response.headers["X-Request-ID"] = request.state.request_id
+            if hasattr(request.state, "trace_id"):
+                response.headers["X-Trace-ID"] = request.state.trace_id
+            return response
 
 
 # =============================================================================

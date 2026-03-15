@@ -17,6 +17,14 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from ..repositories.session_repository import SessionRepository
 from ..bootstrap import ensure_project_paths
 from ..config.runtime import get_llm_config_path
+from ..observability import (
+    bind_request_context,
+    emit_structured_log,
+    get_request_context,
+    record_chat_stream,
+    record_sse_event,
+    reset_request_context,
+)
 
 ensure_project_paths()
 
@@ -188,6 +196,8 @@ class ChatService:
         message: str,
         session_id: Optional[str] = None,
         mode: str = "react",
+        request_id: Optional[str] = None,
+        trace_id: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
         """Run one chat request and stream normalized SSE events (reasoning/chunk/stage/metadata).
         
@@ -198,19 +208,16 @@ class ChatService:
             message: User message text for this chat run.
             session_id: Session identifier used to isolate chat and memory state.
             mode: Requested chat mode (direct/react/plan).
+            request_id: Request identifier propagated from the API layer.
+            trace_id: Trace identifier propagated from the API layer.
         
         Returns:
             AsyncGenerator[str, None]: Streamed SSE/event payload sequence.
         """
-        await self.initialize()
-
+        context_tokens = bind_request_context(request_id or str(uuid.uuid4()), trace_id)
         mode = self._normalize_mode(mode)
-        sid = await self._ensure_session(session_id)
+        sid = session_id
         run_id = str(uuid.uuid4())
-
-        yield self._sse({"type": "session_id", "session_id": sid, "run_id": run_id})
-        await self.save_message(sid, "user", message)
-
         answer_content = ""
         reasoning_content = ""
         tools_used: list[str] = []
@@ -225,6 +232,19 @@ class ChatService:
         memory_user_written = False
 
         try:
+            await self.initialize()
+            sid = await self._ensure_session(session_id)
+            emit_structured_log(
+                logger,
+                "chat_stream_started",
+                session_id=sid,
+                mode=mode,
+                run_id=run_id,
+            )
+
+            yield self._sse({"type": "session_id", "session_id": sid, "run_id": run_id})
+            await self.save_message(sid, "user", message)
+
             memory_user_written = await self._write_memory_user(sid, message)
             if mode == "direct":
                 yield self._sse({"type": "reasoning_start"})
@@ -390,6 +410,18 @@ class ChatService:
                 execution_stats=execution_stats,
                 answer=answer_content,
             )
+            record_chat_stream(mode, "success")
+            emit_structured_log(
+                logger,
+                "chat_stream_completed",
+                session_id=sid,
+                mode=mode,
+                run_id=run_id,
+                tools_used=tools_used,
+                verification_passed=verification_passed,
+                stale_result_count=stale_result_count,
+                fallback_steps=fallback_steps,
+            )
 
         except Exception as exc:
             logger.exception("Chat stream failed: %s", exc)
@@ -412,8 +444,20 @@ class ChatService:
                 answer=answer_content,
                 hard_error=str(exc),
             )
+            record_chat_stream(mode, "error")
+            emit_structured_log(
+                logger,
+                "chat_stream_failed",
+                level=logging.ERROR,
+                session_id=sid,
+                mode=mode,
+                run_id=run_id,
+                error=str(exc),
+            )
             yield self._sse({"type": "error", "content": str(exc), "run_id": run_id})
             yield self._sse({"type": "done", "run_id": run_id})
+        finally:
+            reset_request_context(context_tokens)
 
     async def _stream_direct_response(self, session_id: str, message: str) -> AsyncGenerator[str, None]:
         """Stream direct LLM output tokens when mode bypasses tool orchestration.
@@ -682,8 +726,12 @@ class ChatService:
         Returns:
             str: Normalized text string used by downstream logic.
         """
-        import json
-
+        context = get_request_context()
+        if context.get("request_id") and "request_id" not in payload:
+            payload["request_id"] = context["request_id"]
+        if context.get("trace_id") and "trace_id" not in payload:
+            payload["trace_id"] = context["trace_id"]
+        record_sse_event(str(payload.get("type", "unknown")))
         return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
     async def save_message(

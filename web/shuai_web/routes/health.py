@@ -5,11 +5,16 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+from starlette.responses import Response
+from starlette.status import HTTP_200_OK, HTTP_503_SERVICE_UNAVAILABLE
 
 from ..app_meta import APP_VERSION
 from ..dependencies.container import get_container
+from ..observability import metrics_response_payload
+from ..config.runtime import get_server_config
 from ..services.chat_service import ChatService
 
 router = APIRouter()
@@ -37,6 +42,23 @@ class SimpleStatusResponse(BaseModel):
     """Simple OK-style response for liveness/readiness probes."""
 
     status: str
+
+
+class ReadinessCheckResponse(BaseModel):
+    """Per-check readiness detail returned by `/ready`."""
+
+    name: str
+    status: Literal["ok", "not_ready"]
+    message: str
+    details: dict[str, object] = {}
+
+
+class ReadinessResponse(BaseModel):
+    """Aggregated readiness response with detailed startup validation checks."""
+
+    status: Literal["ready", "not_ready", "starting"]
+    validated_at: str | None
+    checks: dict[str, ReadinessCheckResponse]
 
 
 class ToolHealthResponse(BaseModel):
@@ -109,13 +131,36 @@ async def tools_intents_health_check():
     return ToolIntentHealthResponse(**status)
 
 
-@router.get("/ready", response_model=SimpleStatusResponse)
-async def readiness_check():
-    """Kubernetes readiness probe endpoint."""
-    return SimpleStatusResponse(status="ready")
+@router.get("/ready", response_model=ReadinessResponse)
+async def readiness_check(request: Request):
+    """Kubernetes readiness probe endpoint backed by real startup validation state."""
+    snapshot = getattr(
+        request.app.state,
+        "readiness_snapshot",
+        {"status": "starting", "validated_at": None, "checks": {}},
+    )
+    status_code = HTTP_200_OK if snapshot.get("status") == "ready" else HTTP_503_SERVICE_UNAVAILABLE
+    return JSONResponse(
+        content=ReadinessResponse(**snapshot).model_dump(),
+        status_code=status_code,
+    )
 
 
 @router.get("/live", response_model=SimpleStatusResponse)
 async def liveness_check():
     """Kubernetes liveness probe endpoint."""
     return SimpleStatusResponse(status="alive")
+
+
+@router.get("/metrics", include_in_schema=False)
+async def metrics_endpoint():
+    """Expose Prometheus metrics for web/API health and SSE activity."""
+    try:
+        if not get_server_config().metrics_enabled:
+            raise HTTPException(status_code=404, detail="Metrics endpoint is disabled")
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+    payload, content_type = metrics_response_payload()
+    return Response(content=payload, media_type=content_type)

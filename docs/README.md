@@ -39,6 +39,8 @@
   优先看 [teaching/03-web-api-session-and-storage.md](teaching/03-web-api-session-and-storage.md) 和 [teaching/05-testing-debugging-and-change-practice.md](teaching/05-testing-debugging-and-change-practice.md)
 - `我要改 Agent`：
   优先看 [teaching/04-agent-core-tools-memory-checkpoint.md](teaching/04-agent-core-tools-memory-checkpoint.md) 和 [teaching/05-testing-debugging-and-change-practice.md](teaching/05-testing-debugging-and-change-practice.md)
+- `我要看部署 / 配置 / readiness / trace / CI`：
+  优先看 [architecture/infrastructure-foundations.md](architecture/infrastructure-foundations.md)、[reference/configuration-reference.md](reference/configuration-reference.md)、[testing/testing-guide.md](testing/testing-guide.md)
 - `面试前 2 小时复习`：
   优先看 [teaching/01-total-plan-and-learning-method.md](teaching/01-total-plan-and-learning-method.md)、[teaching/06-interview-highlights-and-system-evolution.md](teaching/06-interview-highlights-and-system-evolution.md)、[teaching/07-thinking-questions-homework-and-answers.md](teaching/07-thinking-questions-homework-and-answers.md)
 
@@ -67,6 +69,7 @@
 ### Architecture
 
 - [architecture/system-architecture.md](architecture/system-architecture.md): 整体系统架构与链路说明
+- [architecture/infrastructure-foundations.md](architecture/infrastructure-foundations.md): 运行与部署、配置、readiness、CI、trace、metrics 总览
 - [architecture/data-storage.md](architecture/data-storage.md): 数据落盘与持久化策略
 - [architecture/agent-memory-mechanisms.md](architecture/agent-memory-mechanisms.md): Agent memory 的原子持久化、Top-K 注入与冲突澄清闭环
 - [architecture/agent-p0-hardening-roadmap.md](architecture/agent-p0-hardening-roadmap.md): Agent 稳定性治理路线图
@@ -99,3 +102,7 @@
   - `docs/README.md`
   - `docs/reference/api-reference.md`
   - `docs/product/product-requirements.md`
+- 如果改动的是基础设施层（部署、配置、startup checks、trace、metrics、CI），额外同步：
+  - `docs/architecture/infrastructure-foundations.md`
+  - `docs/reference/configuration-reference.md`
+  - `docs/testing/testing-guide.md`

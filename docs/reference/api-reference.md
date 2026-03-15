@@ -1,8 +1,8 @@
-﻿# API Reference
+# API Reference
 
 所有业务接口默认前缀为 `/api`。
 
-## 1. Health
+## 1. Health / Ready / Metrics
 
 ### `GET /api/health`
 
@@ -23,13 +23,64 @@
 }
 ```
 
+### `GET /api/ready`
+
+用于真实 readiness 检查，当前会返回 startup validation 结果。
+
+返回规则：
+
+- `200`: `status == "ready"`
+- `503`: `status == "starting"` 或 `status == "not_ready"`
+
+返回示例：
+
+```json
+{
+  "status": "ready",
+  "validated_at": "2026-03-15T08:21:03.102313+00:00",
+  "checks": {
+    "server_config": {
+      "name": "server_config",
+      "status": "ok",
+      "message": "Server configuration resolved.",
+      "details": {
+        "web_port": 38000,
+        "frontend_port": 33001,
+        "metrics_enabled": true
+      }
+    }
+  }
+}
+```
+
+### `GET /api/live`
+
+简单 liveness 探针，通常只返回：
+
+```json
+{
+  "status": "alive"
+}
+```
+
+### `GET /api/metrics`
+
+Prometheus 指标出口。
+
+默认会暴露：
+
+- `shuai_http_requests_total`
+- `shuai_http_request_duration_seconds`
+- `shuai_http_in_flight_requests`
+- `shuai_chat_stream_requests_total`
+- `shuai_sse_events_total`
+- `shuai_readiness_state`
+
 ### 其他健康接口
 
 - `GET /api/health/llm`
 - `GET /api/health/tools`
 - `GET /api/health/tools/intents`
-- `GET /api/ready`
-- `GET /api/live`
 
 `/api/health/tools` 重点字段：
 
@@ -66,6 +117,25 @@
 - `session_id`: 可选；为空时后端可创建新会话
 - `mode`: `direct | react | plan`
 
+### 推荐请求头
+
+前端当前会主动带：
+
+- `X-Request-ID`
+- `X-Trace-ID`
+
+如果你自己写调试脚本，也建议带上这两个头，便于把请求日志、SSE payload 和前端日志串起来。
+
+### 响应头
+
+流式接口当前会返回：
+
+- `Content-Type: text/event-stream`
+- `X-Request-ID`
+- `X-Trace-ID`
+- `Cache-Control: no-cache`
+- `Connection: keep-alive`
+
 ### SSE 事件类型
 
 - `session_id`
@@ -95,8 +165,9 @@
 
 说明：
 
-1. `plan_preview`、`stage`、`tool_start`、`tool_end` 可能穿插在中间。
-2. 若发生错误，通常会收到 `error` 后再收到 `done`。
+1. `plan_preview`、`stage`、`tool_start`、`tool_end` 可能穿插在中间
+2. 若发生错误，通常会收到 `error`
+3. 现在 `session_id / metadata / done` 等事件都可能带 `request_id / trace_id`
 
 ### SSE payload 示例
 
@@ -107,16 +178,9 @@
   "type": "stage",
   "stage": "query",
   "label": "查询数据",
-  "progress": 45
-}
-```
-
-`tool_start`:
-
-```json
-{
-  "type": "tool_start",
-  "tool": "query_hotels"
+  "progress": 45,
+  "request_id": "req-123",
+  "trace_id": "trace-456"
 }
 ```
 
@@ -125,7 +189,9 @@
 ```json
 {
   "type": "chunk",
-  "content": "上午建议先到外滩..."
+  "content": "上午建议先到外滩...",
+  "request_id": "req-123",
+  "trace_id": "trace-456"
 }
 ```
 
@@ -140,7 +206,9 @@
   "reasoning_length": 820,
   "verification_passed": true,
   "stale_result_count": 0,
-  "fallback_steps": 1
+  "fallback_steps": 1,
+  "request_id": "req-123",
+  "trace_id": "trace-456"
 }
 ```
 
@@ -163,14 +231,8 @@
 - `verification_passed`
 - `stale_result_count`
 - `fallback_steps`
-
-### 高风险问答约束
-
-对于预算、价格、政策、签证、退改等高风险意图：
-
-- 最终答案会尽量附上证据来源
-- 会显式给出 `source` 和 `fetched_at`
-- 若验证不足，前端会展示可信度与风险提示
+- `request_id`
+- `trace_id`
 
 ## 3. Session
 
@@ -185,21 +247,10 @@
 - `POST /api/clear/{session_id}`
 - `POST /api/clear?session_id=...`
 
-### 常见用途
-
-- 新建会话
-- 获取历史会话列表
-- 会话重命名
-- 切换模型
-- 清空当前会话消息
-- 删除会话
-
 ## 4. Model
 
 - `GET /api/models`
 - `GET /api/models/{model_id}`
-
-用于前端模型下拉与会话级模型切换。
 
 ## 5. City Explorer
 
@@ -211,82 +262,17 @@
 - `GET /api/regions`
 - `GET /api/tags`
 
-### `GET /api/cities`
-
-支持参数：
-
-- `region`: 按地区筛选
-- `tags`: 逗号分隔标签，如 `亲子,美食`
-
-返回示例：
-
-```json
-{
-  "cities": [
-    {
-      "id": "shanghai",
-      "name": "上海",
-      "region": "华东",
-      "tags": ["现代都市", "购物", "夜景", "美食", "亲子"]
-    }
-  ]
-}
-```
-
-### `GET /api/cities/{city_id}`
-
-返回完整城市详情：
-
-- `description`
-- `attractions`
-- `avg_budget_per_day`
-- `best_seasons`
-
 ## 6. Map / Route Preview
 
 ### `POST /api/map/route-preview`
 
 用于行程卡中的真实路线预览与距离重排。
 
-请求体：
-
-```json
-{
-  "spots": ["外滩", "陆家嘴", "南京东路步行街"],
-  "city": "上海",
-  "provider": "amap"
-}
-```
-
-返回字段：
-
-- `provider`
-- `points`
-- `distance_m`
-- `duration_s`
-- `static_map_url`
-- `route_polyline`
-
 ## 7. Share
 
 ### `POST /api/share-links`
 
 创建可分享短链。
-
-请求体：
-
-```json
-{
-  "title": "上海周末 2 天轻松游",
-  "content": "...最终方案内容..."
-}
-```
-
-返回字段：
-
-- `success`
-- `share_id`
-- `share_url`
 
 ### `GET /api/share-links/{share_id}`
 
@@ -303,18 +289,14 @@
 ### 调 SSE 时优先看这些信号
 
 - Response header 是否为 `text/event-stream`
+- 是否有 `X-Request-ID / X-Trace-ID`
 - 是否先收到 `session_id`
-- 是否有 `answer_start`
 - 是否最终收到 `done`
+- SSE payload 中是否持续带 `request_id / trace_id`
 
-### 调城市探索时优先看这些接口
+### 调 readiness 时优先看这些信号
 
-- `/api/regions`
-- `/api/tags`
-- `/api/cities`
-- `/api/cities/{city_id}`
-
-### 调分享与地图时优先看这些接口
-
-- `/api/share-links`
-- `/api/map/route-preview`
+- `/api/ready` 返回的是 `200` 还是 `503`
+- `checks` 里是哪一项失败
+- `/api/metrics` 中 `shuai_readiness_state` 是否为 `1`
+- 启动日志里是否有 `startup_validation`

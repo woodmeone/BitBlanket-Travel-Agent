@@ -94,7 +94,9 @@ ShuaiTravelAgent/
 ├── docs/                   # 文档中心
 ├── config/                 # 服务与模型配置
 ├── data/                   # 本地运行数据
-└── scripts/                # benchmark / replay / quality gate 等脚本
+├── scripts/                # benchmark / replay / quality gate 等脚本
+├── compose.yaml            # 根目录 Compose
+└── Dockerfile.backend      # Web API Dockerfile
 ```
 
 更详细的目录说明见 [docs/reference/project-structure.md](docs/reference/project-structure.md)。
@@ -105,6 +107,8 @@ ShuaiTravelAgent/
 - API: `http://localhost:38000`
 - API Docs: `http://localhost:38000/rapidoc`
 - Health: `http://localhost:38000/api/health`
+- Ready: `http://localhost:38000/api/ready`
+- Metrics: `http://localhost:38000/api/metrics`
 
 ## 快速开始
 
@@ -114,6 +118,7 @@ ShuaiTravelAgent/
 - Node.js 20+
 - uv
 - npm
+- Docker / Docker Compose（可选，但推荐用于联调）
 
 ### 2. 安装依赖
 
@@ -132,9 +137,21 @@ cd ..
 
 ```bash
 copy config\llm_config.yaml.example config\llm_config.yaml
+copy config\server_config.yaml.example config\server_config.yaml
 ```
 
 根据实际模型服务填写 `api_key`、`api_base`、`model`。
+
+`server_config.yaml` 负责统一：
+
+- `web.host / web.port`
+- `frontend.port`
+- `cors_origins`
+- `request_timeout_seconds`
+- `rate_limit_max_requests`
+- `metrics_enabled / metrics_path`
+- `structured_logging`
+- `fail_fast_validation`
 
 ### 4. 启动后端
 
@@ -158,6 +175,20 @@ npm run dev
 5. 在结果区继续调整预算、查看多方案、检测冲突、导出图片或分享
 
 更完整的启动说明见 [docs/getting-started/quick-start.md](docs/getting-started/quick-start.md)。
+
+### 7. Docker Compose 启动
+
+如果想以统一的前后端容器方式联调，优先使用根目录 Compose：
+
+```bash
+docker compose up --build
+```
+
+相关资产：
+
+- [compose.yaml](/D:/projects/shuai/ShuaiTravelAgent/compose.yaml)
+- [Dockerfile.backend](/D:/projects/shuai/ShuaiTravelAgent/Dockerfile.backend)
+- [frontend/Dockerfile](/D:/projects/shuai/ShuaiTravelAgent/frontend/Dockerfile)
 
 ## 常用接口
 
@@ -198,8 +229,57 @@ npm run dev
 - `GET /api/health/llm`
 - `GET /api/health/tools`
 - `GET /api/health/tools/intents`
+- `GET /api/ready`
+- `GET /api/live`
+- `GET /api/metrics`
 
 完整接口说明见 [docs/reference/api-reference.md](docs/reference/api-reference.md)。
+
+## 部署与观测
+
+### readiness 与启动校验
+
+后端启动时会执行真实 startup checks，并把结果暴露到 `/api/ready`。当前会检查：
+
+- `server_config` 是否可解析
+- `data/` 是否可写
+- `llm_config` 是否存在且至少有一个 active model
+- 依赖容器能否 resolve
+- Chat runtime 是否能初始化
+
+如果希望启动失败时直接退出，可设置：
+
+```bash
+set SHUAI_FAIL_FAST_STARTUP_VALIDATION=true
+```
+
+### request_id / trace_id
+
+前端 REST 与 SSE 请求都会自动携带：
+
+- `X-Request-ID`
+- `X-Trace-ID`
+
+后端会把它们写入：
+
+- 响应头
+- 结构化日志
+- SSE payload 的 `request_id / trace_id`
+
+### Prometheus metrics
+
+当前默认暴露：
+
+- `GET /api/metrics`
+
+主要指标包括：
+
+- `shuai_http_requests_total`
+- `shuai_http_request_duration_seconds`
+- `shuai_http_in_flight_requests`
+- `shuai_chat_stream_requests_total`
+- `shuai_sse_events_total`
+- `shuai_readiness_state`
 
 ## 测试与质量
 
@@ -215,7 +295,8 @@ npm run build
 ### 后端
 
 ```bash
-python -m pytest tests -q
+python -m pytest tests -m "unit and not local and not external_api" -q
+python -m pytest tests -m "local and not external_api" -q
 python scripts/docstring_audit.py --strict
 ```
 
@@ -245,6 +326,8 @@ python scripts/docstring_audit.py --strict
   优先看 [docs/teaching/03-web-api-session-and-storage.md](docs/teaching/03-web-api-session-and-storage.md) 和 [docs/teaching/05-testing-debugging-and-change-practice.md](docs/teaching/05-testing-debugging-and-change-practice.md)
 - `我要改 Agent`：
   优先看 [docs/teaching/04-agent-core-tools-memory-checkpoint.md](docs/teaching/04-agent-core-tools-memory-checkpoint.md) 和 [docs/teaching/05-testing-debugging-and-change-practice.md](docs/teaching/05-testing-debugging-and-change-practice.md)
+- `我要看部署 / 配置 / readiness / trace / CI`：
+  优先看 [docs/architecture/infrastructure-foundations.md](docs/architecture/infrastructure-foundations.md)、[docs/reference/configuration-reference.md](docs/reference/configuration-reference.md)、[docs/testing/testing-guide.md](docs/testing/testing-guide.md)
 - `面试前 2 小时复习`：
   优先看 [docs/teaching/01-total-plan-and-learning-method.md](docs/teaching/01-total-plan-and-learning-method.md)、[docs/teaching/06-interview-highlights-and-system-evolution.md](docs/teaching/06-interview-highlights-and-system-evolution.md)、[docs/teaching/07-thinking-questions-homework-and-answers.md](docs/teaching/07-thinking-questions-homework-and-answers.md)
 
@@ -254,6 +337,7 @@ python scripts/docstring_audit.py --strict
 - [docs/getting-started/quick-start.md](docs/getting-started/quick-start.md): 快速启动
 - [docs/getting-started/ai-travel-agent-zero-to-one.md](docs/getting-started/ai-travel-agent-zero-to-one.md): 面向新人的 AI 旅游 Agent 从 0 到 1 教学教程
 - [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md): 系统架构
+- [docs/architecture/infrastructure-foundations.md](docs/architecture/infrastructure-foundations.md): 运行与部署、配置、readiness、CI、trace、metrics 总览
 - [docs/reference/api-reference.md](docs/reference/api-reference.md): API 参考
 - [docs/reference/project-structure.md](docs/reference/project-structure.md): 目录结构
 - [docs/reference/backend-maintainer-playbook.md](docs/reference/backend-maintainer-playbook.md): 后端维护与排障手册

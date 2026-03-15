@@ -1,17 +1,19 @@
-﻿# Project Structure
+# Project Structure
 
 ## 顶层目录
 
 ```text
 ShuaiTravelAgent/
-├── agent/        # LangGraph Agent 逻辑
-├── web/          # FastAPI 服务
-├── frontend/     # Next.js 前端
-├── config/       # YAML 配置
-├── docs/         # 文档中心
-├── tests/        # API / 集成测试
-├── data/         # 运行时数据
-└── scripts/      # benchmark / replay / quality gate 等脚本
+├── agent/                  # LangGraph Agent 逻辑
+├── web/                    # FastAPI 服务
+├── frontend/               # Next.js 前端
+├── config/                 # YAML 配置
+├── docs/                   # 文档中心
+├── tests/                  # API / 集成测试
+├── data/                   # 运行时数据
+├── scripts/                # benchmark / replay / quality gate 等脚本
+├── compose.yaml            # 根目录 Docker Compose
+└── Dockerfile.backend      # Web API 容器镜像构建文件
 ```
 
 ## 关键目录说明
@@ -22,9 +24,12 @@ ShuaiTravelAgent/
 
 重点子目录：
 
-- `travel_agent/graph/`: 图构建、节点、运行时配置、checkpoint
-- `travel_agent/tools/`: 工具定义、provider 适配
-- `travel_agent/llm/`: LLM 适配层
+- `travel_agent/graph/`
+  - 图构建、节点、运行时配置、checkpoint
+- `travel_agent/tools/`
+  - 工具定义、provider 适配
+- `travel_agent/llm/`
+  - LLM 适配层
 
 适合在这些场景进入：
 
@@ -35,22 +40,31 @@ ShuaiTravelAgent/
 
 ### `web/`
 
-负责 Web API 路由、服务层与存储层。
+负责 Web API 路由、服务层、存储层，以及 startup validation 与 observability。
 
 重点路径：
 
-- `web/shuai_web/main.py`: FastAPI 入口
-- `web/shuai_web/routes/`: chat / session / city / health / model / share / map
-- `web/shuai_web/services/`: 业务服务
-- `web/shuai_web/repositories/`: 仓储接口与实现
-- `web/shuai_web/storage/`: 文件或本地存储抽象
+- [`web/shuai_web/main.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/main.py)
+  - FastAPI 入口、middleware 注册、router 注册、metrics alias 注册
+- [`web/shuai_web/routes/`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes)
+  - `chat / session / city / health / model / share / map`
+- [`web/shuai_web/services/`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services)
+  - 业务服务，重点是 `chat_service.py`
+- [`web/shuai_web/repositories/`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/repositories)
+  - 仓储接口与实现
+- [`web/shuai_web/storage/`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage)
+  - 文件或本地存储抽象
+- [`web/shuai_web/observability.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/observability.py)
+  - request context、结构化日志、Prometheus metrics
+- [`web/shuai_web/startup_checks.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/startup_checks.py)
+  - readiness snapshot 与 fail-fast 启动校验
 
 适合在这些场景进入：
 
 - 新增 API
 - 改 session 生命周期
-- 改城市探索数据
-- 改分享或地图接口
+- 改 startup readiness
+- 改 trace / metrics / middleware
 
 ### `frontend/`
 
@@ -58,19 +72,42 @@ ShuaiTravelAgent/
 
 重点路径：
 
-- `frontend/src/app/`: App Router 页面
-- `frontend/src/components/`: 页面组件、消息列表、工具箱、城市探索
-- `frontend/src/context/`: 全局状态
-- `frontend/src/services/`: REST / SSE 客户端
-- `frontend/src/utils/`: 行程解析、预算计算、导出辅助逻辑
-- `frontend/src/types/`: TS 类型定义
+- [`frontend/src/app/`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/app)
+  - App Router 页面
+- [`frontend/src/components/`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components)
+  - 页面组件、消息列表、工具箱、城市探索
+- [`frontend/src/context/`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/context)
+  - 全局状态
+- [`frontend/src/services/`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services)
+  - REST / SSE 客户端
+- [`frontend/src/utils/`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/utils)
+  - 行程解析、预算计算、导出辅助逻辑
+- [`frontend/src/types/`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/types)
+  - TS 类型定义
+- [`frontend/next.config.js`](/D:/projects/shuai/ShuaiTravelAgent/frontend/next.config.js)
+  - Next.js rewrite 和内部 API 基址
+- [`frontend/Dockerfile`](/D:/projects/shuai/ShuaiTravelAgent/frontend/Dockerfile)
+  - 前端容器构建
 
 适合在这些场景进入：
 
-- 改对话输入/消息展示
+- 改对话输入 / 消息展示
+- 改 request_id / trace_id 前端透传
 - 改每日行程卡与预算工具
 - 改城市探索卡片与对比表
-- 改导出图片、分享、地图联动
+
+### `config/`
+
+负责配置模板和本地配置。
+
+关键文件：
+
+- [`config/__init__.py`](/D:/projects/shuai/ShuaiTravelAgent/config/__init__.py)
+  - `ServerConfig`，统一解析 YAML + env overrides
+- [`config/server_config.yaml.example`](/D:/projects/shuai/ShuaiTravelAgent/config/server_config.yaml.example)
+  - 服务配置模板
+- [`config/llm_config.yaml.example`](/D:/projects/shuai/ShuaiTravelAgent/config/llm_config.yaml.example)
+  - 模型配置模板
 
 ### `tests/`
 
@@ -81,7 +118,14 @@ ShuaiTravelAgent/
 - SSE 行为
 - guardrails
 - verification / stale / fallback
+- readiness / metrics / tracing
 - golden eval 数据集
+
+重点文件：
+
+- [`tests/test_api_smoke_local.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_api_smoke_local.py)
+- [`tests/test_chat_stream_local.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_chat_stream_local.py)
+- [`tests/conftest.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/conftest.py)
 
 ### `docs/`
 
@@ -94,11 +138,13 @@ ShuaiTravelAgent/
 - `testing/`
 - `benchmarks/`
 - `assets/`
+- `teaching/`
 
 维护者常用参考：
 
-- `reference/backend-maintainer-playbook.md`
-- `reference/frontend-message-rendering.md`
+- [`docs/architecture/infrastructure-foundations.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/architecture/infrastructure-foundations.md)
+- [`docs/reference/backend-maintainer-playbook.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/backend-maintainer-playbook.md)
+- [`docs/reference/frontend-message-rendering.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/frontend-message-rendering.md)
 
 ### `scripts/`
 
@@ -108,35 +154,34 @@ ShuaiTravelAgent/
 - golden eval
 - replay
 - quality gate
-- 启动/联调辅助
+- docstring audit
 
 ## 当前最常用的文件入口
 
 ### 前端
 
-- `frontend/src/components/ChatArea.tsx`
-- `frontend/src/components/MessageList.tsx`
-- `frontend/src/components/TravelPlanToolkit.tsx`
-- `frontend/src/components/CityExplorer.tsx`
-- `frontend/src/services/api.ts`
-- `frontend/src/utils/travelPlan.ts`
+- [`frontend/src/components/ChatArea.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)
+- [`frontend/src/components/MessageList.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)
+- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)
+- [`frontend/src/components/CityExplorer.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/CityExplorer.tsx)
+- [`frontend/src/services/api.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
+- [`frontend/src/utils/travelPlan.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/utils/travelPlan.ts)
 
 ### 后端
 
-- `web/shuai_web/routes/chat.py`
-- `web/shuai_web/services/chat_service.py`
-- `web/shuai_web/routes/city.py`
-- `web/shuai_web/services/city_service.py`
-- `web/shuai_web/services/map_service.py`
-- `web/shuai_web/services/share_service.py`
+- [`web/shuai_web/routes/chat.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)
+- [`web/shuai_web/routes/health.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/health.py)
+- [`web/shuai_web/services/chat_service.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)
+- [`web/shuai_web/observability.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/observability.py)
+- [`web/shuai_web/startup_checks.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/startup_checks.py)
 
 ### Agent
 
-- `agent/travel_agent/graph/builder.py`
-- `agent/travel_agent/graph/nodes.py`
-- `agent/travel_agent/graph/runtime_config.py`
-- `agent/travel_agent/graph/memory_integration.py`
-- `agent/travel_agent/tools/travel_tools.py`
+- [`agent/travel_agent/graph/builder.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)
+- [`agent/travel_agent/graph/nodes.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py)
+- [`agent/travel_agent/graph/runtime_config.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/runtime_config.py)
+- [`agent/travel_agent/graph/memory_integration.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/memory_integration.py)
+- [`agent/travel_agent/tools/travel_tools.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/tools/travel_tools.py)
 
 ## 修改时的经验性建议
 
@@ -149,14 +194,17 @@ ShuaiTravelAgent/
 - `frontend/src/utils/travelPlan.ts`
 - 对应的后端接口与 types
 
-### 改 API 时
+### 改 API / startup / observability 时
 
 通常需要同时关注：
 
+- `web/shuai_web/main.py`
+- `web/shuai_web/middleware/__init__.py`
 - `web/shuai_web/routes/*`
 - `web/shuai_web/services/*`
-- `frontend/src/services/api.ts`
-- `frontend/src/types/index.ts`
+- `config/__init__.py`
+- `tests/test_api_smoke_local.py`
+- `tests/test_chat_stream_local.py`
 
 ### 改 Agent 行为时
 
@@ -165,7 +213,7 @@ ShuaiTravelAgent/
 - `agent/travel_agent/graph/*`
 - `agent/travel_agent/tools/*`
 - `tests/`
-- `docs/reference/api-reference.md` 中的事件与元数据说明
+- `docs/reference/api-reference.md`
 
 ## 结构规范
 

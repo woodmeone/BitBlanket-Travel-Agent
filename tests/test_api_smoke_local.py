@@ -59,6 +59,8 @@ async def test_health_routes_smoke():
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         health_resp = await client.get("/api/health")
         assert health_resp.status_code == 200
+        assert health_resp.headers.get("X-Request-ID")
+        assert health_resp.headers.get("X-Trace-ID")
         health_data = health_resp.json()
         assert health_data.get("status") == "healthy"
         assert isinstance(health_data.get("services"), dict)
@@ -95,12 +97,21 @@ async def test_health_routes_smoke():
         assert isinstance(intent_data.get("intent_aggregate"), dict)
 
         ready_resp = await client.get("/api/ready")
-        assert ready_resp.status_code == 200
-        assert ready_resp.json().get("status") == "ready"
+        assert ready_resp.status_code in {200, 503}
+        ready_data = ready_resp.json()
+        assert ready_data.get("status") in {"ready", "not_ready", "starting"}
+        assert isinstance(ready_data.get("checks"), dict)
+        if ready_resp.status_code == 200:
+            assert ready_data.get("status") == "ready"
 
         live_resp = await client.get("/api/live")
         assert live_resp.status_code == 200
         assert live_resp.json().get("status") == "alive"
+
+        metrics_resp = await client.get("/api/metrics")
+        assert metrics_resp.status_code == 200
+        assert "text/plain" in metrics_resp.headers.get("content-type", "")
+        assert "shuai_http_requests_total" in metrics_resp.text
 
 
 @pytest.mark.asyncio

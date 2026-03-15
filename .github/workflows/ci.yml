@@ -21,8 +21,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run tests
-        run: pytest tests -q
+      - name: Prepare runtime config for CI
+        run: |
+          cp config/llm_config.yaml.example config/llm_config.yaml
+          cp config/server_config.yaml.example config/server_config.yaml
+
+      - name: Run backend unit tests
+        run: pytest tests -m "unit and not local and not external_api" -q
+
+      - name: Run backend local smoke tests
+        run: pytest tests -m "local and not external_api" -q
+
+      - name: Run docstring audit
+        run: python scripts/docstring_audit.py --strict
 
       - name: Run benchmark report
         run: python scripts/agent_benchmark.py --output-dir docs/benchmarks
@@ -47,6 +58,29 @@ jobs:
             --max-success-rate-regression 0.05 \
             --max-hallucination-rate-regression 0.02 \
             --max-fallback-steps-regression 2
+
+      - name: Upload backend quality artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-quality-artifacts
+          path: |
+            docs/benchmarks/agent_benchmark_latest.json
+            docs/benchmarks/agent_benchmark_latest.md
+            docs/benchmarks/agent_benchmark_trend_latest.md
+            docs/benchmarks/agent_golden_eval_latest.json
+
+      - name: Publish backend quality summary
+        run: |
+          {
+            echo "## Backend Quality Summary"
+            echo ""
+            echo "- Unit tests: \`pytest tests -m \"unit and not local and not external_api\" -q\`"
+            echo "- Local smoke tests: \`pytest tests -m \"local and not external_api\" -q\`"
+            echo "- Docstring audit: \`python scripts/docstring_audit.py --strict\`"
+            echo "- Benchmark report: \`docs/benchmarks/agent_benchmark_latest.md\`"
+            echo "- Trend report: \`docs/benchmarks/agent_benchmark_trend_latest.md\`"
+            echo "- Golden eval: \`docs/benchmarks/agent_golden_eval_latest.json\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   frontend-test:
     runs-on: ubuntu-latest
@@ -75,3 +109,13 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+      - name: Publish frontend summary
+        run: |
+          {
+            echo "## Frontend Quality Summary"
+            echo ""
+            echo "- Type check: \`npm run lint\`"
+            echo "- Unit tests: \`npm run test:run\`"
+            echo "- Build: \`npm run build\`"
+          } >> "$GITHUB_STEP_SUMMARY"

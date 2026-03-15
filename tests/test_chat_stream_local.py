@@ -53,6 +53,8 @@ async def test_chat_stream_sse_smoke(monkeypatch):
             json={"message": "recommend a travel destination", "mode": "react"},
         ) as response:
             assert response.status_code == 200
+            assert response.headers.get("X-Request-ID")
+            assert response.headers.get("X-Trace-ID")
 
             events = []
             async for line in response.aiter_lines():
@@ -92,8 +94,12 @@ async def test_chat_stream_sse_smoke(monkeypatch):
             metadata_event = next(item for item in events if item.get("type") == "metadata")
             done_event = next(item for item in events if item.get("type") == "done")
             assert session_event.get("run_id")
+            assert session_event.get("request_id")
+            assert session_event.get("trace_id")
             assert metadata_event.get("run_id") == session_event.get("run_id")
             assert done_event.get("run_id") == session_event.get("run_id")
+            assert metadata_event.get("request_id") == session_event.get("request_id")
+            assert done_event.get("trace_id") == session_event.get("trace_id")
             assert metadata_event.get("verification_passed") is True
             assert metadata_event.get("stale_result_count") == 0
             assert metadata_event.get("fallback_steps") == 0

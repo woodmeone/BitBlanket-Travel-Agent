@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import argparse
-import os
 import logging
+import os
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -15,6 +16,7 @@ from shuai_web.app_meta import APP_NAME, APP_VERSION
 from shuai_web.bootstrap import ensure_project_paths
 from shuai_web.config.runtime import get_model_config_manager, get_server_config
 from shuai_web.middleware import RequestLoggingMiddleware, RateLimitMiddleware, TimeoutMiddleware
+from shuai_web.startup_checks import maybe_fail_fast_on_startup
 from shuai_web.routes import (
     api_docs_router,
     city_router,
@@ -25,14 +27,33 @@ from shuai_web.routes import (
     share_router,
 )
 from shuai_web.routes.chat import router as chat_router
+from shuai_web.routes.health import metrics_endpoint
 
 logger = logging.getLogger(__name__)
 
 ensure_project_paths()
 
 
+@asynccontextmanager
+async def app_lifespan(app: FastAPI):
+    """Run startup validation and cache readiness state for health endpoints."""
+    app.state.readiness_snapshot = {
+        "status": "starting",
+        "validated_at": None,
+        "checks": {},
+    }
+    await maybe_fail_fast_on_startup(app)
+    yield
+
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application instance."""
+    try:
+        server_config = get_server_config()
+    except Exception as exc:
+        logger.warning("Failed to read server config; using middleware defaults: %s", exc)
+        server_config = None
+
     app = FastAPI(
         title=APP_NAME,
         description="AI Travel Assistant API with SSE streaming support.",
@@ -40,11 +61,12 @@ def create_app() -> FastAPI:
         docs_url=None,
         redoc_url=None,
         openapi_url="/openapi.json",
+        lifespan=app_lifespan,
     )
 
     # Load CORS configuration.
     try:
-        config_cors = get_server_config().cors_origins
+        config_cors = server_config.cors_origins if server_config else []
     except Exception as exc:
         logger.warning("Failed to read CORS config; using fallback origins: %s", exc)
         config_cors = []
@@ -65,8 +87,15 @@ def create_app() -> FastAPI:
     )
 
     app.add_middleware(RequestLoggingMiddleware)
-    app.add_middleware(RateLimitMiddleware, max_requests=100, window=60)
-    app.add_middleware(TimeoutMiddleware, timeout=30.0)
+    app.add_middleware(
+        RateLimitMiddleware,
+        max_requests=server_config.rate_limit_max_requests if server_config else 100,
+        window=server_config.rate_limit_window_seconds if server_config else 60,
+    )
+    app.add_middleware(
+        TimeoutMiddleware,
+        timeout=server_config.request_timeout_seconds if server_config else 30.0,
+    )
 
     # Warm up model config manager.
     try:
@@ -92,6 +121,19 @@ def create_app() -> FastAPI:
     app.include_router(map_router, prefix="/api", tags=["map"])
     app.include_router(share_router, prefix="/api", tags=["share"])
     app.include_router(api_docs_router)
+
+    if (
+        server_config
+        and server_config.metrics_enabled
+        and server_config.metrics_path
+        and server_config.metrics_path != "/api/metrics"
+    ):
+        app.add_api_route(
+            server_config.metrics_path,
+            metrics_endpoint,
+            methods=["GET"],
+            include_in_schema=False,
+        )
 
     @app.get("/")
     async def root() -> dict:

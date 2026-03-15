@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type InternalAxiosRequestConfig } from 'axios';
 import {
   AvailableModelsResponse,
   ChatRequest,
@@ -32,6 +32,70 @@ const API_BASE =
   'http://localhost:38000';
 const API_PREFIX = `${API_BASE}/api`;
 
+type AxiosTraceConfig = InternalAxiosRequestConfig & {
+  metadata?: {
+    requestId: string;
+    traceId: string;
+    startedAt: number;
+  };
+};
+
+function generateClientTraceId(prefix = 'req'): string {
+  const uuid = globalThis.crypto?.randomUUID?.();
+  if (uuid) return `${prefix}-${uuid}`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function buildTraceHeaders() {
+  const requestId = generateClientTraceId('req');
+  const traceId = generateClientTraceId('trace');
+  return {
+    requestId,
+    traceId,
+    headers: {
+      'X-Request-ID': requestId,
+      'X-Trace-ID': traceId,
+    },
+  };
+}
+
+const apiClient = axios.create();
+
+apiClient.interceptors.request.use((config: AxiosTraceConfig) => {
+  const trace = buildTraceHeaders();
+  config.headers = config.headers || {};
+  config.headers['X-Request-ID'] = trace.requestId;
+  config.headers['X-Trace-ID'] = trace.traceId;
+  config.metadata = {
+    requestId: trace.requestId,
+    traceId: trace.traceId,
+    startedAt: Date.now(),
+  };
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  (response) => {
+    const config = response.config as AxiosTraceConfig;
+    const elapsedMs = config.metadata ? Date.now() - config.metadata.startedAt : undefined;
+    if (config.metadata) {
+      logger.info(
+        `REST ${response.config.method?.toUpperCase() || 'GET'} ${response.config.url} request_id=${config.metadata.requestId} trace_id=${config.metadata.traceId} status=${response.status} duration_ms=${elapsedMs}`
+      );
+    }
+    return response;
+  },
+  (error) => {
+    const config = (error.config || {}) as AxiosTraceConfig;
+    if (config.metadata) {
+      logger.error(
+        `REST ${config.method?.toUpperCase() || 'GET'} ${config.url || ''} request_id=${config.metadata.requestId} trace_id=${config.metadata.traceId} failed: ${error.message}`
+      );
+    }
+    return Promise.reject(error);
+  }
+);
+
 export enum SSEConnectionStatus {
   IDLE = 'idle',
   CONNECTING = 'connecting',
@@ -53,6 +117,8 @@ export interface StreamMetadata {
   planId?: string | null;
   executionStats?: Record<string, unknown>;
   runId?: string;
+  requestId?: string;
+  traceId?: string;
 }
 
 // Chat stream callbacks intentionally separate "reasoning" and "answer" channels
@@ -101,77 +167,77 @@ class APIService {
   }
 
   async checkHealth(): Promise<HealthResponse> {
-    const response = await axios.get(`${API_PREFIX}/health`);
+    const response = await apiClient.get(`${API_PREFIX}/health`);
     return response.data;
   }
 
   async checkLLMHealth(): Promise<LLMHealthResponse> {
-    const response = await axios.get(`${API_PREFIX}/health/llm`);
+    const response = await apiClient.get(`${API_PREFIX}/health/llm`);
     return response.data;
   }
 
   async checkToolsHealth(): Promise<ToolsHealthResponse> {
-    const response = await axios.get(`${API_PREFIX}/health/tools`);
+    const response = await apiClient.get(`${API_PREFIX}/health/tools`);
     return response.data;
   }
 
   async checkToolsIntentsHealth(): Promise<ToolIntentsHealthResponse> {
-    const response = await axios.get(`${API_PREFIX}/health/tools/intents`);
+    const response = await apiClient.get(`${API_PREFIX}/health/tools/intents`);
     return response.data;
   }
 
   async createSession(): Promise<{ session_id: string }> {
-    const response = await axios.post(`${API_PREFIX}/session/new`);
+    const response = await apiClient.post(`${API_PREFIX}/session/new`);
     return response.data;
   }
 
   async getSessions(): Promise<{ sessions: SessionInfo[] }> {
-    const response = await axios.get(`${API_PREFIX}/sessions`);
+    const response = await apiClient.get(`${API_PREFIX}/sessions`);
     return response.data;
   }
 
   async deleteSession(sessionId: string): Promise<{ success: boolean }> {
-    const response = await axios.delete(`${API_PREFIX}/session/${sessionId}`);
+    const response = await apiClient.delete(`${API_PREFIX}/session/${sessionId}`);
     return response.data;
   }
 
   async clearChat(sessionId: string): Promise<ChatResponse> {
-    const response = await axios.post(`${API_PREFIX}/clear`, null, { params: { session_id: sessionId } });
+    const response = await apiClient.post(`${API_PREFIX}/clear`, null, { params: { session_id: sessionId } });
     return response.data;
   }
 
   async updateSessionName(sessionId: string, name: string): Promise<{ success: boolean; message?: string }> {
-    const response = await axios.put(`${API_PREFIX}/session/${sessionId}/name`, { name });
+    const response = await apiClient.put(`${API_PREFIX}/session/${sessionId}/name`, { name });
     return response.data;
   }
 
   async getAvailableModels(): Promise<AvailableModelsResponse> {
-    const response = await axios.get(`${API_PREFIX}/models`);
+    const response = await apiClient.get(`${API_PREFIX}/models`);
     return response.data;
   }
 
   async setSessionModel(sessionId: string, modelId: string): Promise<SetModelResponse> {
-    const response = await axios.put(`${API_PREFIX}/session/${sessionId}/model`, { model_id: modelId } as SetModelRequest);
+    const response = await apiClient.put(`${API_PREFIX}/session/${sessionId}/model`, { model_id: modelId } as SetModelRequest);
     return response.data;
   }
 
   async getSessionModel(sessionId: string): Promise<GetSessionModelResponse> {
-    const response = await axios.get(`${API_PREFIX}/session/${sessionId}/model`);
+    const response = await apiClient.get(`${API_PREFIX}/session/${sessionId}/model`);
     return response.data;
   }
 
   async getRegions(): Promise<RegionListResponse> {
-    const response = await axios.get(`${API_PREFIX}/regions`);
+    const response = await apiClient.get(`${API_PREFIX}/regions`);
     return response.data;
   }
 
   async getTags(): Promise<TagListResponse> {
-    const response = await axios.get(`${API_PREFIX}/tags`);
+    const response = await apiClient.get(`${API_PREFIX}/tags`);
     return response.data;
   }
 
   async getCities(params?: { region?: string; tags?: string[] }): Promise<CityListResponse> {
-    const response = await axios.get(`${API_PREFIX}/cities`, {
+    const response = await apiClient.get(`${API_PREFIX}/cities`, {
       params: {
         region: params?.region || undefined,
         tags: params?.tags && params.tags.length > 0 ? params.tags.join(',') : undefined,
@@ -181,22 +247,22 @@ class APIService {
   }
 
   async getCityDetail(cityId: string): Promise<CityDetail> {
-    const response = await axios.get(`${API_PREFIX}/cities/${cityId}`);
+    const response = await apiClient.get(`${API_PREFIX}/cities/${cityId}`);
     return response.data;
   }
 
   async getRoutePreview(payload: RoutePreviewRequest): Promise<RoutePreviewResponse> {
-    const response = await axios.post(`${API_PREFIX}/map/route-preview`, payload);
+    const response = await apiClient.post(`${API_PREFIX}/map/route-preview`, payload);
     return response.data;
   }
 
   async createShareLink(payload: ShareCreateRequest): Promise<ShareCreateResponse> {
-    const response = await axios.post(`${API_PREFIX}/share-links`, payload);
+    const response = await apiClient.post(`${API_PREFIX}/share-links`, payload);
     return response.data;
   }
 
   async getShareDetail(shareId: string): Promise<ShareDetailResponse> {
-    const response = await axios.get(`${API_PREFIX}/share-links/${encodeURIComponent(shareId)}`);
+    const response = await apiClient.get(`${API_PREFIX}/share-links/${encodeURIComponent(shareId)}`);
     return response.data;
   }
 
@@ -235,9 +301,14 @@ class APIService {
     }, 180000);
 
     try {
+      const trace = buildTraceHeaders();
       const response = await fetch(`${API_PREFIX}/chat/stream`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Request-ID': trace.requestId,
+          'X-Trace-ID': trace.traceId,
+        },
         body: JSON.stringify(request),
         signal: controller.signal,
       });
@@ -245,6 +316,9 @@ class APIService {
       clearTimeout(timeoutId);
       this.connectionStatus = SSEConnectionStatus.STREAMING;
       callbacks.onConnectionChange?.(this.connectionStatus);
+      logger.info(
+        `SSE POST ${API_PREFIX}/chat/stream request_id=${trace.requestId} trace_id=${trace.traceId} status=${response.status}`
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -381,6 +455,8 @@ class APIService {
               ? (data.execution_stats as Record<string, unknown>)
               : undefined,
           runId: typeof data.run_id === 'string' ? data.run_id : '',
+          requestId: typeof data.request_id === 'string' ? data.request_id : '',
+          traceId: typeof data.trace_id === 'string' ? data.trace_id : '',
         });
         if (dataType === 'reasoning_metadata' && Boolean(data.has_reasoning)) callbacks.onReasoningStart();
         return false;

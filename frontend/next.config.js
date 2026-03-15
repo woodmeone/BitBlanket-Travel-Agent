@@ -3,10 +3,11 @@ const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   async rewrites() {
+    const internalApiBase = process.env.INTERNAL_API_BASE || 'http://localhost:38000';
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:38000/api/:path*',
+        destination: `${internalApiBase}/api/:path*`,
       },
     ];
   },
