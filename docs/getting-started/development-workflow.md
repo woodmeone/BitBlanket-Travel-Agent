@@ -45,6 +45,13 @@ python scripts/agent_benchmark.py --output-dir docs/benchmarks
 python scripts/agent_golden_eval.py --dataset tests/golden/agent_react_golden.json --report docs/benchmarks/agent_golden_eval_latest.json --min-pass-rate 0.0
 python scripts/agent_quality_gate.py --golden-report docs/benchmarks/agent_golden_eval_latest.json --benchmark-report docs/benchmarks/agent_benchmark_latest.json --baseline-benchmark-report docs/benchmarks/agent_benchmark_baseline.json
 
+# runtime data maintenance
+python scripts/runtime_backup.py
+python scripts/runtime_prune.py --keep-latest-backups 10 --max-backup-age-days 14
+
+# API contract snapshot
+python scripts/export_openapi_snapshot.py
+
 # 前端
 cd frontend
 npm run lint

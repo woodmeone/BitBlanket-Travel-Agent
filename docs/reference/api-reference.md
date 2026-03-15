@@ -284,6 +284,10 @@ Prometheus 指标出口。
 - `GET /rapidoc`
 - `GET /redoc`
 
+当前仓库还会维护一份 OpenAPI 快照文件：
+
+- [`openapi.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/openapi.snapshot.json)
+
 ## 9. 调试建议
 
 ### 调 SSE 时优先看这些信号

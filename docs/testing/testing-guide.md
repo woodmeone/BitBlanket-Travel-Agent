@@ -59,6 +59,24 @@ python scripts/agent_quality_gate.py --golden-report docs/benchmarks/agent_golde
 - benchmark 趋势对比
 - CI/CD 质量门禁
 
+### 4. 契约快照脚本
+
+当前已经补上 OpenAPI 快照导出：
+
+```bash
+python scripts/export_openapi_snapshot.py
+```
+
+默认产物：
+
+- [`docs/reference/openapi.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/openapi.snapshot.json)
+
+它适合在这些场景使用：
+
+- 改 health / ready / session / share / city / model / map 接口后
+- 改请求/响应字段后
+- 改 OpenAPI 暴露结构后
+
 ## 推荐的本地回归顺序
 
 ### 日常前端改动
@@ -120,6 +138,7 @@ python scripts/agent_quality_gate.py --golden-report docs/benchmarks/agent_golde
 
 ```bash
 python -m pytest tests/test_api_smoke_local.py tests/test_chat_stream_local.py -q
+python -m pytest tests/test_runtime_data_lifecycle_unit.py tests/test_export_openapi_snapshot_script_unit.py -q
 ```
 
 ## CI 当前怎么跑

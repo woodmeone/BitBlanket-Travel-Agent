@@ -306,6 +306,13 @@ python scripts/docstring_audit.py --strict
 - `python scripts/agent_golden_eval.py --dataset tests/golden/agent_react_golden.json --report docs/benchmarks/agent_golden_eval_latest.json --min-pass-rate 0.0`
 - `python scripts/agent_quality_gate.py --golden-report ... --benchmark-report ... --baseline-benchmark-report ...`
 
+### 运行数据与契约维护脚本
+
+- `python scripts/runtime_backup.py`
+- `python scripts/runtime_restore.py --archive ...`
+- `python scripts/runtime_prune.py --keep-latest-backups 10 --max-backup-age-days 14`
+- `python scripts/export_openapi_snapshot.py`
+
 更多测试与回放说明见 [docs/testing/testing-guide.md](docs/testing/testing-guide.md)。
 
 ## 文档导航
@@ -338,6 +345,7 @@ python scripts/docstring_audit.py --strict
 - [docs/getting-started/ai-travel-agent-zero-to-one.md](docs/getting-started/ai-travel-agent-zero-to-one.md): 面向新人的 AI 旅游 Agent 从 0 到 1 教学教程
 - [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md): 系统架构
 - [docs/architecture/infrastructure-foundations.md](docs/architecture/infrastructure-foundations.md): 运行与部署、配置、readiness、CI、trace、metrics 总览
+- [docs/architecture/data-storage.md](docs/architecture/data-storage.md): 运行数据、备份、恢复与清理策略
 - [docs/reference/api-reference.md](docs/reference/api-reference.md): API 参考
 - [docs/reference/project-structure.md](docs/reference/project-structure.md): 目录结构
 - [docs/reference/backend-maintainer-playbook.md](docs/reference/backend-maintainer-playbook.md): 后端维护与排障手册

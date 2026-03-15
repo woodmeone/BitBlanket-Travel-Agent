@@ -19,6 +19,11 @@
 3. CI 与测试分层
 4. 全链路 trace + metrics
 
+在此基础上，本轮又补了两类维护资产：
+
+5. 数据生命周期治理
+6. 仓库安全与契约治理基础
+
 对应核心代码路径：
 
 - 运行与部署
@@ -41,6 +46,16 @@
   - [`web/shuai_web/routes/chat.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)
   - [`web/shuai_web/services/chat_service.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)
   - [`frontend/src/services/api.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
+- 数据生命周期
+  - [`scripts/runtime_backup.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/runtime_backup.py)
+  - [`scripts/runtime_restore.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/runtime_restore.py)
+  - [`scripts/runtime_prune.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/runtime_prune.py)
+  - [`docs/architecture/data-storage.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/architecture/data-storage.md)
+- 安全与契约治理
+  - [`SECURITY.md`](/D:/projects/shuai/ShuaiTravelAgent/SECURITY.md)
+  - [`.github/dependabot.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/dependabot.yml)
+  - [`scripts/export_openapi_snapshot.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/export_openapi_snapshot.py)
+  - [`docs/reference/openapi.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/openapi.snapshot.json)
 
 ## 2. 运行与部署收敛
 
@@ -302,7 +317,78 @@ curl http://localhost:38000/api/metrics
 3. SSE payload 中是否有 `request_id / trace_id`
 4. `/api/metrics` 中 `shuai_sse_events_total` 是否增长
 
-## 7. 改基础设施时的文档同步矩阵
+## 7. 数据生命周期治理
+
+### 7.1 备份
+
+当前推荐命令：
+
+```bash
+python scripts/runtime_backup.py
+python scripts/runtime_backup.py --label before-upgrade
+```
+
+默认会备份：
+
+- session 主文件与 `.bak`
+- agent memory 主文件与 `.bak`
+- checkpoint SQLite
+- share links
+- failure clusters
+
+### 7.2 恢复
+
+当前推荐命令：
+
+```bash
+python scripts/runtime_restore.py --archive artifacts/runtime_backups/runtime_backup_<timestamp>.zip
+```
+
+默认会先创建一次 `pre-restore` 安全备份，再覆盖运行文件。
+
+### 7.3 清理
+
+当前推荐命令：
+
+```bash
+python scripts/runtime_prune.py --keep-latest-backups 10 --max-backup-age-days 14
+python scripts/runtime_prune.py --max-session-age-seconds 2592000 --max-failure-age-days 30 --vacuum-checkpoints
+```
+
+## 8. 安全与契约治理基础
+
+### 8.1 安全基线
+
+当前仓库已经补上：
+
+- [`SECURITY.md`](/D:/projects/shuai/ShuaiTravelAgent/SECURITY.md)
+- [`.github/dependabot.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/dependabot.yml)
+
+这代表项目已经至少有：
+
+- 安全问题上报入口说明
+- Python / npm 依赖更新建议机制
+- 敏感配置文件与模板文件边界说明
+
+### 8.2 OpenAPI 快照
+
+契约治理的第一步已经补上：
+
+```bash
+python scripts/export_openapi_snapshot.py
+```
+
+默认产物：
+
+- [`docs/reference/openapi.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/openapi.snapshot.json)
+
+这个文件的用途不是“给用户看”，而是：
+
+- 评审接口变更
+- 做 schema diff
+- 未来接入契约回归检查
+
+## 9. 改基础设施时的文档同步矩阵
 
 ### 改运行端口 / Docker / Compose
 
@@ -337,4 +423,3 @@ curl http://localhost:38000/api/metrics
 - [`README.md`](/D:/projects/shuai/ShuaiTravelAgent/README.md)
 - [`docs/getting-started/development-workflow.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/getting-started/development-workflow.md)
 - [`docs/testing/testing-guide.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/testing/testing-guide.md)
-
