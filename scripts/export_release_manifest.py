@@ -1,4 +1,5 @@
 """Export release manifest describing app versions, build context, and image coordinates."""
+# ruff: noqa: E402
 
 from __future__ import annotations
 

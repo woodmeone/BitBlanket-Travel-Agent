@@ -1,4 +1,5 @@
 """Create zip backups for runtime data such as sessions, memory, and checkpoints."""
+# ruff: noqa: E402
 
 from __future__ import annotations
 

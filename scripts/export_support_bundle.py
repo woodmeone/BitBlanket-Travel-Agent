@@ -1,4 +1,5 @@
 """Export a support bundle with runtime diagnostics, contracts, and live probe captures."""
+# ruff: noqa: E402
 
 from __future__ import annotations
 

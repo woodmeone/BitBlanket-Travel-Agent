@@ -1,4 +1,5 @@
 """Export stable SSE contract snapshot for chat streaming route regression checks."""
+# ruff: noqa: E402
 
 from __future__ import annotations
 
@@ -22,8 +23,6 @@ if str(WEB_DIR) not in sys.path:
 
 from shuai_web.dependencies.container import get_container
 from shuai_web.main import create_app
-from shuai_web.services.chat_service import ChatService
-
 
 DEFAULT_OUTPUT = ROOT / "docs" / "reference" / "sse-contract.snapshot.json"
 

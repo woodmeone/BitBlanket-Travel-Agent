@@ -1,4 +1,5 @@
 """Prune old runtime backups, stale session records, and aged failure telemetry."""
+# ruff: noqa: E402
 
 from __future__ import annotations
 

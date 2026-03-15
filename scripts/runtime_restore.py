@@ -1,4 +1,5 @@
 """Restore runtime data from a previously created backup archive."""
+# ruff: noqa: E402
 
 from __future__ import annotations
 

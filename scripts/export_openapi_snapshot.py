@@ -1,4 +1,5 @@
 """Export stable OpenAPI snapshot for API contract review and regression checks."""
+# ruff: noqa: E402
 
 from __future__ import annotations
 
