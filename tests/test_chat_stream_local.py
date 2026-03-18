@@ -14,9 +14,9 @@ WEB_DIR = PROJECT_ROOT / "web"
 if str(WEB_DIR) not in sys.path:
     sys.path.insert(0, str(WEB_DIR))
 
-from shuai_web.dependencies.container import get_container
-from shuai_web.main import create_app
-from shuai_web.services.chat_service import ChatService
+from shuai_web.dependencies.container import get_container  # noqa: E402
+from shuai_web.main import create_app  # noqa: E402
+from shuai_web.services.chat_service import ChatService  # noqa: E402
 
 
 @pytest.mark.asyncio
@@ -50,7 +50,11 @@ async def test_chat_stream_sse_smoke(monkeypatch):
         async with client.stream(
             "POST",
             "/api/chat/stream",
-            json={"message": "recommend a travel destination", "mode": "react"},
+            json={
+                "message": "recommend a travel destination\n\nformat as structured itinerary",
+                "display_message": "recommend a travel destination",
+                "mode": "react",
+            },
         ) as response:
             assert response.status_code == 200
             assert response.headers.get("X-Request-ID")
@@ -103,6 +107,10 @@ async def test_chat_stream_sse_smoke(monkeypatch):
             assert metadata_event.get("verification_passed") is True
             assert metadata_event.get("stale_result_count") == 0
             assert metadata_event.get("fallback_steps") == 0
+
+            persisted = await service.get_messages(session_event["session_id"])
+            user_messages = [item for item in persisted.get("messages", []) if item.get("role") == "user"]
+            assert user_messages[0].get("content") == "recommend a travel destination"
 
 
 @pytest.mark.asyncio
@@ -193,6 +201,89 @@ async def test_chat_stream_plan_mode_emits_plan_preview(monkeypatch):
     assert len(plan_event.get("validation_errors", [])) == 1
     assert plan_event.get("validation_errors", [])[0].get("code") == "TOOL_NOT_REGISTERED"
     assert len(plan_event.get("steps", [])) == 2
+
+
+@pytest.mark.asyncio
+async def test_chat_stream_emits_subagent_events(monkeypatch):
+    app = create_app()
+    container = get_container()
+    service = container.resolve("ChatService")
+
+    async def mock_initialize(self):
+        self._initialized = True
+
+    async def mock_stream_agent_events(
+        self,
+        session_id: str,
+        message: str,
+        mode: str = "react",
+        run_id: str | None = None,
+    ):
+        _ = (session_id, message, mode, run_id)
+        yield {"type": "subagent_start", "subagent": "planning", "skills": ["PlanSynthesisSkill"], "sequence": 1}
+        yield {"type": "stage", "stage": "query", "label": "生成计划", "subagent": "planning"}
+        yield {"type": "artifact_patch", "subagent": "planning", "artifact_patch": {"itinerary": {"plan_id": "plan-local"}}}
+        yield {"type": "subagent_end", "subagent": "planning", "status": "completed", "sequence": 1}
+        yield {"type": "chunk", "content": "done"}
+        yield {
+            "type": "done",
+            "answer": "done",
+            "tools_used": ["plan_itinerary"],
+            "artifact": {"itinerary": {"plan_id": "plan-local"}},
+        }
+
+    monkeypatch.setattr(type(service), "initialize", mock_initialize, raising=True)
+    monkeypatch.setattr(type(service), "_stream_agent_events", mock_stream_agent_events, raising=True)
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with client.stream(
+            "POST",
+            "/api/chat/stream",
+            json={"message": "plan a trip", "mode": "react"},
+        ) as response:
+            assert response.status_code == 200
+
+            events = []
+            async for line in response.aiter_lines():
+                if "data:" not in line:
+                    continue
+                for part in line.split("data:"):
+                    data = part.strip()
+                    if not data or data == "[DONE]":
+                        continue
+                    decoder = json.JSONDecoder()
+                    idx = 0
+                    while idx < len(data):
+                        while idx < len(data) and data[idx].isspace():
+                            idx += 1
+                        if idx >= len(data):
+                            break
+                        try:
+                            payload, end = decoder.raw_decode(data, idx)
+                        except json.JSONDecodeError:
+                            break
+                        events.append(payload)
+                        idx = end
+
+    event_types = [item.get("type") for item in events]
+    assert "subagent_start" in event_types
+    assert "artifact_patch" in event_types
+    assert "subagent_end" in event_types
+    metadata_event = next(item for item in events if item.get("type") == "metadata")
+    done_event = next(item for item in events if item.get("type") == "done")
+    assert metadata_event.get("artifact", {}).get("itinerary", {}).get("plan_id") == "plan-local"
+    assert done_event.get("artifact", {}).get("itinerary", {}).get("plan_id") == "plan-local"
+
+    session_event = next(item for item in events if item.get("type") == "session_id")
+    persisted = await service.get_messages(session_event["session_id"])
+    assert persisted.get("success") is True
+    assistant_messages = [item for item in persisted.get("messages", []) if item.get("role") == "assistant"]
+    assert len(assistant_messages) == 1
+    diagnostics = assistant_messages[0].get("diagnostics", {})
+    assert diagnostics.get("artifact", {}).get("itinerary", {}).get("plan_id") == "plan-local"
+    assert len(diagnostics.get("subagentEvents", [])) >= 2
+    assert diagnostics.get("runId") == session_event.get("run_id")
 
 
 def test_sse_formatter_uses_real_newlines():

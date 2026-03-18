@@ -1,9 +1,11 @@
-FROM node:22-alpine AS deps
+ARG NODE_BASE_IMAGE=node:22-alpine
+
+FROM ${NODE_BASE_IMAGE} AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-FROM node:22-alpine AS builder
+FROM ${NODE_BASE_IMAGE} AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -15,7 +17,7 @@ ENV NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE}
 ENV INTERNAL_API_BASE=${INTERNAL_API_BASE}
 RUN npm run build
 
-FROM node:22-alpine AS runner
+FROM ${NODE_BASE_IMAGE} AS runner
 WORKDIR /app
 ARG APP_BUILD_SHA=local
 ARG APP_BUILD_CREATED_AT=

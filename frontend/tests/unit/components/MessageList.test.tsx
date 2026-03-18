@@ -21,7 +21,7 @@ describe('MessageList', () => {
     );
 
     expect(screen.getByText('Hello')).toBeInTheDocument();
-    expect(screen.getByText('Hi there')).toBeInTheDocument();
+    expect(screen.getAllByText('Hi there').length).toBeGreaterThan(0);
   });
 
   it('shows streaming message while waiting', () => {
@@ -93,5 +93,53 @@ describe('MessageList', () => {
     expect(container.querySelector('pre')).not.toBeNull();
     expect(container.querySelector('hr')).not.toBeNull();
     expect(screen.getByRole('link', { name: '查看预约' })).toHaveAttribute('href', 'https://example.com');
+  });
+
+  it('renders artifact-backed toolkit summary and subagent diagnostics', () => {
+    const messages: Message[] = [
+      {
+        role: 'assistant',
+        timestamp: '10:04',
+        content: ['Day 1', '上午：外滩', '下午：豫园', '晚上：南京路', '预算：800'].join('\n'),
+        diagnostics: {
+          toolsUsed: ['search_cities'],
+          verificationPassed: true,
+          staleResultCount: 0,
+          fallbackSteps: 0,
+          planId: 'plan-123',
+          artifact: {
+            intent: { name: 'itinerary', confidence: 0.9, entities: {}, detail: {} },
+            research: { summary: 'Collected destination evidence.', evidence: [{ tool: 'search_cities' }], destinations: ['Shanghai'], sourceTools: ['search_cities'] },
+            itinerary: {
+              planId: 'plan-123',
+              explanation: 'Weekend Shanghai plan',
+              steps: [{ step: 1, tool: 'search_cities' }],
+              validationStatus: 'pass',
+              validationErrors: [],
+            },
+            budget: { summary: {}, executionBudget: {}, staleResultCount: 0, fallbackSteps: 0 },
+            verification: { passed: true, shouldRetry: false, issues: [], refreshTargets: [], summary: 'Verification completed.' },
+            answer: 'Structured answer',
+            reasoning: '',
+            toolsUsed: ['search_cities'],
+            metadata: {},
+          },
+          subagentEvents: [
+            { subagent: 'planning', trigger: 'stage', timestamp: '10:04:01' },
+            { subagent: 'research', status: 'completed', timestamp: '10:04:02' },
+            { subagent: 'verification', status: 'completed', timestamp: '10:04:03' },
+          ],
+        },
+      },
+    ];
+
+    renderWithApp(
+      <MessageList messages={messages} reasoningExpanded={{}} onToggleReasoning={vi.fn()} />
+    );
+
+    expect(screen.getByText(/Plan #plan-123/)).toBeInTheDocument();
+    expect(screen.getByText(/Collected destination evidence\./)).toBeInTheDocument();
+    expect(screen.getByText(/Artifact 计划ID: plan-123/)).toBeInTheDocument();
+    expect(screen.getByText(/子 Agent 轨迹/)).toBeInTheDocument();
   });
 });

@@ -14,8 +14,8 @@ WEB_DIR = PROJECT_ROOT / "web"
 if str(WEB_DIR) not in sys.path:
     sys.path.insert(0, str(WEB_DIR))
 
-from shuai_web.main import create_app
-from config import server_config
+from shuai_web.main import create_app  # noqa: E402
+from config import server_config  # noqa: E402
 
 
 @pytest.mark.asyncio
@@ -37,6 +37,11 @@ async def test_models_session_clear_smoke():
         session_id = create_data.get("session_id")
         assert isinstance(session_id, str) and session_id
 
+        messages_resp = await client.get(f"/api/session/{session_id}/messages")
+        assert messages_resp.status_code == 200
+        assert messages_resp.json().get("success") is True
+        assert messages_resp.json().get("messages") == []
+
         # Backward compatibility: allow legacy `model` field besides `model_id`.
         set_model_resp = await client.put(
             f"/api/session/{session_id}/model",
@@ -50,6 +55,10 @@ async def test_models_session_clear_smoke():
         assert clear_resp.status_code == 200
         clear_data = clear_resp.json()
         assert clear_data.get("success") is True
+
+        cleared_messages_resp = await client.get(f"/api/session/{session_id}/messages")
+        assert cleared_messages_resp.status_code == 200
+        assert cleared_messages_resp.json().get("messages") == []
 
 
 @pytest.mark.asyncio

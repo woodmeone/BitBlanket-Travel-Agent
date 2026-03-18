@@ -6,7 +6,7 @@ import asyncio
 import logging
 import os
 import threading
-from typing import Any, AsyncGenerator, Callable, Optional
+from typing import Any, Callable, Optional
 
 from langchain_core.runnables import Runnable
 from langchain_core.tools import Tool
@@ -704,17 +704,35 @@ async def run_travel_agent_streaming_with_memory(
                 elif node_name == "plan":
                     stage = "query"
                     progress = 25
-                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "生成计划"}
+                    yield {
+                        "type": "stage",
+                        "stage": stage,
+                        "progress": progress,
+                        "label": "生成计划",
+                        "subagent": "planning",
+                    }
                     yield {"type": "reasoning", "content": "制定执行计划..."}
                 elif node_name == "react":
                     stage = "query"
                     progress = 25
-                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "ReAct 执行计划"}
+                    yield {
+                        "type": "stage",
+                        "stage": stage,
+                        "progress": progress,
+                        "label": "ReAct 执行计划",
+                        "subagent": "planning",
+                    }
                     yield {"type": "reasoning", "content": "进入 ReAct 工具编排..."}
                 elif node_name == "execute":
                     stage = "query"
                     progress = 45
-                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "查询数据"}
+                    yield {
+                        "type": "stage",
+                        "stage": stage,
+                        "progress": progress,
+                        "label": "查询数据",
+                        "subagent": "research",
+                    }
                     yield {"type": "reasoning", "content": "执行工具..."}
                 elif node_name in {"answer", "direct_answer"}:
                     stage = "generate"
@@ -723,7 +741,13 @@ async def run_travel_agent_streaming_with_memory(
                 elif node_name == "verify":
                     stage = "generate"
                     progress = 72
-                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "验证结果一致性"}
+                    yield {
+                        "type": "stage",
+                        "stage": stage,
+                        "progress": progress,
+                        "label": "验证结果一致性",
+                        "subagent": "verification",
+                    }
                     yield {"type": "reasoning", "content": "校验价格/政策/日期一致性..."}
                 elif node_name == "self_check":
                     stage = "finalize"

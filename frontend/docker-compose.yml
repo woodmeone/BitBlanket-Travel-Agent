@@ -3,6 +3,8 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile.backend
+      args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.13-slim}
     ports:
       - "38000:38000"
     environment:
@@ -23,6 +25,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-node:22-alpine}
         NEXT_PUBLIC_API_BASE: http://localhost:38000
         INTERNAL_API_BASE: http://backend:38000
     ports:

@@ -31,8 +31,9 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import html2canvas from 'html2canvas';
-import type { Message, RoutePreviewResponse } from '@/types';
+import type { Message, RoutePreviewResponse, SubagentEvent, TripPlanArtifact } from '@/types';
 import { apiService } from '@/services/api';
+import { hasArtifactData } from '@/utils/agentArtifacts';
 import {
   applyConflictFixes,
   buildChecklist,
@@ -53,6 +54,8 @@ interface TravelPlanToolkitProps {
   messageId: string;
   content: string;
   diagnostics?: Message['diagnostics'];
+  artifact?: TripPlanArtifact | null;
+  subagentEvents?: SubagentEvent[];
   onContinuePrompt?: (prompt: string) => void;
 }
 
@@ -259,13 +262,27 @@ function practicalToneStyle(tone: PracticalInfoCard['tone']): { background: stri
   return { background: '#f8fafc', border: '#cbd5e1', color: '#334155' };
 }
 
+function subagentLabel(name: string): string {
+  if (name === 'planning') return '规划';
+  if (name === 'research') return '研究';
+  if (name === 'verification') return '校验';
+  return name;
+}
+
 function looksLikeItineraryContent(content: string, cards: DayPlanCard[]): boolean {
   if (cards.length >= 2) return true;
   if (/(上午|下午|晚上|预算|小贴士|tips|day\s*\d+|第.{1,4}天|方案|路线|景点)/i.test(content)) return true;
   return false;
 }
 
-const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, content, diagnostics, onContinuePrompt }) => {
+const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({
+  messageId,
+  content,
+  diagnostics,
+  artifact = null,
+  subagentEvents = [],
+  onContinuePrompt,
+}) => {
   const { message } = App.useApp();
   const exportRef = useRef<HTMLDivElement | null>(null);
 
@@ -284,6 +301,15 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
   const [favoriteSpots, setFavoriteSpots] = useState<Record<string, SpotDecisionInfo>>({});
   const [routeByDay, setRouteByDay] = useState<Record<string, RoutePreviewResponse | undefined>>({});
   const [routeLoadingDay, setRouteLoadingDay] = useState<string | null>(null);
+  const artifactAvailable = hasArtifactData(artifact);
+  const artifactIntent = artifact?.intent.name || diagnostics?.artifact?.intent.name || '';
+  const artifactPlanId = artifact?.itinerary.planId || diagnostics?.artifact?.itinerary.planId || diagnostics?.planId || null;
+  const artifactValidationStatus = artifact?.itinerary.validationStatus || '';
+  const artifactVerification = artifact?.verification.passed ?? diagnostics?.verificationPassed ?? null;
+  const artifactSummary = artifact?.research.summary || artifact?.verification.summary || '';
+  const artifactTools = artifact?.toolsUsed || diagnostics?.toolsUsed || [];
+  const artifactEvidenceCount = artifact?.research.evidence.length || 0;
+  const artifactStepCount = artifact?.itinerary.steps.length || 0;
 
   useEffect(() => {
     setCards(baseCards);
@@ -328,7 +354,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
     [conflictMap]
   );
 
-  if (cards.length === 0 || !hasItineraryContent) return null;
+  if (cards.length === 0 && !artifactAvailable) return null;
 
   const togglePeriod = (periodKey: string) => {
     setExpandedPeriods((prev) => ({ ...prev, [periodKey]: !prev[periodKey] }));
@@ -494,6 +520,40 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
     onContinuePrompt(prompt);
     message.success(`已选择 ${variant.title}，可继续细化`);
   };
+
+  const overviewPanel = artifactAvailable ? (
+    <Card size="small" style={{ marginBottom: 12 }}>
+      <div style={{ display: 'grid', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {artifactIntent && <Tag color="blue">Intent: {artifactIntent}</Tag>}
+          {artifactPlanId && <Tag color="purple">Plan #{artifactPlanId}</Tag>}
+          {artifactValidationStatus && <Tag color="cyan">Validation: {artifactValidationStatus}</Tag>}
+          <Tag color={artifactVerification === false ? 'red' : artifactVerification ? 'green' : 'default'}>
+            校验: {artifactVerification === false ? '未通过' : artifactVerification ? '通过' : '待定'}
+          </Tag>
+          <Tag color="gold">Tools: {artifactTools.length}</Tag>
+          {artifactEvidenceCount > 0 && <Tag color="geekblue">Evidence: {artifactEvidenceCount}</Tag>}
+          {artifactStepCount > 0 && <Tag color="processing">Structured Steps: {artifactStepCount}</Tag>}
+        </div>
+
+        {artifactSummary && <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7 }}>{artifactSummary}</div>}
+
+        {subagentEvents.length > 0 && (
+          <div style={{ display: 'grid', gap: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#155e75' }}>子 Agent 轨迹</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {subagentEvents.map((event, index) => (
+                <Tag key={`${event.subagent}-${event.sequence || index}-${event.timestamp || index}`} color={event.status ? 'green' : 'blue'}>
+                  {subagentLabel(event.subagent)}
+                  {event.status ? `:${event.status}` : ''}
+                </Tag>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
+  ) : null;
 
   const itineraryTab = (
     <div ref={exportRef} style={{ display: 'grid', gap: 12 }}>
@@ -939,6 +999,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({ messageId, conten
       style={{ marginTop: 12, borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc' }}
       styles={{ body: { padding: 12 } }}
     >
+      {overviewPanel}
       <Tabs size="small" items={tabItems} />
     </Card>
   );

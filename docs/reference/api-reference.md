@@ -163,6 +163,9 @@ Prometheus 指标出口。
 - `reasoning_end`
 - `plan_preview`
 - `stage`
+- `subagent_start`
+- `subagent_end`
+- `artifact_patch`
 - `tool_start`
 - `tool_end`
 - `answer_start`
@@ -186,17 +189,19 @@ python scripts/export_sse_contract_snapshot.py
 1. `session_id`
 2. `reasoning_start`
 3. `reasoning_chunk`（可多次）
-4. `reasoning_end`
-5. `answer_start`
-6. `chunk`（可多次）
-7. `metadata`
-8. `done`
+4. `plan_preview` / `subagent_start` / `stage` / `artifact_patch`（按模式可选）
+5. `reasoning_end`
+6. `answer_start`
+7. `chunk`（可多次）
+8. `metadata`
+9. `done`
 
 说明：
 
-1. `plan_preview`、`stage`、`tool_start`、`tool_end` 可能穿插在中间
+1. `plan_preview`、`stage`、`subagent_start`、`subagent_end`、`artifact_patch`、`tool_start`、`tool_end` 可能穿插在中间
 2. 若发生错误，通常会收到 `error`
 3. 现在 `session_id / metadata / done` 等事件都可能带 `request_id / trace_id`
+4. `plan_preview / metadata / done` 现在都可能带 `artifact`
 
 ### SSE payload 示例
 
@@ -208,6 +213,38 @@ python scripts/export_sse_contract_snapshot.py
   "stage": "query",
   "label": "查询数据",
   "progress": 45,
+  "request_id": "req-123",
+  "trace_id": "trace-456"
+}
+```
+
+`subagent_start`:
+
+```json
+{
+  "type": "subagent_start",
+  "subagent": "planning",
+  "skills": ["PlanSynthesisSkill"],
+  "tool_names": ["plan_itinerary"],
+  "sequence": 1,
+  "trigger": "stage",
+  "request_id": "req-123",
+  "trace_id": "trace-456"
+}
+```
+
+`artifact_patch`:
+
+```json
+{
+  "type": "artifact_patch",
+  "subagent": "verification",
+  "artifact_patch": {
+    "verification": {
+      "passed": true,
+      "summary": "Verification completed."
+    }
+  },
   "request_id": "req-123",
   "trace_id": "trace-456"
 }
@@ -236,6 +273,11 @@ python scripts/export_sse_contract_snapshot.py
   "verification_passed": true,
   "stale_result_count": 0,
   "fallback_steps": 1,
+  "artifact": {
+    "verification": {
+      "passed": true
+    }
+  },
   "request_id": "req-123",
   "trace_id": "trace-456"
 }
@@ -249,6 +291,20 @@ python scripts/export_sse_contract_snapshot.py
 - `validation_status`
 - `validation_errors`
 - `steps`
+- `artifact`
+
+### `subagent_start / subagent_end` 关键字段
+
+- `subagent`
+- `skills`
+- `tool_names`
+- `sequence`
+- `trigger`
+
+### `artifact_patch` 关键字段
+
+- `subagent`
+- `artifact_patch`
 
 ### `metadata` 关键字段
 
@@ -260,6 +316,7 @@ python scripts/export_sse_contract_snapshot.py
 - `verification_passed`
 - `stale_result_count`
 - `fallback_steps`
+- `artifact`
 - `request_id`
 - `trace_id`
 
@@ -334,3 +391,40 @@ python scripts/export_sse_contract_snapshot.py
 - `checks` 里是哪一项失败
 - `/api/metrics` 中 `shuai_readiness_state` 是否为 `1`
 - 启动日志里是否有 `startup_validation`
+## 10. Frontend Artifact Consumption Notes
+
+The current frontend streaming consumer now treats these SSE fields as first-class application payloads:
+
+- `plan_preview.artifact`
+- `plan_preview.artifact_patch`
+- `plan_preview.subagent`
+- `metadata.artifact`
+- `done.artifact`
+- `subagent_start.skills`
+- `subagent_end.status`
+- `artifact_patch.artifact_patch`
+
+Primary frontend landing points:
+
+- [`frontend/src/services/api.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
+- [`frontend/src/components/ChatArea.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)
+- [`frontend/src/components/MessageList.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)
+- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)
+
+Compatibility rule:
+
+1. Structured artifact data is preferred for summary / diagnostics / verification / plan identity.
+2. Free-text answer parsing is still retained for day-card extraction and compatibility with older responses.
+## Session Message Hydration
+
+`GET /api/session/{session_id}/messages` 现在会返回会话公开消息列表，供前端在刷新或切换会话后恢复历史内容。返回字段保留：
+
+- `role`
+- `content`
+- `reasoning`
+- `timestamp`
+- `diagnostics`
+
+其中 `diagnostics` 会携带 Phase 3 结构化结果，包括 `artifact`、`subagentEvents`、`planId`、`runId`、`requestId`、`traceId`。服务端不会把仅供模型复用的 `model_content` 暴露给前端。
+
+`POST /api/chat/stream` 现在额外接受可选字段 `display_message`。它的作用是把用户界面中真正展示的输入单独持久化到会话消息里，而把增强后的 prompt 继续保留给 Agent 运行时使用。

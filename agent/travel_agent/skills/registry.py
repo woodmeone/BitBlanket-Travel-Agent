@@ -1,0 +1,130 @@
+"""Registry for mapping domain skills to tool capabilities."""
+
+from __future__ import annotations
+
+from dataclasses import replace
+from typing import Iterable, Optional
+
+from langchain_core.tools import Tool
+
+from ..contracts import SkillContract
+
+
+class SkillRegistry:
+    """Runtime registry holding enabled skill contracts."""
+
+    def __init__(self, skills: Optional[Iterable[SkillContract]] = None):
+        """Initialize the registry with zero or more preconfigured skills."""
+        self._skills: dict[str, SkillContract] = {}
+        for skill in skills or []:
+            self.register(skill)
+
+    def register(self, skill: SkillContract) -> None:
+        """Register or replace one skill contract by name."""
+        self._skills[skill.name] = skill
+
+    def get(self, name: str) -> Optional[SkillContract]:
+        """Return one skill contract by name."""
+        return self._skills.get(name)
+
+    def all_skills(self) -> list[SkillContract]:
+        """Return all registered skills in deterministic name order."""
+        return [self._skills[name] for name in sorted(self._skills)]
+
+    def for_subagent(self, subagent: str) -> list[SkillContract]:
+        """Return skills that can be consumed by the requested subagent."""
+        return [skill for skill in self.all_skills() if subagent in skill.allowed_subagents]
+
+    def to_dict(self) -> dict[str, dict[str, object]]:
+        """Return a JSON-serializable skill map for diagnostics payloads."""
+        return {skill.name: skill.to_dict() for skill in self.all_skills()}
+
+    def __len__(self) -> int:
+        """Return the number of registered skill contracts."""
+        return len(self._skills)
+
+
+def build_default_skill_registry(tools: Optional[Iterable[Tool]] = None) -> SkillRegistry:
+    """Build the default skill registry from the currently available tool set."""
+    available_tool_names = _resolve_tool_names(tools)
+    registry = SkillRegistry()
+    for spec in _default_skill_contracts():
+        if available_tool_names:
+            filtered_tool_names = [name for name in spec.tool_names if name in available_tool_names]
+            if not filtered_tool_names:
+                continue
+            spec = replace(spec, tool_names=filtered_tool_names)
+        registry.register(spec)
+    return registry
+
+
+def _resolve_tool_names(tools: Optional[Iterable[Tool]]) -> set[str]:
+    """Return the available tool-name set from a LangChain tool iterable."""
+    if tools is None:
+        return set()
+    tool_names: set[str] = set()
+    for tool in tools:
+        name = getattr(tool, "name", None)
+        if isinstance(name, str) and name.strip():
+            tool_names.add(name)
+    return tool_names
+
+
+def _default_skill_contracts() -> list[SkillContract]:
+    """Return the default phase-1 skill catalog used by the runtime."""
+    return [
+        SkillContract(
+            name="CityResearchSkill",
+            description="Discover and shortlist candidate destinations from user intent.",
+            tool_names=["search_cities"],
+            allowed_subagents=["research"],
+            output_artifact="ResearchDossier",
+        ),
+        SkillContract(
+            name="AttractionResearchSkill",
+            description="Collect attraction-level evidence for candidate destinations.",
+            tool_names=["query_attractions"],
+            allowed_subagents=["research"],
+            output_artifact="ResearchDossier",
+            freshness_policy="prefer_recent",
+        ),
+        SkillContract(
+            name="WeatherLookupSkill",
+            description="Inject weather and seasonality evidence into planning decisions.",
+            tool_names=["get_weather"],
+            allowed_subagents=["research", "planning", "verification"],
+            output_artifact="ResearchDossier",
+            freshness_policy="must_refresh_if_stale",
+        ),
+        SkillContract(
+            name="HotelQuoteSkill",
+            description="Gather accommodation options used by budget and itinerary tradeoffs.",
+            tool_names=["query_hotels"],
+            allowed_subagents=["budget", "planning", "verification"],
+            output_artifact="BudgetReport",
+            freshness_policy="must_refresh_if_stale",
+            evidence_required=True,
+        ),
+        SkillContract(
+            name="BudgetAggregationSkill",
+            description="Aggregate accommodation, transport, and activity costs into a budget view.",
+            tool_names=["calculate_budget"],
+            allowed_subagents=["budget", "verification"],
+            output_artifact="BudgetReport",
+            evidence_required=True,
+        ),
+        SkillContract(
+            name="PlanSynthesisSkill",
+            description="Transform user intent and evidence into itinerary steps.",
+            tool_names=["plan_itinerary"],
+            allowed_subagents=["planning"],
+            output_artifact="ItineraryDraft",
+        ),
+        SkillContract(
+            name="TravelTipsSkill",
+            description="Provide destination-specific advice and policy-related reminders.",
+            tool_names=["get_travel_tips"],
+            allowed_subagents=["research", "verification"],
+            output_artifact="ResearchDossier",
+        ),
+    ]

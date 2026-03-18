@@ -18,6 +18,7 @@ class ChatRequest(BaseModel):
     """Request payload for streaming chat endpoint."""
 
     message: str
+    display_message: Optional[str] = None
     session_id: Optional[str] = None
     mode: Optional[str] = "react"
 
@@ -43,6 +44,7 @@ async def stream_chat(request: ChatRequest, fastapi_request: Request):
     return StreamingResponse(
         service.stream_chat(
             message=request.message.strip(),
+            display_message=(request.display_message or "").strip() or None,
             session_id=request.session_id,
             mode=request.mode or "react",
             request_id=request_id,

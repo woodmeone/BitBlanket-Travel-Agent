@@ -1,9 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { apiService } from '@/services/api';
 import type { AppConfig, ChatMode, Message, ModelInfo, SessionInfo } from '@/types';
 import { logger } from '@/utils/logger';
+import { normalizePersistedMessages } from '@/utils/sessionMessages';
 
 const DEFAULT_MODELS: ModelInfo[] = [
   {
@@ -15,6 +16,11 @@ const DEFAULT_MODELS: ModelInfo[] = [
 ];
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:38000';
+const SESSION_STORAGE_KEY = 'shuai-current-session-id';
+
+function hasOwnSessionMessages(cache: Record<string, Message[]>, sessionId: string): boolean {
+  return Object.prototype.hasOwnProperty.call(cache, sessionId);
+}
 
 interface AppState {
   config: AppConfig;
@@ -57,10 +63,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [messages, setMessagesState] = useState<Message[]>([]);
   // Local per-session cache avoids extra round-trips when users switch tabs rapidly.
   const [sessionMessages, setSessionMessages] = useState<Record<string, Message[]>>({});
+  const sessionMessagesRef = useRef<Record<string, Message[]>>({});
   const [isStreaming, setIsStreaming] = useState(false);
   const [stopStreaming, setStopStreaming] = useState(false);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [chatMode, setChatModeState] = useState<ChatMode>('react');
+
+  const cacheSessionMessages = (sessionId: string, nextMessages: Message[]) => {
+    setSessionMessages((cache) => {
+      const nextCache = { ...cache, [sessionId]: nextMessages };
+      sessionMessagesRef.current = nextCache;
+      return nextCache;
+    });
+  };
+
+  const loadSessionMessages = async (sessionId: string): Promise<Message[]> => {
+    if (hasOwnSessionMessages(sessionMessagesRef.current, sessionId)) {
+      return sessionMessagesRef.current[sessionId];
+    }
+
+    const data = await apiService.getSessionMessages(sessionId);
+    const normalizedMessages = normalizePersistedMessages(data.messages);
+    cacheSessionMessages(sessionId, normalizedMessages);
+    return normalizedMessages;
+  };
 
   const loadSessions = async () => {
     try {
@@ -118,25 +144,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const addMessage = (message: Message) => {
     setMessagesState((prev) => {
       const next = [...prev, message];
-      if (currentSessionId) {
-        setSessionMessages((cache) => ({ ...cache, [currentSessionId]: next }));
-      }
+      if (currentSessionId) cacheSessionMessages(currentSessionId, next);
       return next;
     });
   };
 
   const clearMessages = () => {
     setMessagesState([]);
-    if (currentSessionId) {
-      setSessionMessages((cache) => ({ ...cache, [currentSessionId]: [] }));
-    }
+    if (currentSessionId) cacheSessionMessages(currentSessionId, []);
   };
 
   const setMessages = (newMessages: Message[]) => {
     setMessagesState(newMessages);
-    if (currentSessionId) {
-      setSessionMessages((cache) => ({ ...cache, [currentSessionId]: newMessages }));
-    }
+    if (currentSessionId) cacheSessionMessages(currentSessionId, newMessages);
   };
 
   const setCurrentSessionId = (id: string | null) => {
@@ -166,14 +186,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const switchSession = async (id: string | null) => {
     // Persist current draft history into local cache before switching session scope.
-    if (currentSessionId && messages.length > 0) {
-      setSessionMessages((cache) => ({ ...cache, [currentSessionId]: messages }));
-    }
+    if (currentSessionId) cacheSessionMessages(currentSessionId, messages);
 
     setCurrentSessionIdState(id);
-    setMessagesState(id && sessionMessages[id] ? sessionMessages[id] : []);
+    if (!id) {
+      setMessagesState([]);
+      return;
+    }
 
-    if (!id) return;
+    try {
+      const nextMessages = await loadSessionMessages(id);
+      setMessagesState(nextMessages);
+    } catch (error) {
+      logger.error('加载会话消息失败:', error);
+      setCurrentSessionIdState(null);
+      setMessagesState([]);
+      if (typeof window !== 'undefined') window.localStorage.removeItem(SESSION_STORAGE_KEY);
+      return;
+    }
+
     try {
       const data = await apiService.getSessionModel(id);
       if (data.success && data.model_id && data.model_id !== 'default') {
@@ -183,6 +214,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       logger.error('获取会话模型失败:', error);
     }
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.search.includes('share=')) return;
+    const storedSessionId = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!storedSessionId) return;
+    void switchSession(storedSessionId);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (currentSessionId) {
+      window.localStorage.setItem(SESSION_STORAGE_KEY, currentSessionId);
+      return;
+    }
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  }, [currentSessionId]);
 
   const value: AppState = {
     config,

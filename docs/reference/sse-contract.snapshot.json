@@ -49,6 +49,7 @@
         },
         {
           "answer_length": 12,
+          "artifact": {},
           "execution_stats": {},
           "failure_clusters": {
             "irrelevant_answer": 0,
@@ -70,6 +71,7 @@
           "verification_passed": true
         },
         {
+          "artifact": {},
           "request_id": "<id>",
           "run_id": "<id>",
           "trace_id": "<id>",
@@ -90,15 +92,26 @@
         "session_id",
         "reasoning_start",
         "reasoning_chunk",
+        "subagent_start",
         "plan_preview",
+        "artifact_patch",
+        "subagent_end",
         "reasoning_chunk",
+        "subagent_start",
         "reasoning_chunk",
         "stage",
+        "artifact_patch",
+        "subagent_end",
+        "subagent_start",
         "tool_start",
         "tool_end",
+        "subagent_end",
+        "subagent_start",
         "reasoning_end",
         "answer_start",
         "chunk",
+        "artifact_patch",
+        "subagent_end",
         "metadata",
         "done"
       ],
@@ -122,6 +135,20 @@
           "type": "reasoning_chunk"
         },
         {
+          "request_id": "<id>",
+          "skills": [
+            "PlanSynthesisSkill"
+          ],
+          "subagent": "planning",
+          "trace_id": "<id>",
+          "type": "subagent_start"
+        },
+        {
+          "artifact": {
+            "itinerary": {
+              "plan_id": "plan-demo"
+            }
+          },
           "explanation": "<text>",
           "intent": "itinerary",
           "plan_id": "plan-demo",
@@ -156,10 +183,41 @@
           "validation_status": "warn"
         },
         {
+          "artifact_patch": {
+            "itinerary": {
+              "plan_id": "plan-demo"
+            }
+          },
+          "request_id": "<id>",
+          "subagent": "planning",
+          "trace_id": "<id>",
+          "type": "artifact_patch"
+        },
+        {
+          "request_id": "<id>",
+          "status": "preview_ready",
+          "subagent": "planning",
+          "trace_id": "<id>",
+          "type": "subagent_end"
+        },
+        {
           "content": "<text>",
           "request_id": "<id>",
           "trace_id": "<id>",
           "type": "reasoning_chunk"
+        },
+        {
+          "description": null,
+          "request_id": "<id>",
+          "sequence": 1,
+          "skills": [
+            "PlanSynthesisSkill"
+          ],
+          "subagent": "planning",
+          "tool_names": [],
+          "trace_id": "<id>",
+          "trigger": "stage",
+          "type": "subagent_start"
         },
         {
           "content": "<text>",
@@ -172,11 +230,46 @@
           "progress": 0.25,
           "request_id": "<id>",
           "stage": "planning",
+          "subagent": "planning",
           "trace_id": "<id>",
           "type": "stage"
         },
         {
+          "artifact_patch": {
+            "itinerary": {
+              "plan_id": "plan-demo"
+            }
+          },
           "request_id": "<id>",
+          "subagent": "planning",
+          "trace_id": "<id>",
+          "type": "artifact_patch"
+        },
+        {
+          "request_id": "<id>",
+          "sequence": 1,
+          "status": "completed",
+          "subagent": "planning",
+          "summary": null,
+          "trace_id": "<id>",
+          "type": "subagent_end"
+        },
+        {
+          "description": null,
+          "request_id": "<id>",
+          "sequence": 2,
+          "skills": [
+            "CityResearchSkill"
+          ],
+          "subagent": "research",
+          "tool_names": [],
+          "trace_id": "<id>",
+          "trigger": "tool",
+          "type": "subagent_start"
+        },
+        {
+          "request_id": "<id>",
+          "subagent": "research",
           "tool": "search_cities",
           "trace_id": "<id>",
           "type": "tool_start"
@@ -184,9 +277,32 @@
         {
           "request_id": "<id>",
           "result": "<text>",
+          "subagent": "research",
           "tool": "search_cities",
           "trace_id": "<id>",
           "type": "tool_end"
+        },
+        {
+          "request_id": "<id>",
+          "sequence": 2,
+          "status": "completed",
+          "subagent": "research",
+          "summary": null,
+          "trace_id": "<id>",
+          "type": "subagent_end"
+        },
+        {
+          "description": null,
+          "request_id": "<id>",
+          "sequence": 3,
+          "skills": [
+            "BudgetAggregationSkill"
+          ],
+          "subagent": "verification",
+          "tool_names": [],
+          "trace_id": "<id>",
+          "trigger": "stage",
+          "type": "subagent_start"
         },
         {
           "request_id": "<id>",
@@ -205,7 +321,35 @@
           "type": "chunk"
         },
         {
+          "artifact_patch": {
+            "verification": {
+              "passed": true
+            }
+          },
+          "request_id": "<id>",
+          "subagent": "verification",
+          "trace_id": "<id>",
+          "type": "artifact_patch"
+        },
+        {
+          "request_id": "<id>",
+          "sequence": 3,
+          "status": "completed",
+          "subagent": "verification",
+          "summary": null,
+          "trace_id": "<id>",
+          "type": "subagent_end"
+        },
+        {
           "answer_length": 11,
+          "artifact": {
+            "itinerary": {
+              "plan_id": "plan-demo"
+            },
+            "verification": {
+              "passed": true
+            }
+          },
           "execution_stats": {
             "steps": [
               {
@@ -238,6 +382,14 @@
           "verification_passed": true
         },
         {
+          "artifact": {
+            "itinerary": {
+              "plan_id": "plan-demo"
+            },
+            "verification": {
+              "passed": true
+            }
+          },
           "request_id": "<id>",
           "run_id": "<id>",
           "trace_id": "<id>",
@@ -257,13 +409,21 @@
       "event_types": [
         "session_id",
         "reasoning_start",
+        "subagent_start",
         "reasoning_chunk",
         "stage",
+        "artifact_patch",
+        "subagent_end",
+        "subagent_start",
         "tool_start",
         "tool_end",
+        "subagent_end",
+        "subagent_start",
         "reasoning_end",
         "answer_start",
         "chunk",
+        "artifact_patch",
+        "subagent_end",
         "metadata",
         "done"
       ],
@@ -281,6 +441,19 @@
           "type": "reasoning_start"
         },
         {
+          "description": null,
+          "request_id": "<id>",
+          "sequence": 1,
+          "skills": [
+            "PlanSynthesisSkill"
+          ],
+          "subagent": "planning",
+          "tool_names": [],
+          "trace_id": "<id>",
+          "trigger": "stage",
+          "type": "subagent_start"
+        },
+        {
           "content": "<text>",
           "request_id": "<id>",
           "trace_id": "<id>",
@@ -291,11 +464,46 @@
           "progress": 0.25,
           "request_id": "<id>",
           "stage": "planning",
+          "subagent": "planning",
           "trace_id": "<id>",
           "type": "stage"
         },
         {
+          "artifact_patch": {
+            "itinerary": {
+              "plan_id": "plan-demo"
+            }
+          },
           "request_id": "<id>",
+          "subagent": "planning",
+          "trace_id": "<id>",
+          "type": "artifact_patch"
+        },
+        {
+          "request_id": "<id>",
+          "sequence": 1,
+          "status": "completed",
+          "subagent": "planning",
+          "summary": null,
+          "trace_id": "<id>",
+          "type": "subagent_end"
+        },
+        {
+          "description": null,
+          "request_id": "<id>",
+          "sequence": 2,
+          "skills": [
+            "CityResearchSkill"
+          ],
+          "subagent": "research",
+          "tool_names": [],
+          "trace_id": "<id>",
+          "trigger": "tool",
+          "type": "subagent_start"
+        },
+        {
+          "request_id": "<id>",
+          "subagent": "research",
           "tool": "search_cities",
           "trace_id": "<id>",
           "type": "tool_start"
@@ -303,9 +511,32 @@
         {
           "request_id": "<id>",
           "result": "<text>",
+          "subagent": "research",
           "tool": "search_cities",
           "trace_id": "<id>",
           "type": "tool_end"
+        },
+        {
+          "request_id": "<id>",
+          "sequence": 2,
+          "status": "completed",
+          "subagent": "research",
+          "summary": null,
+          "trace_id": "<id>",
+          "type": "subagent_end"
+        },
+        {
+          "description": null,
+          "request_id": "<id>",
+          "sequence": 3,
+          "skills": [
+            "BudgetAggregationSkill"
+          ],
+          "subagent": "verification",
+          "tool_names": [],
+          "trace_id": "<id>",
+          "trigger": "stage",
+          "type": "subagent_start"
         },
         {
           "request_id": "<id>",
@@ -324,7 +555,35 @@
           "type": "chunk"
         },
         {
+          "artifact_patch": {
+            "verification": {
+              "passed": true
+            }
+          },
+          "request_id": "<id>",
+          "subagent": "verification",
+          "trace_id": "<id>",
+          "type": "artifact_patch"
+        },
+        {
+          "request_id": "<id>",
+          "sequence": 3,
+          "status": "completed",
+          "subagent": "verification",
+          "summary": null,
+          "trace_id": "<id>",
+          "type": "subagent_end"
+        },
+        {
           "answer_length": 12,
+          "artifact": {
+            "itinerary": {
+              "plan_id": "plan-demo"
+            },
+            "verification": {
+              "passed": true
+            }
+          },
           "execution_stats": {
             "steps": [
               {
@@ -357,6 +616,14 @@
           "verification_passed": true
         },
         {
+          "artifact": {
+            "itinerary": {
+              "plan_id": "plan-demo"
+            },
+            "verification": {
+              "passed": true
+            }
+          },
           "request_id": "<id>",
           "run_id": "<id>",
           "trace_id": "<id>",

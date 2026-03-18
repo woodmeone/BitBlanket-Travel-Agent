@@ -1,28 +1,28 @@
 # Testing Guide
 
-## 测试分层
+## 1. 测试分层
 
-### 1. 后端 pytest markers
+### 1.1 后端 pytest markers
 
 当前 marker 定义见：
 
-- `pytest.ini`
-- `tests/conftest.py`
+- [`pytest.ini`](/D:/projects/shuai/ShuaiTravelAgent/pytest.ini)
+- [`tests/conftest.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/conftest.py)
 
 主要分层：
 
 - `unit`
-  - 纯逻辑、模块级、脚本级测试。
+  - 纯逻辑、模块级、脚本级测试
 - `integration`
-  - 跨层协作测试，覆盖 Web API、Agent、存储和事件链路。
+  - 跨层协作测试，覆盖 Web API、Agent、存储和事件链路
 - `local`
-  - 本地 ASGI smoke、本地运行依赖、自检脚本与契约快照测试。
+  - 本地 ASGI smoke、本地运行依赖、自检脚本与契约快照测试
 - `external_api`
-  - 依赖外部 provider 或在线服务。
+  - 依赖外部 provider 或在线服务
 - `quality`
-  - 与 benchmark、golden eval、quality gate 相关。
+  - benchmark、golden eval、quality gate
 
-### 2. 前端验证
+### 1.2 前端验证
 
 目录：`frontend/`
 
@@ -35,39 +35,37 @@ npm run test:run
 npm run build
 ```
 
-说明：
+## 2. 推荐的本地回归顺序
 
-- `npm run lint` 当前承担 TypeScript 类型检查职责。
-- `npm run test:run` 主要保护流式消息处理、组件行为和工具栏逻辑。
-- `npm run build` 用于发现 SSR、rewrite、路由和编译期问题。
-
-## 推荐的本地回归顺序
-
-### 1. 日常前端改动
+### 2.1 优先走统一入口
 
 ```bash
-cd frontend
-npm run lint
-npm run test:run
-npm run build
+uv pip install -r requirements-dev.txt
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 test
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 infra-check
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-config
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke
 ```
 
-### 2. 改 Web API、startup、health、metrics、trace、SSE 协议
+### 2.2 改 Web API、startup、health、metrics、trace、SSE 协议
 
 ```bash
 python -m pytest tests -m "unit and not local and not external_api" -q
 python -m pytest tests -m "local and not external_api" -q
+python -m pytest tests/test_agent_runtime_phase1_unit.py tests/test_agent_subagent_phase2_unit.py tests/test_chat_stream_local.py tests/test_chat_service_health_metrics_unit.py tests/test_langchain_1x_agent_unit.py -q
+python -m ruff check --config ruff.toml scripts web/shuai_web
 python scripts/docstring_audit.py --strict
-mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/shuai_web/app_meta.py web/shuai_web/main.py web/shuai_web/middleware/__init__.py web/shuai_web/observability.py web/shuai_web/routes/chat.py web/shuai_web/routes/health.py web/shuai_web/services/share_service.py web/shuai_web/startup_checks.py
+python -m mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/shuai_web/app_meta.py web/shuai_web/main.py web/shuai_web/middleware/__init__.py web/shuai_web/observability.py web/shuai_web/routes/chat.py web/shuai_web/routes/health.py web/shuai_web/services/share_service.py web/shuai_web/startup_checks.py
 cd frontend
 npm run lint
 npm run build
 ```
 
-### 3. 改运行时运维脚本、契约快照、发布与观测资产
+### 2.3 改运行维护脚本、契约快照、发布与观测资产
 
 ```bash
-python -m pytest tests/test_runtime_data_lifecycle_unit.py tests/test_runtime_doctor_unit.py tests/test_export_openapi_snapshot_script_unit.py tests/test_export_sse_contract_snapshot_script_unit.py tests/test_export_release_manifest_script_unit.py tests/test_observability_assets_unit.py -q
+python -m pytest tests/test_runtime_data_lifecycle_unit.py tests/test_runtime_doctor_unit.py tests/test_export_openapi_snapshot_script_unit.py tests/test_export_sse_contract_snapshot_script_unit.py tests/test_export_release_manifest_script_unit.py tests/test_export_support_bundle_script_unit.py tests/test_observability_assets_unit.py -q
 python scripts/export_openapi_snapshot.py
 python scripts/export_sse_contract_snapshot.py
 python scripts/export_release_manifest.py --git-sha local --git-ref refs/heads/main --owner local
@@ -75,26 +73,23 @@ python scripts/runtime_doctor.py --json
 python scripts/export_support_bundle.py
 ```
 
-### 4. 发版前建议
+### 2.4 改 Docker / compose / release
 
 ```bash
-python -m pytest tests -m "unit and not local and not external_api" -q
-python -m pytest tests -m "local and not external_api" -q
-python scripts/docstring_audit.py --strict
-python scripts/export_openapi_snapshot.py
-python scripts/export_sse_contract_snapshot.py
-python scripts/export_release_manifest.py --git-sha local --git-ref refs/tags/dev --owner local
-cd frontend
-npm run lint
-npm run test:run
-npm run build
-cd ..
-python scripts/agent_benchmark.py --output-dir docs/benchmarks
-python scripts/agent_golden_eval.py --dataset tests/golden/agent_react_golden.json --report docs/benchmarks/agent_golden_eval_latest.json --min-pass-rate 0.0
-python scripts/agent_quality_gate.py --golden-report docs/benchmarks/agent_golden_eval_latest.json --benchmark-report docs/benchmarks/agent_benchmark_latest.json --baseline-benchmark-report docs/benchmarks/agent_benchmark_baseline.json
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-config
+docker build -f Dockerfile.backend .
+docker build -f frontend/Dockerfile ./frontend
 ```
 
-## 契约快照
+如果 Docker Hub 拉取较慢，可以改用镜像站作为基础镜像：
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke `
+  -PythonBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" `
+  -NodeBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
+```
+
+## 3. 契约快照
 
 当前已经纳入仓库和 CI 的契约快照包括：
 
@@ -105,19 +100,10 @@ python scripts/export_sse_contract_snapshot.py
 
 产物：
 
-- `docs/reference/openapi.snapshot.json`
-- `docs/reference/sse-contract.snapshot.json`
+- [`docs/reference/openapi.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/openapi.snapshot.json)
+- [`docs/reference/sse-contract.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/sse-contract.snapshot.json)
 
-建议在这些场景同步刷新：
-
-- 改 `/api/health`、`/api/ready`、`/api/live`
-- 改 `/api/chat/stream` 的事件顺序、事件类型或字段
-- 改 `session`、`share`、`model`、`city` 等返回结构
-- 改 OpenAPI schema 或响应模型
-
-## 运行时维护脚本
-
-当前运行时基础设施脚本：
+## 4. 运行维护脚本
 
 ```bash
 python scripts/runtime_backup.py
@@ -128,16 +114,7 @@ python scripts/runtime_doctor.py --base-url http://localhost:38000 --strict
 python scripts/export_support_bundle.py --base-url http://localhost:38000
 ```
 
-这些脚本主要保护：
-
-- `data/` 运行时资产备份与恢复
-- `sessions`、`agent_memory`、`share_links`、`checkpoint` 的生命周期维护
-- OpenAPI / SSE 快照存在性与可解析性
-- 本地 `/api/health`、`/api/ready`、`/api/metrics` 可达性
-
-## 静态质量门禁
-
-当前后端静态门禁包括：
+## 5. 静态质量门禁
 
 ```bash
 python scripts/docstring_audit.py --strict
@@ -145,163 +122,116 @@ ruff check --config ruff.toml scripts web/shuai_web
 mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/shuai_web/app_meta.py web/shuai_web/main.py web/shuai_web/middleware/__init__.py web/shuai_web/observability.py web/shuai_web/routes/chat.py web/shuai_web/routes/health.py web/shuai_web/services/share_service.py web/shuai_web/startup_checks.py
 ```
 
-说明：
+## 6. 关键测试文件保护什么
 
-- `docstring_audit.py --strict` 拦截新增缺失 docstring 的 Python 文件。
-- `ruff` 当前主要负责基础语法与常见错误检查。
-- `mypy` 当前重点覆盖发布、运维、观测和 Web 主链上的关键脚本与模块。
-
-## 关键测试文件和它们在保护什么
-
-### Web / API / startup
-
-- `tests/test_api_smoke_local.py`
+- [`tests/test_api_smoke_local.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_api_smoke_local.py)
   - 保护 `/`、`/api/health`、`/api/ready`、`/api/live`、`/api/metrics`
-  - 同时覆盖 build metadata 是否暴露正确
-- `tests/test_chat_stream_local.py`
-  - 保护 `/api/chat/stream`
-  - 保护 SSE headers、payload 里的 `request_id / trace_id`
+- [`tests/test_chat_stream_local.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_chat_stream_local.py)
+  - 保护 `/api/chat/stream` 和 `request_id / trace_id`
+- [`tests/test_agent_runtime_phase1_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_runtime_phase1_unit.py)
+  - 保护 phase-1 `AgentRuntime / Skills / Artifact` 兼容层
+- [`tests/test_agent_subagent_phase2_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_subagent_phase2_unit.py)
+  - 保护 phase-2 `Research / Planning / Verification` subagent 映射与事件编排
+- [`tests/test_runtime_data_lifecycle_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_runtime_data_lifecycle_unit.py)
+  - 保护 backup / restore / prune
+- [`tests/test_runtime_doctor_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_runtime_doctor_unit.py)
+  - 保护 runtime doctor
+- [`tests/test_export_openapi_snapshot_script_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_export_openapi_snapshot_script_unit.py)
+  - 保护 OpenAPI 快照导出
+- [`tests/test_export_sse_contract_snapshot_script_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_export_sse_contract_snapshot_script_unit.py)
+  - 保护 SSE 快照导出
+- [`tests/test_export_release_manifest_script_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_export_release_manifest_script_unit.py)
+  - 保护 release manifest
+- [`tests/test_export_support_bundle_script_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_export_support_bundle_script_unit.py)
+  - 保护 support bundle
+- [`tests/test_observability_assets_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_observability_assets_unit.py)
+  - 保护 dashboard 和 alert 资产
 
-### 运行时基础设施
+## 7. CI 当前如何跑
 
-- `tests/test_runtime_data_lifecycle_unit.py`
-  - 保护 backup / restore / prune 行为
-- `tests/test_runtime_doctor_unit.py`
-  - 保护 runtime doctor 的离线和在线检查逻辑
-- `tests/test_share_service_unit.py`
-  - 保护 share 数据原子写与恢复策略
+CI 配置见：[`.github/workflows/ci.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/ci.yml)
 
-### 契约与发布资产
+主要任务包括：
 
-- `tests/test_export_openapi_snapshot_script_unit.py`
-  - 保护 OpenAPI 快照导出脚本
-- `tests/test_export_sse_contract_snapshot_script_unit.py`
-  - 保护 SSE 契约快照导出脚本
-- `tests/test_export_release_manifest_script_unit.py`
-  - 保护 release manifest 结构和镜像命名
-- `tests/test_export_support_bundle_script_unit.py`
-  - 保护 support bundle 归档结构与诊断输出
-- `tests/test_observability_assets_unit.py`
-  - 保护 Grafana dashboard 和 Prometheus alert 资产
+1. backend unit / local
+2. docstring audit
+3. `ruff` / `mypy`
+4. `pip-audit` / `gitleaks`
+5. OpenAPI / SSE 快照校验
+6. benchmark / golden eval / quality gate
+7. frontend lint / test / build
+8. `container-validate`
 
-## CI 当前如何跑
+`container-validate` 会执行：
 
-CI 配置见：`.github/workflows/ci.yml`
+- 导出 release manifest
+- `docker compose config`
+- `docker compose --profile observability config`
+- `docker build -f Dockerfile.backend .`
+- `docker build -f frontend/Dockerfile ./frontend`
+- 上传 `deployment-validation-artifacts`
 
-后端主要步骤：
+## 8. CI 产物与排查路径
 
-1. 安装 Python 依赖与静态分析工具
-2. 准备 `llm_config.yaml` 和 `server_config.yaml`
-3. 跑 `unit` 与 `local` pytest
-4. 跑 `docstring_audit.py --strict`
-5. 跑 `ruff` 和 `mypy`
-6. 跑 `pip-audit` 和 `gitleaks`
-7. 导出并校验 OpenAPI / SSE 快照
-8. 跑 benchmark / golden eval / trend / quality gate
-9. 上传质量产物并写入 Step Summary
-
-前端主要步骤：
-
-1. `npm ci`
-2. `npm run lint`
-3. `npm run test:run`
-4. `npm run build`
-
-## CI 产物与排查路径
-
-当前后端会上传这些质量产物：
+关键产物：
 
 - `artifacts/ci/pip-audit-report.json`
 - `artifacts/ci/gitleaks-report.json`
+- `artifacts/ci/compose-default.rendered.yaml`
+- `artifacts/ci/compose-observability.rendered.yaml`
+- `artifacts/release/release-manifest.json`
 - `docs/benchmarks/agent_benchmark_latest.json`
-- `docs/benchmarks/agent_benchmark_latest.md`
-- `docs/benchmarks/agent_benchmark_trend_latest.md`
 - `docs/benchmarks/agent_golden_eval_latest.json`
 
-如果 CI 失败，推荐按这个顺序排查：
+排查顺序建议：
 
-1. 是 `unit` 失败还是 `local` 失败
-2. `/api/ready` 或 `/api/metrics` 是否在 smoke 中失败
-3. `ruff` / `mypy` 是否拦住了基础设施脚本
-4. OpenAPI / SSE 快照是否没有同步更新
-5. `pip-audit` 或 `gitleaks` 是否发现了安全问题
-6. benchmark / golden eval / quality gate 是否回归
-7. Step Summary 是否已经给出具体失败层
+1. 先看 `unit` 还是 `local` 失败
+2. 再看 `ruff` / `mypy`
+3. 再看契约快照是否未同步
+4. 再看 `pip-audit` / `gitleaks`
+5. 最后看 `container-validate` 是否卡在 compose 渲染或镜像构建
+6. 如果只是 Docker Hub 拉取失败，先改用镜像站再复现一遍本地构建
 
-## 发布与观测资产验证
+## 9. 常见失败点
 
-当前发布与观测资产包括：
+- 编码与换行问题：优先检查 [`.editorconfig`](/D:/projects/shuai/ShuaiTravelAgent/.editorconfig) 和 [`.gitattributes`](/D:/projects/shuai/ShuaiTravelAgent/.gitattributes)
+- readiness / 配置问题：优先检查 `config/llm_config.yaml`、`config/server_config.yaml` 和 `/api/ready`
+- SSE 流式不稳定：优先检查 `/api/chat/stream`、headers、payload 和 timeout
+- 契约快照失败：优先检查是否刷新 OpenAPI / SSE 快照
+- 容器验证失败：优先检查 `compose.yaml`、Dockerfile 和 release manifest
 
-- `.github/workflows/release.yml`
-- `scripts/export_release_manifest.py`
-- `scripts/export_support_bundle.py`
-- `ops/observability/grafana-dashboard.json`
-- `ops/observability/prometheus-alerts.yml`
-- `ops/observability/prometheus.yml`
+## 10. 推荐阅读
 
-推荐最小验证：
+- [../getting-started/development-workflow.md](../getting-started/development-workflow.md)
+- [../architecture/infrastructure-foundations.md](../architecture/infrastructure-foundations.md)
+- [../reference/backend-maintainer-playbook.md](../reference/backend-maintainer-playbook.md)
+## Frontend Phase 3 Coverage
+
+The frontend artifact-first slice is currently covered by:
+
+- [`frontend/tests/unit/components/MessageList.test.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/tests/unit/components/MessageList.test.tsx)
+  - protects assistant rendering, diagnostics, markdown blocks, and artifact-backed toolkit summary
+- [`frontend/tests/unit/utils/agentArtifacts.test.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/tests/unit/utils/agentArtifacts.test.ts)
+  - protects artifact patch merge semantics
+- [`frontend/tests/unit/utils/travelPlan.test.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/tests/unit/utils/travelPlan.test.ts)
+  - protects free-text itinerary fallback parsing
+
+Recommended local regression after changing artifact/subagent UI behavior:
 
 ```bash
-python scripts/export_release_manifest.py --git-sha local --git-ref refs/tags/dev --owner local
-python scripts/export_support_bundle.py
-python -m pytest tests/test_export_release_manifest_script_unit.py tests/test_export_support_bundle_script_unit.py tests/test_observability_assets_unit.py -q
+cd frontend
+npm run lint
+npm run test:run
+npm run build
 ```
+## Session Hydration Coverage
 
-## 常见失败点
+这轮改动新增了两类验证：
 
-### 1. 编码问题
-
-典型表现：
-
-- `invalid utf-8 sequence`
-- 文档或源代码在 CI 中读取失败
-
-建议：
-
-- 统一使用 UTF-8 保存
-- 不要通过乱码终端直接覆盖中文源码或文档
-- 改动后至少跑一次 `npm run build` 或目标 pytest
-
-### 2. readiness / 配置问题
-
-优先检查：
-
-- `config/llm_config.yaml` 是否存在且可解析
-- `config/server_config.yaml` 是否存在且可解析
-- `/api/ready` 失败的是哪一项 check
-- `SHUAI_FAIL_FAST_STARTUP_VALIDATION` 是否使启动直接失败
-
-### 3. SSE / 流式测试不稳定
-
-优先检查：
-
-- `/api/chat/stream` 是否返回 `text/event-stream`
-- headers 是否包含 `X-Request-ID / X-Trace-ID`
-- SSE payload 是否带 `request_id / trace_id`
-- 模型 provider 或工具调用是否超时
-
-### 4. 契约快照失败
-
-优先检查：
-
-- 改动后是否重新执行了快照导出脚本
-- 新字段是否同步更新了文档和测试断言
-- SSE 事件顺序或类型是否发生变化
-
-### 5. 发布资产失败
-
-优先检查：
-
-- `APP_VERSION`、`APP_BUILD_SHA`、`APP_BUILD_CREATED_AT` 是否注入
-- `export_release_manifest.py` 是否能拿到 frontend/backend 版本
-- workflow 中的镜像命名是否和 owner/tag 一致
-
-## 浏览器联调建议
-
-如果需要做真实界面验收，建议至少覆盖：
-
-- 首页是否正常打开
-- `/api/chat/stream` 是否返回 `text/event-stream`
-- 前端日志是否能看到 request / trace id
-- 城市探索和 session 列表是否能正常加载
-- 分享、导出、路线预览是否仍然可用
+- 后端本地 smoke
+  - `tests/test_chat_stream_local.py`
+  - 验证 SSE 结束后 assistant message 已持久化 `diagnostics.artifact` 与 `diagnostics.subagentEvents`
+- 前端单测
+  - `frontend/tests/unit/context/AppContext.test.tsx`
+  - `frontend/tests/unit/utils/sessionMessages.test.ts`
+  - 验证刷新恢复时 `AppContext` 能重新拉取 session messages，并让 artifact 继续驱动界面

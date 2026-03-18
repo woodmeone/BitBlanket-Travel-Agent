@@ -8,6 +8,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from ..dependencies.container import get_container
+from ..services.chat_service import ChatService
 from ..services.session_service import SessionService
 from .errors import raise_api_error
 
@@ -35,6 +36,11 @@ class SetModelRequest(BaseModel):
 def _get_session_service() -> SessionService:
     """Resolve session service from dependency container."""
     return get_container().resolve("SessionService")
+
+
+def _get_chat_service() -> ChatService:
+    """Resolve chat service from dependency container."""
+    return get_container().resolve("ChatService")
 
 
 def _raise_not_found(message: str) -> None:
@@ -95,6 +101,16 @@ async def get_session_model(session_id: str):
     """Get model binding metadata for a session."""
     service = _get_session_service()
     result = await service.get_session_model(session_id)
+    if not result.get("success"):
+        _raise_not_found(result.get("error", "Session not found"))
+    return result
+
+
+@router.get("/session/{session_id}/messages")
+async def get_session_messages(session_id: str):
+    """Return persisted public messages for one session."""
+    service = _get_chat_service()
+    result = await service.get_messages(session_id)
     if not result.get("success"):
         _raise_not_found(result.get("error", "Session not found"))
     return result

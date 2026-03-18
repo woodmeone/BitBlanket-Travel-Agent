@@ -1,5 +1,6 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 import {
+  ArtifactPatch,
   AvailableModelsResponse,
   ChatRequest,
   ChatResponse,
@@ -13,13 +14,16 @@ import {
   RoutePreviewRequest,
   RoutePreviewResponse,
   SessionInfo,
+  SessionMessagesResponse,
   ShareCreateRequest,
   ShareCreateResponse,
   ShareDetailResponse,
   SetModelRequest,
   SetModelResponse,
   StreamStageEvent,
+  SubagentEvent,
   TagListResponse,
+  TripPlanArtifact,
   ToolIntentsHealthResponse,
   ToolsHealthResponse,
 } from '@/types';
@@ -119,6 +123,14 @@ export interface StreamMetadata {
   runId?: string;
   requestId?: string;
   traceId?: string;
+  artifact?: TripPlanArtifact | null;
+}
+
+export interface StreamCompletionPayload {
+  artifact?: TripPlanArtifact | null;
+  runId?: string;
+  requestId?: string;
+  traceId?: string;
 }
 
 // Chat stream callbacks intentionally separate "reasoning" and "answer" channels
@@ -127,6 +139,9 @@ type StreamCallbacks = {
   onSessionId?: (sessionId: string) => void;
   onStage?: (stage: StreamStageEvent) => void;
   onPlanPreview?: (preview: PlanPreview) => void;
+  onSubagentStart?: (event: SubagentEvent) => void;
+  onSubagentEnd?: (event: SubagentEvent) => void;
+  onArtifactPatch?: (subagent: string, patch: ArtifactPatch) => void;
   onChunk: (content: string) => void;
   onReasoning: (content: string) => void;
   onReasoningStart: () => void;
@@ -137,10 +152,14 @@ type StreamCallbacks = {
   onToolEnd?: (toolName: string, result: string) => void;
   onMetadata: (data: StreamMetadata) => void;
   onError: (error: string) => void;
-  onComplete: () => void;
+  onComplete: (payload?: StreamCompletionPayload) => void;
   onStop?: () => boolean;
   onConnectionChange?: (status: SSEConnectionStatus) => void;
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 class APIService {
   private maxReconnectAttempts = 3;
@@ -193,6 +212,11 @@ class APIService {
 
   async getSessions(): Promise<{ sessions: SessionInfo[] }> {
     const response = await apiClient.get(`${API_PREFIX}/sessions`);
+    return response.data;
+  }
+
+  async getSessionMessages(sessionId: string): Promise<SessionMessagesResponse> {
+    const response = await apiClient.get(`${API_PREFIX}/session/${sessionId}/messages`);
     return response.data;
   }
 
@@ -424,6 +448,7 @@ class APIService {
           stage: typeof data.stage === 'string' ? data.stage : undefined,
           label: typeof data.label === 'string' ? data.label : undefined,
           progress: data.progress === undefined ? null : Number(data.progress),
+          subagent: typeof data.subagent === 'string' ? data.subagent : null,
         });
         return false;
       }
@@ -435,7 +460,35 @@ class APIService {
           validationStatus: typeof data.validation_status === 'string' ? data.validation_status : null,
           validationErrors: Array.isArray(data.validation_errors) ? (data.validation_errors as string[]) : [],
           steps: Array.isArray(data.steps) ? (data.steps as Array<Record<string, unknown>>) : [],
+          artifact: isRecord(data.artifact) ? (data.artifact as unknown as TripPlanArtifact) : null,
+          artifactPatch: isRecord(data.artifact_patch) ? (data.artifact_patch as ArtifactPatch) : null,
+          subagent: typeof data.subagent === 'string' ? data.subagent : null,
+          skills: Array.isArray(data.skills) ? (data.skills as string[]) : [],
         });
+        return false;
+      }
+      if (dataType === 'subagent_start' && typeof data.subagent === 'string') {
+        callbacks.onSubagentStart?.({
+          subagent: data.subagent,
+          description: typeof data.description === 'string' ? data.description : null,
+          skills: Array.isArray(data.skills) ? (data.skills as string[]) : [],
+          toolNames: Array.isArray(data.tool_names) ? (data.tool_names as string[]) : [],
+          sequence: data.sequence === undefined ? null : Number(data.sequence),
+          trigger: typeof data.trigger === 'string' ? data.trigger : null,
+        });
+        return false;
+      }
+      if (dataType === 'subagent_end' && typeof data.subagent === 'string') {
+        callbacks.onSubagentEnd?.({
+          subagent: data.subagent,
+          sequence: data.sequence === undefined ? null : Number(data.sequence),
+          status: typeof data.status === 'string' ? data.status : null,
+          summary: typeof data.summary === 'string' ? data.summary : null,
+        });
+        return false;
+      }
+      if (dataType === 'artifact_patch' && typeof data.subagent === 'string' && isRecord(data.artifact_patch)) {
+        callbacks.onArtifactPatch?.(data.subagent, data.artifact_patch as ArtifactPatch);
         return false;
       }
       if (dataType === 'metadata' || dataType === 'reasoning_metadata') {
@@ -457,6 +510,7 @@ class APIService {
           runId: typeof data.run_id === 'string' ? data.run_id : '',
           requestId: typeof data.request_id === 'string' ? data.request_id : '',
           traceId: typeof data.trace_id === 'string' ? data.trace_id : '',
+          artifact: isRecord(data.artifact) ? (data.artifact as unknown as TripPlanArtifact) : null,
         });
         if (dataType === 'reasoning_metadata' && Boolean(data.has_reasoning)) callbacks.onReasoningStart();
         return false;
@@ -502,7 +556,12 @@ class APIService {
       }
       if (dataType === 'done') {
         this.connectionStatus = SSEConnectionStatus.IDLE;
-        callbacks.onComplete();
+        callbacks.onComplete({
+          artifact: isRecord(data.artifact) ? (data.artifact as unknown as TripPlanArtifact) : null,
+          runId: typeof data.run_id === 'string' ? data.run_id : '',
+          requestId: typeof data.request_id === 'string' ? data.request_id : '',
+          traceId: typeof data.trace_id === 'string' ? data.trace_id : '',
+        });
         this.pendingRequests.delete(requestKey);
         return true;
       }

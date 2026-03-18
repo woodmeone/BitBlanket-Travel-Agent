@@ -16,7 +16,7 @@ import html2canvas from 'html2canvas';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Message } from '@/types';
+import type { Message, SubagentEvent, TripPlanArtifact } from '@/types';
 import TravelPlanToolkit from './TravelPlanToolkit';
 
 // Rendering pipeline overview:
@@ -34,6 +34,8 @@ interface Props {
   reasoningExpanded?: Record<string, boolean>;
   onToggleReasoning?: (messageId: string) => void;
   onContinuePrompt?: (prompt: string) => void;
+  streamingArtifact?: TripPlanArtifact | null;
+  streamingSubagentEvents?: SubagentEvent[];
 }
 
 function parsePipeCells(line: string): string[] {
@@ -471,6 +473,13 @@ function deriveExportTitle(content: string): string {
   return normalized || '旅行方案分享';
 }
 
+function formatSubagentLabel(name: string): string {
+  if (name === 'planning') return '规划';
+  if (name === 'research') return '研究';
+  if (name === 'verification') return '校验';
+  return name;
+}
+
 const CopyButton: React.FC<{ content: string }> = ({ content }) => {
   const [copied, setCopied] = useState(false);
   const { message } = App.useApp();
@@ -790,6 +799,8 @@ const DiagnosticsPanel: React.FC<{ diagnostics?: Message['diagnostics'] }> = ({ 
   const verification = diagnostics.verificationPassed;
   const staleCount = Number(diagnostics.staleResultCount || 0);
   const fallbackSteps = Number(diagnostics.fallbackSteps || 0);
+  const artifact = diagnostics.artifact;
+  const subagentEvents = diagnostics.subagentEvents || [];
 
   return (
     <div
@@ -811,6 +822,14 @@ const DiagnosticsPanel: React.FC<{ diagnostics?: Message['diagnostics'] }> = ({ 
       <div style={{ fontSize: '12px', color: '#334155', wordBreak: 'break-all' }}>
         工具列表: {toolsUsed.length > 0 ? toolsUsed.join(', ') : '无'}
       </div>
+      {artifact?.itinerary.planId && (
+        <div style={{ fontSize: '12px', color: '#334155' }}>Artifact 计划ID: {artifact.itinerary.planId}</div>
+      )}
+      {subagentEvents.length > 0 && (
+        <div style={{ fontSize: '12px', color: '#334155' }}>
+          子 Agent: {subagentEvents.map((event) => formatSubagentLabel(event.subagent)).join(' → ')}
+        </div>
+      )}
     </div>
   );
 };
@@ -926,6 +945,8 @@ const MessageItem = memo(function MessageItem({
                 messageId={messageId}
                 content={visibleMessageContent}
                 diagnostics={msg.diagnostics}
+                artifact={msg.diagnostics?.artifact}
+                subagentEvents={msg.diagnostics?.subagentEvents}
                 onContinuePrompt={onContinuePrompt}
               />
             )}
@@ -956,12 +977,16 @@ const StreamingMessageItem = memo(function StreamingMessageItem({
   isWaiting = false,
   isThinking = false,
   currentTool = null,
+  artifact = null,
+  subagentEvents = [],
 }: {
   content: string;
   reasoning?: string;
   isWaiting?: boolean;
   isThinking?: boolean;
   currentTool?: string | null;
+  artifact?: TripPlanArtifact | null;
+  subagentEvents?: SubagentEvent[];
 }) {
   const streamingThinkData = useMemo(() => extractThinkBlocks(content), [content]);
   const streamingThinkContent = useMemo(
@@ -1124,6 +1149,30 @@ const StreamingMessageItem = memo(function StreamingMessageItem({
             </div>
           )}
 
+          {(artifact || subagentEvents.length > 0) && (
+            <div
+              style={{
+                marginBottom: hasContent ? '12px' : 0,
+                padding: '10px 12px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #ecfeff 0%, #f8fafc 100%)',
+                border: '1px solid rgba(8, 145, 178, 0.15)',
+                display: 'grid',
+                gap: '4px',
+              }}
+            >
+              {artifact?.itinerary.planId && <div style={{ fontSize: '12px', color: '#155e75' }}>Artifact: #{artifact.itinerary.planId}</div>}
+              {artifact?.verification.passed !== null && artifact?.verification.passed !== undefined && (
+                <div style={{ fontSize: '12px', color: '#155e75' }}>校验: {artifact.verification.passed ? '通过' : '未通过'}</div>
+              )}
+              {subagentEvents.length > 0 && (
+                <div style={{ fontSize: '12px', color: '#155e75' }}>
+                  子 Agent: {subagentEvents.map((event) => formatSubagentLabel(event.subagent)).join(' → ')}
+                </div>
+              )}
+            </div>
+          )}
+
           {hasContent && (
             <div style={{ lineHeight: 1.7, fontSize: '14px', color: '#1f2937', wordBreak: 'break-word' }}>
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={enhancedMarkdownComponents}>
@@ -1163,6 +1212,8 @@ const MessageList: React.FC<Props> = ({
   reasoningExpanded = {},
   onToggleReasoning,
   onContinuePrompt,
+  streamingArtifact,
+  streamingSubagentEvents = [],
 }) => {
   const toggleHandler = onToggleReasoning || (() => {});
 
@@ -1204,6 +1255,8 @@ const MessageList: React.FC<Props> = ({
           isWaiting={isWaiting}
           isThinking={isThinking}
           currentTool={currentTool}
+          artifact={streamingArtifact}
+          subagentEvents={streamingSubagentEvents}
         />
       )}
     </div>

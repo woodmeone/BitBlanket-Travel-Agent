@@ -1,3 +1,5 @@
-"""Core agent runtime package with graph, tools, and LLM adapters."""
+"""Core agent runtime package with graph, supervisor, skills, and app-facing runtime."""
 
-# Agent Source Package
+from .runtime import AgentRuntime
+
+__all__ = ["AgentRuntime"]

@@ -13,6 +13,80 @@ export interface MessageDiagnostics {
   fallbackSteps?: number;
   planId?: string | null;
   executionStats?: Record<string, unknown>;
+  artifact?: TripPlanArtifact | null;
+  subagentEvents?: SubagentEvent[];
+  runId?: string;
+  requestId?: string;
+  traceId?: string;
+}
+
+export interface TripIntentArtifact {
+  name: string;
+  confidence?: number | null;
+  entities: Record<string, unknown>;
+  detail: Record<string, unknown>;
+}
+
+export interface ResearchEvidenceArtifact {
+  tool?: string;
+  status?: string;
+  query?: string;
+  [key: string]: unknown;
+}
+
+export interface ResearchDossierArtifact {
+  summary: string;
+  evidence: ResearchEvidenceArtifact[];
+  destinations: string[];
+  sourceTools: string[];
+}
+
+export interface ItineraryDraftArtifact {
+  planId?: string | null;
+  explanation: string;
+  steps: Record<string, unknown>[];
+  validationStatus: string;
+  validationErrors: Record<string, unknown>[];
+}
+
+export interface BudgetReportArtifact {
+  summary: Record<string, unknown>;
+  executionBudget: Record<string, unknown>;
+  staleResultCount: number;
+  fallbackSteps: number;
+}
+
+export interface VerificationReportArtifact {
+  passed?: boolean | null;
+  shouldRetry: boolean;
+  issues: Record<string, unknown>[];
+  refreshTargets: string[];
+  summary: string;
+}
+
+export interface TripPlanArtifact {
+  intent: TripIntentArtifact;
+  research: ResearchDossierArtifact;
+  itinerary: ItineraryDraftArtifact;
+  budget: BudgetReportArtifact;
+  verification: VerificationReportArtifact;
+  answer: string;
+  reasoning: string;
+  toolsUsed: string[];
+  metadata: Record<string, unknown>;
+}
+
+export interface ArtifactPatch {
+  intent?: Partial<TripIntentArtifact>;
+  research?: Partial<ResearchDossierArtifact>;
+  itinerary?: Partial<ItineraryDraftArtifact>;
+  budget?: Partial<BudgetReportArtifact>;
+  verification?: Partial<VerificationReportArtifact>;
+  answer?: string;
+  reasoning?: string;
+  toolsUsed?: string[];
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 export interface PlanPreviewStep {
@@ -30,12 +104,29 @@ export interface PlanPreview {
   validationStatus?: string | null;
   validationErrors?: string[];
   steps: PlanPreviewStep[];
+  artifact?: TripPlanArtifact | null;
+  artifactPatch?: ArtifactPatch | null;
+  subagent?: string | null;
+  skills?: string[];
 }
 
 export interface StreamStageEvent {
   stage?: string;
   label?: string;
   progress?: number | null;
+  subagent?: string | null;
+}
+
+export interface SubagentEvent {
+  subagent: string;
+  description?: string | null;
+  skills?: string[];
+  toolNames?: string[];
+  sequence?: number | null;
+  trigger?: string | null;
+  status?: string | null;
+  summary?: string | null;
+  timestamp?: string;
 }
 
 export interface SessionInfo {
@@ -54,6 +145,7 @@ export type ChatMode = 'direct' | 'react' | 'plan';
 
 export interface ChatRequest {
   message: string;
+  display_message?: string;
   session_id: string;
   mode?: ChatMode;
 }
@@ -63,6 +155,11 @@ export interface ChatResponse {
   response?: string;
   error?: string;
   session_id?: string;
+}
+
+export interface SessionMessagesResponse {
+  success: boolean;
+  messages: Message[];
 }
 
 export interface ModelInfo {

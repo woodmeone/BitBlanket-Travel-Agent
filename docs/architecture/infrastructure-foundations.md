@@ -104,6 +104,19 @@ docker compose up --build
   - 对外暴露 `38000/33001`
   - 挂载 `config/`、`data/`、`logs/`
 
+当前两份 Dockerfile 都支持通过 build args 覆盖基础镜像：
+
+- `PYTHON_BASE_IMAGE`
+- `NODE_BASE_IMAGE`
+
+这样在 Docker Hub 拉取受限时，可以直接切换到镜像站，例如：
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-up `
+  -PythonBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" `
+  -NodeBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
+```
+
 ### 2.3 运行方式建议
 
 建议把运行方式统一成 3 类：
@@ -454,6 +467,78 @@ python scripts/export_sse_contract_snapshot.py
 - [`docs/testing/testing-guide.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/testing/testing-guide.md)
 
 ## 10. P1 基础设施继续完善
+
+### 10.5 编码与仓库规范治理
+
+为了减少 Windows / Linux 之间的换行、编码和 diff 噪音，仓库现在补上了两份顶层规范文件：
+
+- [`.editorconfig`](/D:/projects/shuai/ShuaiTravelAgent/.editorconfig)
+- [`.gitattributes`](/D:/projects/shuai/ShuaiTravelAgent/.gitattributes)
+
+这两份文件分别负责：
+
+- 编辑器保存时的编码、缩进、换行
+- Git 提交时的文本归一化和二进制文件识别
+
+它们最主要保护的是：
+
+- Markdown / YAML / JSON 不被错误改成其他换行
+- PowerShell 脚本保留 `CRLF`
+- 图片、PDF、SQLite 不被当成文本文件处理
+
+### 10.6 本地命令入口统一
+
+根目录新增了统一命令脚本：
+
+- [`dev.ps1`](/D:/projects/shuai/ShuaiTravelAgent/dev.ps1)
+
+它把原来分散的本地命令统一成固定任务，包括：
+
+- `test`
+- `ruff`
+- `mypy`
+- `docstring`
+- `snapshots`
+- `release-manifest`
+- `support-bundle`
+- `infra-check`
+- `compose-config`
+- `compose-up`
+- `compose-observability`
+- `container-smoke`
+
+推荐优先把它当成“维护者本地入口”，而不是每次现查脚本名。
+
+### 10.7 容器与发布闭环验证
+
+CI 现在多了一层专门的部署验证任务：
+
+- [`.github/workflows/ci.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/ci.yml) 中的 `container-validate`
+
+它覆盖：
+
+1. release manifest 导出
+2. 默认 Compose 渲染
+3. `observability` profile Compose 渲染
+4. 后端镜像 smoke build
+5. 前端镜像 smoke build
+6. `deployment-validation-artifacts` 上传
+
+本地推荐用这条命令先预检查：
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-config
+```
+
+如果这一步已经失败，通常不必等 CI 再报一次。
+
+如果失败原因只是基础镜像拉取慢，可以直接切镜像站后再跑：
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke `
+  -PythonBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" `
+  -NodeBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
+```
 
 ### 10.1 静态质量门禁
 

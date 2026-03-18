@@ -28,18 +28,30 @@ from ..observability import (
 
 ensure_project_paths()
 
-from agent.travel_agent.llm.langchain_adapter import create_from_yaml_config
-from agent.travel_agent.tools.travel_tools import get_travel_tools
-from agent.travel_agent.graph import TRAVEL_AGENT_SYSTEM_PROMPT
-from agent.travel_agent.graph.builder import (
-    TOOL_RESULT_PREVIEW_LIMIT,
-    generate_plan_preview_with_memory,
-    get_tool_health_diagnostics,
-    run_travel_agent_streaming_with_memory,
-)
-from agent.travel_agent.graph.memory_integration import get_agent_memory_manager
+from agent.travel_agent.llm.langchain_adapter import create_from_yaml_config  # noqa: E402
+from agent.travel_agent.runtime import AgentRuntime, TOOL_RESULT_PREVIEW_LIMIT  # noqa: E402
+from agent.travel_agent.tools.travel_tools import get_travel_tools  # noqa: E402
+from agent.travel_agent.graph import TRAVEL_AGENT_SYSTEM_PROMPT  # noqa: E402
+from agent.travel_agent.graph.memory_integration import get_agent_memory_manager  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+
+def _merge_artifact_payload(
+    base: Optional[dict[str, Any]],
+    patch: Optional[dict[str, Any]],
+) -> dict[str, Any]:
+    """Deep-merge artifact fragments so preview, patch, and final snapshots stay aligned."""
+    merged = dict(base or {})
+    if not isinstance(patch, dict):
+        return merged
+
+    for key, value in patch.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _merge_artifact_payload(merged.get(key), value)
+            continue
+        merged[key] = value
+    return merged
 
 
 class ChatService:
@@ -69,11 +81,12 @@ class ChatService:
         self._init_lock = asyncio.Lock()
         self._initialized = False
 
-        self._llm_adapter = None
-        self._llm = None
-        self._router_llm = None
-        self._tools = None
-        self._memory_manager = None
+        self._llm_adapter: Any = None
+        self._llm: Any = None
+        self._router_llm: Any = None
+        self._tools: list[Any] | None = None
+        self._memory_manager: Any = None
+        self._agent_runtime: Optional[AgentRuntime] = None
         self._health_window_minutes = self._parse_int_env(
             "AGENT_HEALTH_WINDOW_MINUTES",
             self.DEFAULT_HEALTH_WINDOW_MINUTES,
@@ -130,6 +143,13 @@ class ChatService:
                 max_history=10,
                 summary_threshold=20,
             )
+            self._agent_runtime = AgentRuntime(
+                llm=self._llm,
+                tools=self._tools,
+                system_prompt=TRAVEL_AGENT_SYSTEM_PROMPT,
+                memory_manager=self._memory_manager,
+                routing_llm=self._router_llm,
+            )
             self._initialized = True
             logger.info("Chat runtime initialized with model=%s tools=%d", self._llm_adapter.config.get("name"), len(self._tools))
 
@@ -147,6 +167,9 @@ class ChatService:
             "llm_adapter": self._llm_adapter is not None,
             "tools_count": len(self._tools) if self._tools else 0,
             "memory_enabled": self._memory_manager is not None,
+            "runtime_layer": "agent-runtime" if self._agent_runtime is not None else "graph-direct",
+            "skills_count": len(self._agent_runtime.skill_registry) if self._agent_runtime is not None else 0,
+            "subagents_count": len(self._agent_runtime.subagents) if self._agent_runtime is not None else 0,
         }
 
     async def tools_health_status(self) -> dict[str, Any]:
@@ -159,7 +182,7 @@ class ChatService:
             dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
         status = await self.health_status()
-        diagnostics = get_tool_health_diagnostics()
+        diagnostics = self._agent_runtime.get_tool_health_diagnostics() if self._agent_runtime is not None else {}
         health_metrics = self._build_health_metrics_snapshot()
         return {
             "status": "ok" if status.get("initialized") else "not initialized",
@@ -196,6 +219,7 @@ class ChatService:
         message: str,
         session_id: Optional[str] = None,
         mode: str = "react",
+        display_message: Optional[str] = None,
         request_id: Optional[str] = None,
         trace_id: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
@@ -208,6 +232,7 @@ class ChatService:
             message: User message text for this chat run.
             session_id: Session identifier used to isolate chat and memory state.
             mode: Requested chat mode (direct/react/plan).
+            display_message: User-visible message persisted into session history.
             request_id: Request identifier propagated from the API layer.
             trace_id: Trace identifier propagated from the API layer.
         
@@ -227,6 +252,8 @@ class ChatService:
         verification_passed: Optional[bool] = None
         stale_result_count = 0
         fallback_steps = 0
+        final_artifact: dict[str, Any] = {}
+        subagent_events: list[dict[str, Any]] = []
         answer_started = False
         reasoning_ended = False
         memory_user_written = False
@@ -234,6 +261,7 @@ class ChatService:
         try:
             await self.initialize()
             sid = await self._ensure_session(session_id)
+            assert sid is not None
             emit_structured_log(
                 logger,
                 "chat_stream_started",
@@ -243,7 +271,12 @@ class ChatService:
             )
 
             yield self._sse({"type": "session_id", "session_id": sid, "run_id": run_id})
-            await self.save_message(sid, "user", message)
+            await self.save_message(
+                sid,
+                "user",
+                display_message or message,
+                model_content=message,
+            )
 
             memory_user_written = await self._write_memory_user(sid, message)
             if mode == "direct":
@@ -269,6 +302,28 @@ class ChatService:
                         preview_explanation = plan_preview.get("plan_explanation")
                         preview_validation_status = plan_preview.get("validation_status", "pass")
                         preview_validation_errors = plan_preview.get("validation_errors", [])
+                        preview_artifact = plan_preview.get("artifact", {})
+                        preview_subagent = plan_preview.get("subagent")
+                        preview_skills = plan_preview.get("skills", [])
+                        preview_artifact_patch = plan_preview.get("artifact_patch", {})
+                        final_artifact = _merge_artifact_payload(final_artifact, preview_artifact)
+                        final_artifact = _merge_artifact_payload(final_artifact, preview_artifact_patch)
+                        if preview_subagent:
+                            subagent_events.append(
+                                {
+                                    "subagent": preview_subagent,
+                                    "skills": preview_skills,
+                                    "trigger": "plan_preview",
+                                    "timestamp": self._get_timestamp(),
+                                }
+                            )
+                            yield self._sse(
+                                {
+                                    "type": "subagent_start",
+                                    "subagent": preview_subagent,
+                                    "skills": preview_skills,
+                                }
+                            )
                         yield self._sse(
                             {
                                 "type": "plan_preview",
@@ -278,8 +333,32 @@ class ChatService:
                                 "validation_status": preview_validation_status,
                                 "validation_errors": preview_validation_errors,
                                 "steps": preview_steps,
+                                "artifact": preview_artifact,
                             }
                         )
+                        if preview_subagent and preview_artifact_patch:
+                            yield self._sse(
+                                {
+                                    "type": "artifact_patch",
+                                    "subagent": preview_subagent,
+                                    "artifact_patch": preview_artifact_patch,
+                                }
+                            )
+                            yield self._sse(
+                                {
+                                    "type": "subagent_end",
+                                    "subagent": preview_subagent,
+                                    "status": "preview_ready",
+                                }
+                            )
+                            subagent_events.append(
+                                {
+                                    "subagent": preview_subagent,
+                                    "status": "preview_ready",
+                                    "summary": "Plan preview artifact prepared.",
+                                    "timestamp": self._get_timestamp(),
+                                }
+                            )
                         if preview_steps:
                             reasoning_content += f" 识别意图：{preview_intent}，共 {len(preview_steps)} 步。"
                             yield self._sse(
@@ -307,6 +386,67 @@ class ChatService:
                                 "stage": event.get("stage"),
                                 "label": event.get("label"),
                                 "progress": event.get("progress"),
+                                "subagent": event.get("subagent"),
+                            }
+                        )
+                        continue
+
+                    if event_type == "subagent_start":
+                        subagent_events.append(
+                            {
+                                "subagent": event.get("subagent"),
+                                "description": event.get("description"),
+                                "skills": event.get("skills", []),
+                                "toolNames": event.get("tool_names", []),
+                                "sequence": event.get("sequence"),
+                                "trigger": event.get("trigger"),
+                                "timestamp": self._get_timestamp(),
+                            }
+                        )
+                        yield self._sse(
+                            {
+                                "type": "subagent_start",
+                                "subagent": event.get("subagent"),
+                                "description": event.get("description"),
+                                "skills": event.get("skills", []),
+                                "tool_names": event.get("tool_names", []),
+                                "sequence": event.get("sequence"),
+                                "trigger": event.get("trigger"),
+                            }
+                        )
+                        continue
+
+                    if event_type == "subagent_end":
+                        subagent_events.append(
+                            {
+                                "subagent": event.get("subagent"),
+                                "sequence": event.get("sequence"),
+                                "status": event.get("status"),
+                                "summary": event.get("summary"),
+                                "timestamp": self._get_timestamp(),
+                            }
+                        )
+                        yield self._sse(
+                            {
+                                "type": "subagent_end",
+                                "subagent": event.get("subagent"),
+                                "sequence": event.get("sequence"),
+                                "status": event.get("status"),
+                                "summary": event.get("summary"),
+                            }
+                        )
+                        continue
+
+                    if event_type == "artifact_patch":
+                        final_artifact = _merge_artifact_payload(
+                            final_artifact,
+                            event.get("artifact_patch") if isinstance(event.get("artifact_patch"), dict) else {},
+                        )
+                        yield self._sse(
+                            {
+                                "type": "artifact_patch",
+                                "subagent": event.get("subagent"),
+                                "artifact_patch": event.get("artifact_patch", {}),
                             }
                         )
                         continue
@@ -315,15 +455,24 @@ class ChatService:
                         tool_name = event.get("tool", "")
                         if tool_name:
                             tools_used.append(tool_name)
-                        yield self._sse({"type": "tool_start", "tool": tool_name})
+                        yield self._sse(
+                            {
+                                "type": "tool_start",
+                                "tool": tool_name,
+                                "subagent": event.get("subagent"),
+                            }
+                        )
                         continue
 
                     if event_type == "tool_end":
-                        yield self._sse({
-                            "type": "tool_end",
-                            "tool": event.get("tool", ""),
-                            "result": event.get("result", ""),
-                        })
+                        yield self._sse(
+                            {
+                                "type": "tool_end",
+                                "tool": event.get("tool", ""),
+                                "result": event.get("result", ""),
+                                "subagent": event.get("subagent"),
+                            }
+                        )
                         continue
 
                     if event_type == "chunk":
@@ -357,6 +506,8 @@ class ChatService:
                                 fallback_steps = int(event.get("fallback_steps") or 0)
                             except Exception:
                                 fallback_steps = 0
+                        if isinstance(event.get("artifact"), dict):
+                            final_artifact = _merge_artifact_payload(final_artifact, event.get("artifact"))
                         stream_tools = event.get("tools_used", [])
                         if stream_tools:
                             tools_used.extend([tool for tool in stream_tools if tool])
@@ -367,12 +518,6 @@ class ChatService:
                 if not answer_started:
                     yield self._sse({"type": "answer_start"})
 
-            await self.save_message(sid, "assistant", answer_content, reasoning_content or None)
-            if not await self._write_memory_assistant(sid, answer_content):
-                logger.warning("Failed to write assistant memory for session=%s", sid)
-            if not memory_user_written:
-                await self._write_memory_user(sid, message)
-
             tools_used = list(dict.fromkeys(tools_used))
             stats_steps = list((execution_stats or {}).get("steps", []) or [])
             if fallback_steps <= 0:
@@ -381,6 +526,31 @@ class ChatService:
                 stale_result_count = sum(1 for item in stats_steps if bool(item.get("is_stale", False)))
             if verification_passed is None:
                 verification_passed = True if mode == "direct" else stale_result_count == 0
+            request_context = get_request_context()
+            assistant_diagnostics = {
+                "toolsUsed": tools_used,
+                "verificationPassed": verification_passed,
+                "staleResultCount": stale_result_count,
+                "fallbackSteps": fallback_steps,
+                "planId": plan_id,
+                "executionStats": execution_stats,
+                "artifact": final_artifact or None,
+                "subagentEvents": subagent_events,
+                "runId": run_id,
+                "requestId": request_context.get("request_id"),
+                "traceId": request_context.get("trace_id"),
+            }
+            await self.save_message(
+                sid,
+                "assistant",
+                answer_content,
+                reasoning_content or None,
+                diagnostics=assistant_diagnostics,
+            )
+            if not await self._write_memory_assistant(sid, answer_content):
+                logger.warning("Failed to write assistant memory for session=%s", sid)
+            if not memory_user_written:
+                await self._write_memory_user(sid, message)
             self._record_run_metrics(
                 intent=detected_intent or ("direct" if mode == "direct" else "unknown"),
                 execution_stats=execution_stats,
@@ -401,8 +571,9 @@ class ChatService:
                 "stale_result_count": stale_result_count,
                 "fallback_steps": fallback_steps,
                 "failure_clusters": self._extract_failure_clusters(execution_stats),
+                "artifact": final_artifact,
             })
-            yield self._sse({"type": "done", "run_id": run_id})
+            yield self._sse({"type": "done", "run_id": run_id, "artifact": final_artifact})
             self._emit_failure_telemetry(
                 session_id=sid,
                 run_id=run_id,
@@ -425,6 +596,7 @@ class ChatService:
 
         except Exception as exc:
             logger.exception("Chat stream failed: %s", exc)
+            resolved_sid = sid or session_id or "unknown"
             self._record_run_metrics(
                 intent=detected_intent or ("direct" if mode == "direct" else "unknown"),
                 execution_stats=execution_stats,
@@ -432,12 +604,25 @@ class ChatService:
             )
             interrupted_answer = answer_content or "[INTERRUPTED]"
             try:
-                await self.save_message(sid, "assistant", interrupted_answer, reasoning_content or "stream interrupted")
+                request_context = get_request_context()
+                await self.save_message(
+                    resolved_sid,
+                    "assistant",
+                    interrupted_answer,
+                    reasoning_content or "stream interrupted",
+                    diagnostics={
+                        "artifact": final_artifact or None,
+                        "subagentEvents": subagent_events,
+                        "runId": run_id,
+                        "requestId": request_context.get("request_id"),
+                        "traceId": request_context.get("trace_id"),
+                    },
+                )
             except Exception:
                 pass
-            await self._write_memory_assistant(sid, f"[INTERRUPTED]{answer_content}")
+            await self._write_memory_assistant(resolved_sid, f"[INTERRUPTED]{answer_content}")
             self._emit_failure_telemetry(
-                session_id=sid,
+                session_id=resolved_sid,
                 run_id=run_id,
                 mode=mode,
                 execution_stats=execution_stats,
@@ -449,7 +634,7 @@ class ChatService:
                 logger,
                 "chat_stream_failed",
                 level=logging.ERROR,
-                session_id=sid,
+                session_id=resolved_sid,
                 mode=mode,
                 run_id=run_id,
                 error=str(exc),
@@ -475,7 +660,7 @@ class ChatService:
         history = self._build_relevant_memory_context_messages(session_id, message)
         if not history:
             history = await self._build_history_messages(session_id, exclude_last_user_message=message)
-        payload = [SystemMessage(content=TRAVEL_AGENT_SYSTEM_PROMPT)]
+        payload: list[Any] = [SystemMessage(content=TRAVEL_AGENT_SYSTEM_PROMPT)]
         payload.extend(history)
         payload.append(HumanMessage(content=message))
 
@@ -540,17 +725,15 @@ class ChatService:
         Returns:
             AsyncGenerator[str, None]: Streamed SSE/event payload sequence.
         """
-        async for event in run_travel_agent_streaming_with_memory(
+        if self._agent_runtime is None:
+            raise RuntimeError("Agent runtime is not initialized")
+
+        async for event in self._agent_runtime.stream_with_memory(
             user_message=message,
-            llm=self._llm,
-            tools=self._tools,
             session_id=session_id,
-            memory_manager=self._memory_manager,
-            system_prompt=TRAVEL_AGENT_SYSTEM_PROMPT,
             persist_memory=False,
             run_id=run_id,
             chat_mode=mode,
-            routing_llm=self._router_llm,
         ):
             if event.get("type") == "tool_end":
                 event["result"] = str(event.get("result", ""))[:TOOL_RESULT_PREVIEW_LIMIT]
@@ -569,15 +752,13 @@ class ChatService:
         Returns:
             dict[str, Any]: Structured metadata dictionary for downstream stages.
         """
-        return generate_plan_preview_with_memory(
+        if self._agent_runtime is None:
+            raise RuntimeError("Agent runtime is not initialized")
+
+        return self._agent_runtime.generate_plan_preview_with_memory(
             user_message=message,
-            llm=self._llm,
-            tools=self._tools,
             session_id=session_id,
-            memory_manager=self._memory_manager,
-            system_prompt=TRAVEL_AGENT_SYSTEM_PROMPT,
             chat_mode="plan",
-            routing_llm=self._router_llm,
         )
 
     def _build_memory_context_messages(self, session_id: str) -> list[Any]:
@@ -740,6 +921,8 @@ class ChatService:
         role: str,
         content: str,
         reasoning: Optional[str] = None,
+        diagnostics: Optional[dict[str, Any]] = None,
+        model_content: Optional[str] = None,
     ) -> dict[str, Any]:
         """Persist one chat message into repository and optionally sync memory profile.
         
@@ -751,6 +934,8 @@ class ChatService:
             role: Message role label (user/assistant/system).
             content: Text content being streamed, persisted, or analyzed.
             reasoning: Optional reasoning text captured separately from final answer.
+            diagnostics: Structured artifact/subagent diagnostics persisted with assistant messages.
+            model_content: Hidden prompt content used for model history reconstruction.
         
         Returns:
             dict[str, Any]: Structured metadata dictionary for downstream stages.
@@ -760,14 +945,17 @@ class ChatService:
             return {"success": False, "error": "会话不存在"}
 
         messages = session.get("messages", [])
-        messages.append(
-            {
-                "role": role,
-                "content": content,
-                "reasoning": reasoning,
-                "timestamp": self._get_timestamp(),
-            }
-        )
+        entry: dict[str, Any] = {
+            "role": role,
+            "content": content,
+            "reasoning": reasoning,
+            "timestamp": self._get_timestamp(),
+        }
+        if diagnostics:
+            entry["diagnostics"] = diagnostics
+        if model_content:
+            entry["model_content"] = model_content
+        messages.append(entry)
 
         await self._repository.update(
             session_id,
@@ -779,7 +967,7 @@ class ChatService:
         return {"success": True}
 
     async def get_messages(self, session_id: str) -> dict[str, Any]:
-        """Return persisted messages for a session, ordered by repository contract.
+        """Return persisted public messages for a session, excluding model-only prompt fields.
         
         Purpose:
             Describe chat-service behavior, emitted events, and persistence side effects for maintainers.
@@ -792,9 +980,23 @@ class ChatService:
         """
         session = await self._repository.get(session_id)
         if not session:
+            return {"success": False, "error": "SESSION_NOT_FOUND", "messages": []}
+        if not session:
             return {"success": False, "error": "会话不存在", "messages": []}
 
-        return {"success": True, "messages": session.get("messages", [])}
+        public_messages: list[dict[str, Any]] = []
+        for message in session.get("messages", []):
+            if not isinstance(message, dict):
+                continue
+            public_messages.append(
+                {
+                    key: value
+                    for key, value in message.items()
+                    if key in {"role", "content", "reasoning", "timestamp", "diagnostics"}
+                }
+            )
+
+        return {"success": True, "messages": public_messages}
 
     async def cleanup_expired_sessions(self, max_age_seconds: int = 86400) -> int:
         """Run repository cleanup for expired sessions and stale data.

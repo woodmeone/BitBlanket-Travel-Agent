@@ -12,8 +12,9 @@ import {
 } from '@ant-design/icons';
 import { useAppContext } from '@/context/AppContext';
 import { apiService, type StreamMetadata } from '@/services/api';
-import type { PlanPreview, StreamStageEvent } from '@/types';
+import type { ArtifactPatch, PlanPreview, StreamStageEvent, SubagentEvent, TripPlanArtifact } from '@/types';
 import { logger } from '@/utils/logger';
+import { mergeTripPlanArtifact } from '@/utils/agentArtifacts';
 import MessageList from './MessageList';
 import ChatModeSelector from './ChatModeSelector';
 import CityExplorer from './CityExplorer';
@@ -27,6 +28,7 @@ const REASONING_CHARS_PER_TICK = 2;
 const STREAM_FLUSH_INTERVAL_MS = 28;
 const MAX_EVENT_LOGS = 14;
 const MAX_STAGE_LOGS = 8;
+const MAX_SUBAGENT_EVENTS = 10;
 const PRESET_CONSTRAINTS = ['亲子', '老人', '无车', '雨天', '少走路'] as const;
 const QUICK_START_PROMPTS = [
   '帮我做一个上海周末 2 天轻松游，地铁可达，预算 1500 元以内',
@@ -62,6 +64,13 @@ function normalizeStepLabel(step: Record<string, unknown>, index: number): strin
   return title || description || tool || `步骤 ${index + 1}`;
 }
 
+function subagentLabel(name: string | null | undefined): string {
+  if (name === 'planning') return '规划';
+  if (name === 'research') return '研究';
+  if (name === 'verification') return '校验';
+  return name || 'unknown';
+}
+
 const ChatArea: React.FC = () => {
   const {
     currentSessionId,
@@ -91,6 +100,9 @@ const ChatArea: React.FC = () => {
   const [stageHistory, setStageHistory] = useState<StreamStageEvent[]>([]);
   const [runtimeLogs, setRuntimeLogs] = useState<RuntimeLog[]>([]);
   const [planPreview, setPlanPreview] = useState<PlanPreview | null>(null);
+  const [artifactState, setArtifactState] = useState<TripPlanArtifact | null>(null);
+  const [subagentEvents, setSubagentEvents] = useState<SubagentEvent[]>([]);
+  const [activeSubagent, setActiveSubagent] = useState<string | null>(null);
   const [selectedConstraints, setSelectedConstraints] = useState<string[]>([]);
   const [budgetUpperLimit, setBudgetUpperLimit] = useState<number | null>(null);
   const [compareModeEnabled, setCompareModeEnabled] = useState(false);
@@ -102,6 +114,8 @@ const ChatArea: React.FC = () => {
   // These refs hold the authoritative stream payload while the UI renders a smoothed copy.
   // State drives what users see; refs preserve the full stream so stop/complete paths never lose tail content.
   const metadataRef = useRef<StreamMetadata | null>(null);
+  const artifactRef = useRef<TripPlanArtifact | null>(null);
+  const subagentEventsRef = useRef<SubagentEvent[]>([]);
   const fullResponseRef = useRef('');
   const fullReasoningRef = useRef('');
   const reasoningTimestampRef = useRef('');
@@ -119,6 +133,24 @@ const ChatArea: React.FC = () => {
       time: nowLabel(),
     };
     setRuntimeLogs((prev) => [...prev.slice(-MAX_EVENT_LOGS + 1), item]);
+  };
+
+  const applyArtifactPatch = (patch: ArtifactPatch | TripPlanArtifact | null | undefined) => {
+    const merged = mergeTripPlanArtifact(artifactRef.current, patch);
+    artifactRef.current = merged;
+    setArtifactState(merged);
+  };
+
+  const recordSubagentEvent = (event: SubagentEvent) => {
+    const stamped = { ...event, timestamp: nowLabel() };
+    const nextEvents = [...subagentEventsRef.current.slice(-MAX_SUBAGENT_EVENTS + 1), stamped];
+    subagentEventsRef.current = nextEvents;
+    setSubagentEvents(nextEvents);
+    if (event.status) {
+      setActiveSubagent((current) => (current === event.subagent ? null : current));
+      return;
+    }
+    setActiveSubagent(event.subagent);
   };
 
   const scheduleScrollToBottom = () => {
@@ -201,6 +233,16 @@ const ChatArea: React.FC = () => {
     reasoningTimestampRef.current = '';
   };
 
+  const clearArtifactRuntimeState = () => {
+    artifactRef.current = null;
+    subagentEventsRef.current = [];
+    metadataRef.current = null;
+    setArtifactState(null);
+    setSubagentEvents([]);
+    setActiveSubagent(null);
+    setPlanPreview(null);
+  };
+
   useEffect(() => {
     return () => {
       stopFlushTimer();
@@ -266,8 +308,7 @@ const ChatArea: React.FC = () => {
     setStageState(null);
     setStageHistory([]);
     setRuntimeLogs([]);
-    setPlanPreview(null);
-    metadataRef.current = null;
+    clearArtifactRuntimeState();
     stopRef.current = false;
   }, [currentSessionId, setIsStreaming, setStopStreaming]);
 
@@ -331,8 +372,7 @@ const ChatArea: React.FC = () => {
       setStageState(null);
       setStageHistory([]);
       setRuntimeLogs([]);
-      setPlanPreview(null);
-      metadataRef.current = null;
+      clearArtifactRuntimeState();
       stopRef.current = false;
       pushRuntimeLog('开始执行', `模式: ${chatMode.toUpperCase()}`);
 
@@ -346,7 +386,7 @@ const ChatArea: React.FC = () => {
       }
 
       await apiService.fetchStreamChat(
-        { message: enrichedPrompt, session_id: sessionId, mode: chatMode },
+        { message: enrichedPrompt, display_message: trimmed, session_id: sessionId, mode: chatMode },
         {
           // SSE callbacks are intentionally state-minimal: persist authoritative values
           // in refs first, then let UI consume chunked queue updates.
@@ -363,7 +403,20 @@ const ChatArea: React.FC = () => {
           },
           onPlanPreview: (preview) => {
             setPlanPreview(preview);
+            applyArtifactPatch(preview.artifact ?? preview.artifactPatch);
             pushRuntimeLog('计划预览', preview.intent || '已生成');
+          },
+          onSubagentStart: (event) => {
+            recordSubagentEvent(event);
+            pushRuntimeLog('子 Agent 启动', `${subagentLabel(event.subagent)} | ${event.skills?.join(', ') || 'no skills'}`);
+          },
+          onSubagentEnd: (event) => {
+            recordSubagentEvent(event);
+            pushRuntimeLog('子 Agent 完成', `${subagentLabel(event.subagent)} | ${event.status || 'completed'}`);
+          },
+          onArtifactPatch: (subagent, patch) => {
+            applyArtifactPatch(patch);
+            pushRuntimeLog('Artifact 更新', `${subagentLabel(subagent)} 提交结构化补丁`);
           },
           onChunk: (content) => {
             fullResponseRef.current += content;
@@ -389,6 +442,7 @@ const ChatArea: React.FC = () => {
           },
           onMetadata: (data) => {
             metadataRef.current = data;
+            applyArtifactPatch(data.artifact);
             pushRuntimeLog('执行完成', `工具 ${data.toolsUsed.length} 个`);
           },
           onError: (errorMsg) => {
@@ -400,11 +454,12 @@ const ChatArea: React.FC = () => {
             setCurrentTool(null);
             setError(errorMsg);
             setStageState(null);
+            clearArtifactRuntimeState();
             pushRuntimeLog('执行失败', errorMsg);
             fullResponseRef.current = `抱歉，发生错误：${errorMsg}`;
             setStreamingMessage(fullResponseRef.current);
           },
-          onComplete: () => {
+          onComplete: (completion) => {
             message.destroy();
             drainStreamingQueueToRefs();
 
@@ -415,34 +470,44 @@ const ChatArea: React.FC = () => {
               : fullReasoningRef.current;
             const finalContent = fullResponseRef.current;
             const finalMetadata = metadataRef.current;
+            const finalArtifact = mergeTripPlanArtifact(artifactRef.current, completion?.artifact);
+            const finalSubagentEvents = subagentEventsRef.current;
+            const finalDiagnostics =
+              finalMetadata || finalArtifact || finalSubagentEvents.length > 0
+                ? {
+                    toolsUsed: finalMetadata?.toolsUsed || finalArtifact?.toolsUsed || [],
+                    verificationPassed: finalMetadata?.verificationPassed ?? finalArtifact?.verification.passed ?? null,
+                    staleResultCount:
+                      finalMetadata?.staleResultCount ?? finalArtifact?.budget.staleResultCount ?? 0,
+                    fallbackSteps: finalMetadata?.fallbackSteps ?? finalArtifact?.budget.fallbackSteps ?? 0,
+                    planId: finalMetadata?.planId ?? finalArtifact?.itinerary.planId ?? null,
+                    executionStats: finalMetadata?.executionStats ?? finalArtifact?.budget.summary,
+                    artifact: finalArtifact,
+                    subagentEvents: finalSubagentEvents,
+                    runId: completion?.runId || finalMetadata?.runId,
+                    requestId: completion?.requestId || finalMetadata?.requestId,
+                    traceId: completion?.traceId || finalMetadata?.traceId,
+                  }
+                : undefined;
 
             clearStreamRuntimeRefs();
             addMessage({
               role: 'assistant',
               content: finalContent,
               reasoning: finalReasoning,
-              diagnostics: finalMetadata
-                ? {
-                    toolsUsed: finalMetadata.toolsUsed,
-                    verificationPassed: finalMetadata.verificationPassed,
-                    staleResultCount: finalMetadata.staleResultCount,
-                    fallbackSteps: finalMetadata.fallbackSteps,
-                    planId: finalMetadata.planId,
-                    executionStats: finalMetadata.executionStats,
-                  }
-                : undefined,
+              diagnostics: finalDiagnostics,
               timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
             });
 
             setStreamingMessage('');
             setStreamingReasoning('');
-            metadataRef.current = null;
             setWaitingForResponse(false);
             setIsStreaming(false);
             setIsThinking(false);
             setCurrentTool(null);
             setStageState(null);
             stopRef.current = false;
+            clearArtifactRuntimeState();
             pushRuntimeLog('结束', '已生成最终回答');
           },
           onStop: () => stopRef.current,
@@ -458,6 +523,7 @@ const ChatArea: React.FC = () => {
       setIsThinking(false);
       setCurrentTool(null);
       setError(errorMsg);
+      clearArtifactRuntimeState();
       clearStreamRuntimeRefs();
     }
   };
@@ -469,6 +535,8 @@ const ChatArea: React.FC = () => {
 
     const stoppedContent = fullResponseRef.current;
     const stoppedReasoning = fullReasoningRef.current;
+    const stoppedArtifact = artifactRef.current;
+    const stoppedSubagentEvents = subagentEventsRef.current;
     clearStreamRuntimeRefs();
 
     setWaitingForResponse(false);
@@ -484,12 +552,17 @@ const ChatArea: React.FC = () => {
         role: 'assistant',
         content: `${stoppedContent || '已停止生成'}\n\n⚠️ 已停止生成`,
         reasoning: stoppedReasoning,
+        diagnostics:
+          stoppedArtifact || stoppedSubagentEvents.length > 0
+            ? { artifact: stoppedArtifact, subagentEvents: stoppedSubagentEvents }
+            : undefined,
         timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       });
     }
 
     setStreamingMessage('');
     setStreamingReasoning('');
+    clearArtifactRuntimeState();
   };
 
   const handleUsePromptFromExplorer = (prompt: string) => {
@@ -540,6 +613,9 @@ const ChatArea: React.FC = () => {
               runtimeLogs={runtimeLogs}
               planPreview={planPreview}
               metadata={metadataRef.current}
+              artifact={artifactState}
+              activeSubagent={activeSubagent}
+              subagentEvents={subagentEvents}
             />
 
             <MessageList
@@ -552,6 +628,8 @@ const ChatArea: React.FC = () => {
               reasoningExpanded={reasoningExpanded}
               onToggleReasoning={toggleReasoning}
               onContinuePrompt={handleContinueRefine}
+              streamingArtifact={artifactState}
+              streamingSubagentEvents={subagentEvents}
             />
 
             {messages.length === 0 && !waitingForResponse && !isStreaming && (
@@ -789,7 +867,22 @@ const ExecutionInsights: React.FC<{
   runtimeLogs: RuntimeLog[];
   planPreview: PlanPreview | null;
   metadata: StreamMetadata | null;
-}> = ({ isStreaming, isThinking, currentTool, stageState, stageHistory, runtimeLogs, planPreview, metadata }) => {
+  artifact: TripPlanArtifact | null;
+  activeSubagent: string | null;
+  subagentEvents: SubagentEvent[];
+}> = ({
+  isStreaming,
+  isThinking,
+  currentTool,
+  stageState,
+  stageHistory,
+  runtimeLogs,
+  planPreview,
+  metadata,
+  artifact,
+  activeSubagent,
+  subagentEvents,
+}) => {
   const shouldShow =
     isStreaming ||
     isThinking ||
@@ -797,7 +890,9 @@ const ExecutionInsights: React.FC<{
     Boolean(planPreview) ||
     stageHistory.length > 0 ||
     runtimeLogs.length > 0 ||
-    Boolean(metadata);
+    Boolean(metadata) ||
+    Boolean(artifact) ||
+    subagentEvents.length > 0;
 
   if (!shouldShow) return null;
 
@@ -823,6 +918,8 @@ const ExecutionInsights: React.FC<{
         {isThinking && <Tag color="purple">思考中</Tag>}
         {currentTool && <Tag color="gold">工具: {currentTool}</Tag>}
         {stageState?.label && <Tag color="cyan">阶段: {stageState.label}</Tag>}
+        {activeSubagent && <Tag color="geekblue">子 Agent: {subagentLabel(activeSubagent)}</Tag>}
+        {artifact?.itinerary.planId && <Tag color="purple">Artifact #{artifact.itinerary.planId}</Tag>}
       </div>
 
       {stageState && (
@@ -873,6 +970,49 @@ const ExecutionInsights: React.FC<{
         </div>
       )}
 
+      {(artifact || subagentEvents.length > 0) && (
+        <div
+          style={{
+            marginBottom: '10px',
+            padding: '10px',
+            borderRadius: '10px',
+            background: '#ecfeff',
+            border: '1px solid rgba(8, 145, 178, 0.18)',
+          }}
+        >
+          <div style={{ fontSize: '12px', color: '#0f766e', marginBottom: '8px', fontWeight: 600 }}>
+            Artifact / 子 Agent 轨迹
+          </div>
+
+          {artifact && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+              <Tag color="blue">Intent: {artifact.intent.name || 'general'}</Tag>
+              <Tag color={artifact.verification.passed === false ? 'red' : artifact.verification.passed ? 'green' : 'default'}>
+                校验: {artifact.verification.passed === false ? '未通过' : artifact.verification.passed ? '通过' : '待定'}
+              </Tag>
+              <Tag color="gold">Tools: {artifact.toolsUsed.length}</Tag>
+              {artifact.research.evidence.length > 0 && <Tag color="cyan">Evidence: {artifact.research.evidence.length}</Tag>}
+            </div>
+          )}
+
+          {subagentEvents.length > 0 && (
+            <div style={{ display: 'grid', gap: '6px' }}>
+              {subagentEvents
+                .slice()
+                .reverse()
+                .map((event, index) => (
+                  <div key={`${event.subagent}-${event.sequence || index}-${event.timestamp || index}`} style={{ fontSize: '12px', color: '#155e75' }}>
+                    [{event.timestamp || '--:--:--'}] {subagentLabel(event.subagent)}
+                    {event.status ? ` -> ${event.status}` : ` -> ${event.trigger || 'started'}`}
+                    {event.skills?.length ? ` | ${event.skills.join(', ')}` : ''}
+                    {event.summary ? ` | ${event.summary}` : ''}
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
         <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '10px' }}>
           <div style={{ fontSize: '12px', color: '#334155', marginBottom: '6px', fontWeight: 600 }}>
@@ -912,13 +1052,15 @@ const ExecutionInsights: React.FC<{
             <div>过期结果: {metadata?.staleResultCount || 0}</div>
             <div>回退次数: {metadata?.fallbackSteps || 0}</div>
             {metadata?.planId && <div>计划ID: {metadata.planId}</div>}
+            <div>子 Agent 事件: {subagentEvents.length}</div>
+            {artifact?.research.summary && <div>Research: {artifact.research.summary}</div>}
           </div>
         </div>
       </div>
 
       <div style={{ marginTop: '8px', fontSize: '11px', color: '#64748b' }}>
         <BulbOutlined style={{ marginRight: 6 }} />
-        以上内容来自后端 SSE 事件: stage、plan_preview、tool_start/tool_end、metadata
+        以上内容来自后端 SSE 事件: stage、plan_preview、subagent_start/subagent_end、artifact_patch、tool_start/tool_end、metadata
       </div>
     </div>
   );

@@ -790,3 +790,55 @@ sequenceDiagram
 2. 本地做一次“观察完整聊天事件流”的实验，并整理一张自己的 SSE 事件表。
 
 如果你能把这两件事讲清楚，聊天主链和前端这层就已经真正入门了。
+## Phase 3 补充：前端已经开始直接消费 Artifact
+
+这一章原本强调的是：
+
+- `ChatArea.tsx` 维护流式状态
+- `api.ts` 解析 SSE
+- `MessageList.tsx` 渲染最终消息
+- `TravelPlanToolkit.tsx` 再把长文本加工成产品结果
+
+现在要再补一个更贴近当前代码的认知：
+
+前端已经不只是消费 `chunk / stage / metadata`，还会直接消费：
+
+- `subagent_start`
+- `subagent_end`
+- `artifact_patch`
+- `plan_preview.artifact`
+- `metadata.artifact`
+- `done.artifact`
+
+建议你对着这几个真实文件一起看：
+
+1. [`frontend/src/services/api.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
+2. [`frontend/src/components/ChatArea.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)
+3. [`frontend/src/components/MessageList.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)
+4. [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)
+5. [`frontend/src/utils/agentArtifacts.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/utils/agentArtifacts.ts)
+
+新的学习重点是：
+
+1. `api.ts` 如何把新的 SSE 事件拆成独立回调
+2. `ChatArea.tsx` 如何在一次 streaming run 内持续 merge artifact patch
+3. `MessageList.tsx` 如何把 artifact 和 subagent 轨迹带进消息级 diagnostics
+4. `TravelPlanToolkit.tsx` 如何优先展示结构化 artifact 摘要，再回退到长文本 itinerary 解析
+
+这说明项目已经从“纯文本增强 UI”开始往“artifact-first UI”演进，但还保留了文本解析 fallback，保证兼容老响应和不完整结构化结果。
+## Phase 3 补充：刷新后如何恢复结构化结果
+
+当前主链已经不是“只要页面刷新，Phase 3 诊断就丢失”的状态。
+
+新的恢复链路是：
+
+`ChatArea.tsx` 发送 `display_message + message(enriched prompt)` -> `chat.py` -> `chat_service.py` 把 assistant `diagnostics.artifact` / `diagnostics.subagentEvents` 落入 session messages -> `session.py` 提供 `/api/session/{session_id}/messages` -> `AppContext.tsx` 在刷新或切换会话时重新拉取 -> `MessageList.tsx` 与 `TravelPlanToolkit.tsx` 继续消费恢复后的 artifact。
+
+阅读时建议对照：
+
+- `frontend/src/context/AppContext.tsx`
+- `frontend/src/utils/sessionMessages.ts`
+- `web/shuai_web/routes/session.py`
+- `web/shuai_web/services/chat_service.py`
+
+这一段非常适合作为面试里的“为什么你的 Agent UI 刷新后还能保留结构化计划结果”的追问材料。

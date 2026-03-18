@@ -139,3 +139,26 @@ npm run lint
 2. 再确认 release manifest 里的 backend / frontend 版本与镜像坐标。
 3. 最后确认 dashboard / alert 用到的 Prometheus 指标名和当前代码一致。
 4. 如果要交接问题现场，补导出一次 support bundle 供排障复盘。
+
+## 8. 统一命令入口
+
+如果你是维护者，建议优先从根目录脚本进入，而不是每次手敲零散命令：
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 infra-check
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 support-bundle
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-config
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke
+```
+
+适合场景：
+
+- `infra-check`
+  - 提交前做一轮基础设施门禁检查
+- `support-bundle`
+  - 需要把现场状态导出交给其他维护者
+- `compose-config`
+  - 改端口、环境变量、volume、镜像参数后先本地预检查
+- `container-smoke`
+  - 需要本地重现 backend / frontend 镜像构建，或需要临时切换镜像站时

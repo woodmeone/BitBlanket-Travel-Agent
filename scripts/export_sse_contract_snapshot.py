@@ -107,11 +107,51 @@ def _patched_chat_service() -> Iterator[None]:
     async def mock_stream_agent_events(self, session_id, message, mode="react", run_id=None):
         """Yield deterministic agent events shared by react and plan snapshots."""
         _ = (session_id, message, run_id)
+        yield {
+            "type": "subagent_start",
+            "subagent": "planning",
+            "skills": ["PlanSynthesisSkill"],
+            "sequence": 1,
+            "trigger": "stage",
+        }
         yield {"type": "reasoning", "content": f"{mode} thinking"}
-        yield {"type": "stage", "stage": "planning", "label": f"{mode} planning", "progress": 0.25}
-        yield {"type": "tool_start", "tool": "search_cities"}
-        yield {"type": "tool_end", "tool": "search_cities", "result": f"{mode} search done"}
+        yield {
+            "type": "stage",
+            "stage": "planning",
+            "label": f"{mode} planning",
+            "progress": 0.25,
+            "subagent": "planning",
+        }
+        yield {
+            "type": "artifact_patch",
+            "subagent": "planning",
+            "artifact_patch": {"itinerary": {"plan_id": "plan-demo"}},
+        }
+        yield {"type": "subagent_end", "subagent": "planning", "sequence": 1, "status": "completed"}
+        yield {
+            "type": "subagent_start",
+            "subagent": "research",
+            "skills": ["CityResearchSkill"],
+            "sequence": 2,
+            "trigger": "tool",
+        }
+        yield {"type": "tool_start", "tool": "search_cities", "subagent": "research"}
+        yield {"type": "tool_end", "tool": "search_cities", "result": f"{mode} search done", "subagent": "research"}
+        yield {"type": "subagent_end", "subagent": "research", "sequence": 2, "status": "completed"}
+        yield {
+            "type": "subagent_start",
+            "subagent": "verification",
+            "skills": ["BudgetAggregationSkill"],
+            "sequence": 3,
+            "trigger": "stage",
+        }
         yield {"type": "chunk", "content": f"{mode} answer"}
+        yield {
+            "type": "artifact_patch",
+            "subagent": "verification",
+            "artifact_patch": {"verification": {"passed": True}},
+        }
+        yield {"type": "subagent_end", "subagent": "verification", "sequence": 3, "status": "completed"}
         yield {
             "type": "done",
             "answer": f"{mode} answer",
@@ -131,6 +171,10 @@ def _patched_chat_service() -> Iterator[None]:
             "verification_passed": True,
             "stale_result_count": 0,
             "fallback_steps": 0,
+            "artifact": {
+                "itinerary": {"plan_id": "plan-demo"},
+                "verification": {"passed": True},
+            },
         }
 
     def mock_generate_plan_preview(self, session_id, message):
@@ -153,6 +197,10 @@ def _patched_chat_service() -> Iterator[None]:
                 {"step": 1, "tool": "search_cities", "params": {"city": "Shanghai"}},
                 {"step": 2, "tool": "plan_itinerary", "params": {"destination": "Shanghai", "days": 3}},
             ],
+            "artifact": {"itinerary": {"plan_id": "plan-demo"}},
+            "subagent": "planning",
+            "skills": ["PlanSynthesisSkill"],
+            "artifact_patch": {"itinerary": {"plan_id": "plan-demo"}},
         }
 
     def noop_record_metrics(self, intent, execution_stats, hard_error):

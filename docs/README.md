@@ -41,6 +41,10 @@
   优先看 [teaching/04-agent-core-tools-memory-checkpoint.md](teaching/04-agent-core-tools-memory-checkpoint.md) 和 [teaching/05-testing-debugging-and-change-practice.md](teaching/05-testing-debugging-and-change-practice.md)
 - `我要看部署 / 配置 / readiness / trace / CI`：
   优先看 [architecture/infrastructure-foundations.md](architecture/infrastructure-foundations.md)、[reference/configuration-reference.md](reference/configuration-reference.md)、[testing/testing-guide.md](testing/testing-guide.md)
+- `我要看仓库规范 / 命令入口 / 容器校验`：
+  优先看 [getting-started/development-workflow.md](getting-started/development-workflow.md)、[reference/project-structure.md](reference/project-structure.md)、[architecture/infrastructure-foundations.md](architecture/infrastructure-foundations.md)
+- `我要做 Agent 架构升级 / agent-subagent-skills 规划`：
+  优先看 [architecture/agent-subagent-skills-architecture-roadmap.md](architecture/agent-subagent-skills-architecture-roadmap.md)、[architecture/system-architecture.md](architecture/system-architecture.md)、[teaching/04-agent-core-tools-memory-checkpoint.md](teaching/04-agent-core-tools-memory-checkpoint.md)
 - `我要看 release / dashboard / alert`：
   优先看 [architecture/infrastructure-foundations.md](architecture/infrastructure-foundations.md)、[reference/backend-maintainer-playbook.md](reference/backend-maintainer-playbook.md)、[../ops/observability/README.md](../ops/observability/README.md)
 - `面试前 2 小时复习`：
@@ -71,6 +75,7 @@
 ### Architecture
 
 - [architecture/system-architecture.md](architecture/system-architecture.md): 整体系统架构与链路说明
+- [architecture/agent-subagent-skills-architecture-roadmap.md](architecture/agent-subagent-skills-architecture-roadmap.md): Agent 应用层与 `Supervisor -> Subagents -> Skills` 演进路线图
 - [architecture/infrastructure-foundations.md](architecture/infrastructure-foundations.md): 运行与部署、配置、readiness、CI、trace、metrics 总览
 - [architecture/data-storage.md](architecture/data-storage.md): 数据落盘与持久化策略
 - [architecture/agent-memory-mechanisms.md](architecture/agent-memory-mechanisms.md): Agent memory 的原子持久化、Top-K 注入与冲突澄清闭环
@@ -100,7 +105,9 @@
 - `scripts/export_sse_contract_snapshot.py`: SSE 契约快照导出
 - `scripts/export_release_manifest.py`: release manifest 导出
 - `scripts/export_support_bundle.py`: 运行态支持包导出
+- `dev.ps1`: 本地开发、测试、infra 检查、compose 校验统一入口
 - `scripts/docstring_audit.py`: Python docstring 覆盖率审计脚本
+- `compose.yaml` / `Dockerfile*`: 支持通过 `PYTHON_BASE_IMAGE`、`NODE_BASE_IMAGE` 切换基础镜像
 - [benchmarks/agent_benchmark_latest.md](benchmarks/agent_benchmark_latest.md): 最新 benchmark 报告
 - [benchmarks/agent_benchmark_trend_latest.md](benchmarks/agent_benchmark_trend_latest.md): benchmark 趋势报告
 - [benchmarks/agent_golden_eval_latest.json](benchmarks/agent_golden_eval_latest.json): golden eval 原始结果

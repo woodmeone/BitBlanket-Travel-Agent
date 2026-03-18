@@ -19,8 +19,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pip-audit ruff mypy
+          pip install -r requirements-dev.txt
 
       - name: Prepare runtime config for CI
         run: |
@@ -199,4 +198,69 @@ jobs:
             echo "- Type check: \`npm run lint\`"
             echo "- Unit tests: \`npm run test:run\`"
             echo "- Build: \`npm run build\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  container-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Export release manifest
+        run: |
+          python scripts/export_release_manifest.py \
+            --git-sha "${{ github.sha }}" \
+            --git-ref "${{ github.ref_name }}" \
+            --owner "${{ github.repository_owner }}"
+
+      - name: Validate default compose config
+        run: |
+          mkdir -p artifacts/ci
+          docker compose config > artifacts/ci/compose-default.rendered.yaml
+
+      - name: Validate observability compose config
+        run: docker compose --profile observability config > artifacts/ci/compose-observability.rendered.yaml
+
+      - name: Build backend image smoke
+        run: |
+          docker build \
+            --file Dockerfile.backend \
+            --build-arg APP_BUILD_SHA="${{ github.sha }}" \
+            --build-arg APP_BUILD_CREATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            --tag shuai-backend:ci .
+
+      - name: Build frontend image smoke
+        run: |
+          docker build \
+            --file frontend/Dockerfile \
+            --build-arg NEXT_PUBLIC_API_BASE=http://localhost:38000 \
+            --build-arg INTERNAL_API_BASE=http://backend:38000 \
+            --build-arg APP_BUILD_SHA="${{ github.sha }}" \
+            --build-arg APP_BUILD_CREATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            --tag shuai-frontend:ci ./frontend
+
+      - name: Upload deployment validation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-validation-artifacts
+          path: |
+            artifacts/ci/compose-default.rendered.yaml
+            artifacts/ci/compose-observability.rendered.yaml
+            artifacts/release/release-manifest.json
+
+      - name: Publish deployment summary
+        run: |
+          {
+            echo "## Deployment Validation Summary"
+            echo ""
+            echo "- Release manifest: \`artifacts/release/release-manifest.json\`"
+            echo "- Default compose render: \`artifacts/ci/compose-default.rendered.yaml\`"
+            echo "- Observability compose render: \`artifacts/ci/compose-observability.rendered.yaml\`"
+            echo "- Backend image smoke: \`docker build -f Dockerfile.backend .\`"
+            echo "- Frontend image smoke: \`docker build -f frontend/Dockerfile ./frontend\`"
           } >> "$GITHUB_STEP_SUMMARY"

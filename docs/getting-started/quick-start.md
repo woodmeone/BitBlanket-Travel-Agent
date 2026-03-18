@@ -17,6 +17,18 @@
 uv python install 3.13
 uv venv .venv --python 3.13
 .\.venv\Scripts\activate
+uv pip install -r requirements-dev.txt
+```
+
+安装完成后，建议先看一眼统一命令入口：
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
+```
+
+如果你只是想最低成本跑起来，不打算本地执行 `ruff / mypy / pip-audit`，也可以只安装：
+
+```bash
 uv pip install -r requirements.txt
 ```
 
@@ -108,6 +120,20 @@ Compose 默认会：
 - [../../frontend/Dockerfile](../../frontend/Dockerfile)
 - [../../ops/observability/README.md](../../ops/observability/README.md)
 
+如果你这次改的是端口、环境变量、镜像 build 参数或 observability profile，建议先做一次本地渲染校验：
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-config
+```
+
+如果当前网络拉取 Docker Hub 较慢，也可以显式指定镜像站：
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-up `
+  -PythonBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" `
+  -NodeBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
+```
+
 ## 7. 首次体验建议
 
 1. 打开首页后，先确认左侧模型下拉可正常展示
@@ -154,6 +180,12 @@ curl http://localhost:38000/api/metrics
 
 ```bash
 python scripts/export_support_bundle.py --base-url http://localhost:38000
+```
+
+或者直接走统一入口：
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 support-bundle
 ```
 
 ## 9. 常用地址
