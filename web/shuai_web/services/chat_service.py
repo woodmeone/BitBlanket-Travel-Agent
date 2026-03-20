@@ -271,9 +271,8 @@ class ChatService:
             )
 
             yield self._sse({"type": "session_id", "session_id": sid, "run_id": run_id})
-            await self.save_message(
+            await self._save_user_message(
                 sid,
-                "user",
                 display_message or message,
                 model_content=message,
             )
@@ -965,6 +964,31 @@ class ChatService:
             },
         )
         return {"success": True}
+
+    async def _save_user_message(
+        self,
+        session_id: str,
+        content: str,
+        *,
+        model_content: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Save a user message while remaining compatible with older test doubles.
+
+        Some local tests monkeypatch ``save_message`` with the legacy signature that
+        predates ``model_content``. Retry without the new keyword only for that
+        specific compatibility case so real implementation errors still surface.
+        """
+        try:
+            return await self.save_message(
+                session_id,
+                "user",
+                content,
+                model_content=model_content,
+            )
+        except TypeError as exc:
+            if "unexpected keyword argument 'model_content'" not in str(exc):
+                raise
+            return await self.save_message(session_id, "user", content)
 
     async def get_messages(self, session_id: str) -> dict[str, Any]:
         """Return persisted public messages for a session, excluding model-only prompt fields.
