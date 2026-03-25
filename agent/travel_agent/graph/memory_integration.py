@@ -14,12 +14,13 @@ import asyncio
 import re
 import threading
 import math
-import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+
+from ..memory import MemoryPersistenceStore
 
 
 @dataclass
@@ -135,7 +136,11 @@ class AgentMemoryManager:
         self._max_sessions = max(1, max_sessions)
 
         self._persist_path = persist_path
-        if self._persist_path:
+        self._persistence_store = MemoryPersistenceStore(
+            persist_path=self._persist_path,
+            backup_suffix=self.PERSIST_BACKUP_SUFFIX,
+        )
+        if self._persistence_store.enabled:
             self._load_from_disk()
 
     PROFILE_SCHEMA_VERSION = 2
@@ -1934,52 +1939,23 @@ class AgentMemoryManager:
         Returns:
             None: No explicit return value; side effects happen in-place.
         """
-        if not self._persist_path:
+        if not self._persistence_store.enabled:
             return
 
-        candidates = [self._persist_path, self._backup_path(self._persist_path)]
-        raw: Optional[Dict[str, Any]] = None
-        loaded_from: Optional[str] = None
-        for path in candidates:
-            if not path or not os.path.exists(path):
-                continue
-            # Try primary first; fall back to backup if primary is corrupted/incomplete.
-            snapshot = self._load_snapshot_from_file(path)
-            if snapshot is None:
-                continue
-            raw = snapshot
-            loaded_from = path
-            break
-
+        raw, recovered_from_backup = self._persistence_store.load_snapshot()
         if raw is None:
             return
 
         with self._sync_lock:
             self._sessions.clear()
-            for session_id, session in raw.items():
-                if not isinstance(session, dict):
-                    continue
-                msgs = [
-                    MemoryMessage(
-                        role=item.get("role", "user"),
-                        content=item.get("content", ""),
-                        timestamp=item.get("timestamp", datetime.now().isoformat()),
-                    )
-                    for item in session.get("messages", [])
-                    if isinstance(item, dict)
-                ]
-                self._sessions[session_id] = {
-                    "messages": msgs,
-                    "summary": session.get("summary", ""),
-                    "profile": self._normalize_profile(session.get("profile", {})),
-                }
+            self._sessions.update(self._deserialize_persisted_sessions(raw))
             self._cleanup_expired_locked()
             self._enforce_capacity_locked()
 
-        if loaded_from and self._persist_path and loaded_from != self._persist_path:
+        if recovered_from_backup:
             try:
                 # Write recovered snapshot back to primary to restore canonical file.
-                self._atomic_write_json(self._persist_path, raw)
+                self._persistence_store.restore_primary(raw)
             except Exception:
                 # Recovery write-back is best-effort and should not block startup.
                 pass
@@ -1993,126 +1969,67 @@ class AgentMemoryManager:
         Returns:
             None: No explicit return value; side effects happen in-place.
         """
-        if not self._persist_path:
+        if not self._persistence_store.enabled:
             return
 
         with self._sync_lock:
-            serializable: Dict[str, Any] = {}
-            for session_id, session in self._sessions.items():
-                serializable[session_id] = {
-                    "summary": session.get("summary", ""),
-                    "profile": self._normalize_profile(session.get("profile", {})),
-                    "messages": [
-                        {
-                            "role": m.role,
-                            "content": m.content,
-                            "timestamp": m.timestamp,
-                        }
-                        for m in session.get("messages", [])
-                    ],
-                }
+            serializable = self._serialize_sessions_for_persistence()
 
         try:
-            self._atomic_write_json(self._persist_path, serializable)
-            backup_path = self._backup_path(self._persist_path)
-            if backup_path:
-                # Keep hot backup in the same atomic mode for crash-time recovery.
-                self._atomic_write_json(backup_path, serializable)
+            self._persistence_store.write_snapshot(serializable)
         except Exception:
             # Memory persistence is best-effort only.
             pass
 
-    @staticmethod
-    def _backup_path(path: Optional[str]) -> Optional[str]:
-        """Build backup path for persisted memory snapshot.
-        
-        Purpose:
-            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
-        
-        Args:
-            path: Filesystem/resource path for `path` resolution.
-        
-        Returns:
-            Optional[str]: Computed value returned to the caller.
-        """
-        if not path:
+    def _deserialize_persisted_sessions(self, raw: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+        """Restore persisted sessions into the in-memory runtime shape."""
+        restored: Dict[str, Dict[str, Any]] = {}
+        for session_id, session in raw.items():
+            normalized = self._deserialize_persisted_session(session)
+            if normalized is not None:
+                restored[session_id] = normalized
+        return restored
+
+    def _deserialize_persisted_session(self, session: Any) -> Optional[Dict[str, Any]]:
+        """Restore one persisted session payload into the runtime session structure."""
+        if not isinstance(session, dict):
             return None
-        return f"{path}{AgentMemoryManager.PERSIST_BACKUP_SUFFIX}"
+        messages = [
+            MemoryMessage(
+                role=item.get("role", "user"),
+                content=item.get("content", ""),
+                timestamp=item.get("timestamp", datetime.now().isoformat()),
+            )
+            for item in session.get("messages", [])
+            if isinstance(item, dict)
+        ]
+        return {
+            "messages": messages,
+            "summary": session.get("summary", ""),
+            "profile": self._normalize_profile(session.get("profile", {})),
+        }
 
-    @staticmethod
-    def _load_snapshot_from_file(path: str) -> Optional[Dict[str, Any]]:
-        """Load one JSON snapshot file and validate top-level shape.
-        
-        Purpose:
-            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
-        
-        Args:
-            path: Filesystem/resource path for `path` resolution.
-        
-        Returns:
-            Optional[Dict[str, Any]]: Computed value returned to the caller.
-        """
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-        except Exception:
-            return None
-        return raw if isinstance(raw, dict) else None
+    def _serialize_sessions_for_persistence(self) -> Dict[str, Any]:
+        """Serialize all in-memory sessions into the persisted snapshot shape."""
+        return {
+            session_id: self._serialize_persisted_session(session)
+            for session_id, session in self._sessions.items()
+        }
 
-    @staticmethod
-    def _fsync_directory(path: str) -> None:
-        """Best-effort directory fsync for stronger rename durability.
-        
-        Purpose:
-            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
-        
-        Args:
-            path: Filesystem/resource path for `path` resolution.
-        
-        Returns:
-            None: No explicit return value; side effects happen in-place.
-        """
-        try:
-            dir_fd = os.open(path, os.O_RDONLY)
-        except Exception:
-            return
-        try:
-            os.fsync(dir_fd)
-        except Exception:
-            pass
-        finally:
-            os.close(dir_fd)
-
-    def _atomic_write_json(self, path: str, payload: Dict[str, Any]) -> None:
-        """Persist JSON payload atomically via temp file + fsync + os.replace.
-        
-        Purpose:
-            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
-        
-        Args:
-            path: Filesystem/resource path for `path` resolution.
-            payload: Structured dict payload to persist as JSON snapshot.
-        
-        Returns:
-            None: No explicit return value; side effects happen in-place.
-        """
-        target_dir = os.path.dirname(path) or "."
-        os.makedirs(target_dir, exist_ok=True)
-        prefix = f".{os.path.basename(path)}."
-        fd, temp_path = tempfile.mkstemp(prefix=prefix, suffix=".tmp", dir=target_dir)
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(payload, f, ensure_ascii=False, indent=2)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(temp_path, path)
-            self._fsync_directory(target_dir)
-        finally:
-            if os.path.exists(temp_path):
-                try:
-                    os.remove(temp_path)
-                except Exception:
-                    pass
+    def _serialize_persisted_session(self, session: Dict[str, Any]) -> Dict[str, Any]:
+        """Serialize one runtime session into the persisted snapshot structure."""
+        return {
+            "summary": session.get("summary", ""),
+            "profile": self._normalize_profile(session.get("profile", {})),
+            "messages": [
+                {
+                    "role": message.role,
+                    "content": message.content,
+                    "timestamp": message.timestamp,
+                }
+                for message in session.get("messages", [])
+            ],
+        }
 
     def _merge_profile_attr(
         self,

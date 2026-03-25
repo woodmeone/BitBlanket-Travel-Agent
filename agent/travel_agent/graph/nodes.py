@@ -7,7 +7,6 @@ import json
 import logging
 import re
 import time
-import uuid
 from collections import Counter
 from datetime import datetime, timezone
 from typing import Any, Callable, Literal, Optional
@@ -19,6 +18,7 @@ from langchain_core.runnables import Runnable
 from langchain_core.tools import Tool
 from langgraph.prebuilt import ToolNode
 
+from ..pipelines import PlanningPipeline, VerificationPipeline
 from .prompt_templates import build_answer_prompt, build_direct_prompt, build_system_prompt
 from .runtime_config import get_runtime_config
 from .state import AgentState, TRAVEL_AGENT_SYSTEM_PROMPT
@@ -410,6 +410,26 @@ class AgentNodes:
             "get_travel_tips": {"source": "travel_guide", "ttl_seconds": 86400},
             "get_weather": {"source": "weather_provider", "ttl_seconds": 1800},
         }
+        self.planning_pipeline = PlanningPipeline(
+            runtime_config=self.runtime_config,
+            tool_names=set(self.tool_map),
+            planner_hooks=self._planner_hooks,
+            stage_output_model=PlanStageOutput,
+            validate_stage_output=self._validate_stage_output,
+            build_execution_summary=self._build_execution_summary,
+            validation_result_builder=self._build_planning_validation_result,
+            step_signature=self._step_signature,
+        )
+        self.verification_pipeline = VerificationPipeline(
+            runtime_config=self.runtime_config,
+            refreshable_tools=set(STALE_REFRESHABLE_TOOLS),
+            stage_output_model=VerifyStageOutput,
+            issue_model=VerifyIssue,
+            result_model=VerifyResult,
+            validate_stage_output=self._validate_stage_output,
+            last_user_text=self._last_user_text,
+            is_high_risk_query=self._is_high_risk_query,
+        )
 
     def _build_intent_structured_llm(self) -> Optional[Runnable]:
         """Build a structured-output intent model chain and gracefully fall back when unsupported.
@@ -826,197 +846,29 @@ class AgentNodes:
         Returns:
             dict[str, Any]: Partial state patch that LangGraph merges into the global state.
         """
-        logger.info("[Plan Node] Building execution plan...")
+        return self.planning_pipeline.build(state)
 
-        intent = state.get("intent", "general")
-        entities = (state.get("intent_detail") or {}).get("entities", {})
-        strategy_detail = state.get("strategy_detail", {}) or {}
-        primary_intent = str(strategy_detail.get("primary_intent") or intent or "general")
-        secondary_intent = strategy_detail.get("secondary_intent")
-        required_tools = list(strategy_detail.get("required_tools", []))
-        optional_tools = list(strategy_detail.get("optional_tools", []))
-
-        planner_hook = self._planner_hooks.get(primary_intent) or self._planner_hooks.get(intent)
-        used_planner_hook = planner_hook is not None
-        if planner_hook:
-            try:
-                plan = planner_hook(entities)
-            except Exception as exc:
-                logger.warning("[Plan Node] Planner hook failed (intent=%s): %s", intent, exc)
-                plan = []
-        else:
-            plan = self._default_plan(primary_intent, entities)
-            if secondary_intent and secondary_intent != primary_intent:
-                secondary_plan = self._default_plan(str(secondary_intent), entities)
-                plan = self._merge_plans(plan, secondary_plan)
-
-        plan = self._enforce_tool_policy(
-            plan=plan,
-            required_tools=required_tools,
-            optional_tools=[] if used_planner_hook else optional_tools,
-            entities=entities,
-        )
-
-        normalized_plan = self._normalize_plan(plan)
-        if len(normalized_plan) > self.runtime_config.max_plan_steps:
-            logger.warning(
-                "[Plan Node] Plan truncated from %d to %d by AGENT_MAX_PLAN_STEPS",
-                len(normalized_plan),
-                self.runtime_config.max_plan_steps,
-            )
-            normalized_plan = normalized_plan[: self.runtime_config.max_plan_steps]
-        validation_status, validation_errors = self._validate_plan_steps(normalized_plan)
-        validation_blocked = [str(item.get("step_id")) for item in validation_errors if item.get("code") == "TOOL_NOT_REGISTERED"]
-        stats_steps = self._build_plan_validation_stats(normalized_plan, validation_errors)
-        tool_results = self._build_plan_validation_tool_results(validation_errors)
-        plan_id = f"plan-{uuid.uuid4().hex[:12]}"
-        logger.info("[Plan Node] Plan created with %d steps (plan_id=%s)", len(normalized_plan), plan_id)
-        return self._validate_stage_output(
-            PlanStageOutput,
-            {
-                "plan_id": plan_id,
-                "plan_explanation": self._build_plan_explanation(intent, normalized_plan),
-                "plan": normalized_plan,
-                "validation_status": validation_status,
-                "validation_errors": validation_errors,
-                "current_step": 0,
-                "execution_round": 0,
-                "execution_state": {"completed": [], "failed": [], "blocked": sorted(validation_blocked)},
-                "execution_stats": {"plan_id": plan_id, "started_at": datetime.now().isoformat(), "steps": stats_steps},
-                "execution_summary": self._build_execution_summary(stats_steps),
-                "execution_trace": [],
-                "execution_budget": {
-                    "max_tools": self.runtime_config.round_max_tools,
-                    "max_elapsed_ms": self.runtime_config.round_max_elapsed_ms,
-                    "max_tokens": self.runtime_config.round_max_tokens,
-                    "tools_used": 0,
-                    "elapsed_ms": 0,
-                    "tokens_used": 0,
-                },
-                "fused_tool_results": None,
-                "early_stop_reason": None,
-                "verify_retry_count": 0,
-                "verify_result": None,
-                "tools_used": [],
-                "tool_results": tool_results,
-            },
-        )
-
-    def _validate_plan_steps(self, plan: list[dict[str, Any]]) -> tuple[Literal["pass", "warn", "fail"], list[dict[str, Any]]]:
-        """Validate plan steps for schema completeness and tool policy compliance.
-        
-        Purpose:
-            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
-        
-        Args:
-            plan: Plan step list prepared by planner stage.
-        
-        Returns:
-            tuple[Literal['pass', 'warn', 'fail'], list[dict[str, Any]]]: Computed value returned to the caller.
-        """
-        errors: list[dict[str, Any]] = []
-        for step in plan:
-            tool_name = str(step.get("tool") or "").strip()
-            if not tool_name or tool_name not in self.tool_map:
-                errors.append(
-                    {
-                        "step_id": str(step.get("step_id") or ""),
-                        "tool": tool_name,
-                        "code": "TOOL_NOT_REGISTERED",
-                        "message": f"Tool not registered: {tool_name or '<empty>'}",
-                    }
-                )
-
-        if not errors:
-            return "pass", []
-
-        invalid_steps = {
-            str(item.get("step_id") or "")
-            for item in errors
-            if item.get("code") == "TOOL_NOT_REGISTERED"
-        }
-        status: Literal["pass", "warn", "fail"] = "warn"
-        if invalid_steps and len(invalid_steps) >= len(plan):
-            status = "fail"
-        return status, errors
-
-    def _build_plan_validation_stats(
+    def _build_planning_validation_result(
         self,
-        plan: list[dict[str, Any]],
-        errors: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
-        """Build summary counters describing plan validation findings.
-        
-        Purpose:
-            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
-        
-        Args:
-            plan: Plan step list prepared by planner stage.
-            errors: Collection `errors` iterated or aggregated by this routine.
-        
-        Returns:
-            list[dict[str, Any]]: Computed value returned to the caller.
-        """
-        error_by_step: dict[str, dict[str, Any]] = {}
-        for item in errors:
-            step_id = str(item.get("step_id") or "")
-            if step_id:
-                error_by_step[step_id] = item
-
-        stats_steps: list[dict[str, Any]] = []
-        for step in plan:
-            step_id = str(step.get("step_id") or "")
-            item = error_by_step.get(step_id)
-            if not item:
-                continue
-            stats_steps.append(
-                {
-                    "step_id": step_id,
-                    "tool": step.get("tool"),
-                    "depends_on": step.get("depends_on", []),
-                    "status": "blocked",
-                    "attempt": 0,
-                    "error_code": item.get("code"),
-                    "fallback_used": False,
-                    "provider_used": None,
-                    "started_at": datetime.now().isoformat(),
-                    "ended_at": datetime.now().isoformat(),
-                    "duration_ms": 0,
-                    "signature": self._step_signature(str(step.get("tool") or ""), dict(step.get("params", {}) or {})),
-                }
-            )
-        return stats_steps
-
-    def _build_plan_validation_tool_results(self, errors: list[dict[str, Any]]) -> dict[str, Any]:
-        """Build synthetic tool results describing plan validation problems.
-        
-        Purpose:
-            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
-        
-        Args:
-            errors: Collection `errors` iterated or aggregated by this routine.
-        
-        Returns:
-            dict[str, Any]: Structured metadata dictionary for downstream stages.
-        """
-        results: dict[str, Any] = {}
-        for item in errors:
-            step_id = str(item.get("step_id") or "")
-            tool_name = str(item.get("tool") or "")
-            code = str(item.get("code") or "PLAN_VALIDATION_ERROR")
-            result = ExecutionResult(
-                success=False,
-                tool_name=tool_name,
-                result="",
-                attempt=0,
-                error_code=code,
-                error=str(item.get("message") or code),
-                started_at=datetime.now().isoformat(),
-                ended_at=datetime.now().isoformat(),
-            )
-            self._attach_execution_metadata(result, tool_name)
-            results[f"{step_id}:{tool_name}"] = result.model_dump()
-        return results
+        *,
+        tool_name: str,
+        code: str,
+        message: str,
+        timestamp: str,
+    ) -> dict[str, Any]:
+        """Build one normalized validation result used by the planning pipeline."""
+        result = ExecutionResult(
+            success=False,
+            tool_name=tool_name,
+            result="",
+            attempt=0,
+            error_code=code,
+            error=message,
+            started_at=timestamp,
+            ended_at=timestamp,
+        )
+        self._attach_execution_metadata(result, tool_name)
+        return result.model_dump()
 
     async def execute_node(self, state: AgentState) -> AgentState:
         """Run planned tools with retry, timeout, budget, and circuit-breaker protections.
@@ -1302,148 +1154,7 @@ class AgentNodes:
         Returns:
             dict[str, Any]: Partial state patch that LangGraph merges into the global state.
         """
-        intent = str(state.get("intent") or "general")
-        strategy_detail = state.get("strategy_detail", {}) or {}
-        requires_verification = bool(strategy_detail.get("requires_verification", False))
-        required_tools = [str(item) for item in strategy_detail.get("required_tools", [])]
-        verify_retry_count = self._safe_int(state.get("verify_retry_count"), 0)
-        tool_results = state.get("tool_results", {}) or {}
-        user_text = self._last_user_text(state)
-        issues: list[VerifyIssue] = []
-
-        successful_results = [
-            item
-            for item in tool_results.values()
-            if isinstance(item, dict) and bool(item.get("success"))
-        ]
-        if requires_verification and not successful_results:
-            issues.append(
-                VerifyIssue(
-                    issue_type="missing_evidence",
-                    message="高风险问题缺少工具成功结果，无法验证结论。",
-                    severity="high",
-                )
-            )
-        matched_success_tools = {
-            str(item.get("tool_name") or "").split(":")[-1]
-            for item in successful_results
-            if isinstance(item, dict)
-        }
-        missing_required = [name for name in required_tools if name not in matched_success_tools]
-        if requires_verification and missing_required:
-            issues.append(
-                VerifyIssue(
-                    issue_type="required_tools_missing",
-                    message=f"缺少必选验证工具结果: {missing_required}",
-                    severity="high",
-                )
-            )
-
-        stale_count = 0
-        refresh_targets: list[str] = []
-        refresh_tools: list[str] = []
-        for key, item in tool_results.items():
-            if not isinstance(item, dict) or not bool(item.get("success")):
-                continue
-            if not bool(item.get("is_stale", False)):
-                continue
-            stale_count += 1
-            tool_name = str(item.get("tool_name") or "").split(":")[-1]
-            step_id = str(key).split(":", 1)[0].strip()
-            if tool_name in STALE_REFRESHABLE_TOOLS and step_id:
-                if step_id not in refresh_targets:
-                    refresh_targets.append(step_id)
-                if tool_name not in refresh_tools:
-                    refresh_tools.append(tool_name)
-
-        if stale_count > 0:
-            issues.append(
-                VerifyIssue(
-                    issue_type="stale_data",
-                    message=f"存在 {stale_count} 条过期结果，建议刷新后再回答。",
-                    severity="medium",
-                )
-            )
-            if verify_retry_count >= 1:
-                issues.append(
-                    VerifyIssue(
-                        issue_type="stale_refresh_failed",
-                        message="已尝试刷新过期数据，但仍无法得到稳定实时结果，建议按降级策略回答并标注不确定性。",
-                        severity="high",
-                    )
-                )
-            elif not refresh_targets:
-                issues.append(
-                    VerifyIssue(
-                        issue_type="stale_unrefreshable",
-                        message="存在过期结果，但缺少可刷新的天气/酒店工具步骤，建议按降级策略回答。",
-                        severity="medium",
-                    )
-                )
-
-        if not self.runtime_config.timeliness_controls_enabled:
-            refresh_targets = []
-            refresh_tools = []
-
-        fetched_dates: list[datetime] = []
-        for item in successful_results:
-            raw = item.get("fetched_at")
-            if not raw:
-                continue
-            try:
-                dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
-                else:
-                    dt = dt.astimezone(timezone.utc)
-                fetched_dates.append(dt)
-            except Exception:
-                continue
-        if len(fetched_dates) >= 2:
-            span_seconds = (max(fetched_dates) - min(fetched_dates)).total_seconds()
-            if span_seconds > 7 * 24 * 3600:
-                issues.append(
-                    VerifyIssue(
-                        issue_type="date_inconsistency",
-                        message="工具结果时间跨度过大，可能存在时效不一致。",
-                        severity="medium",
-                    )
-                )
-
-        if self._is_high_risk_query(user_text, intent) and not requires_verification:
-            issues.append(
-                VerifyIssue(
-                    issue_type="verification_policy_violation",
-                    message="高风险问题未开启验证策略。",
-                    severity="high",
-                )
-            )
-
-        stale_retryable = stale_count > 0 and bool(refresh_targets) and verify_retry_count < 1
-        structural_retryable = any(item.issue_type in {"missing_evidence", "required_tools_missing"} for item in issues) and verify_retry_count < 1
-        should_retry = stale_retryable or structural_retryable
-        if not stale_retryable:
-            refresh_targets = []
-            refresh_tools = []
-        passed = len(issues) == 0
-        summary = "verification_passed" if passed else "; ".join(item.message for item in issues)
-
-        result = VerifyResult(
-            passed=passed,
-            should_retry=should_retry,
-            refresh_targets=refresh_targets,
-            refresh_tools=refresh_tools,
-            issues=issues,
-            summary=summary,
-        )
-        return self._validate_stage_output(
-            VerifyStageOutput,
-            {
-                "verify_result": result.model_dump(),
-                "verify_retry_count": verify_retry_count + (1 if should_retry else 0),
-                "early_stop_reason": state.get("early_stop_reason") if passed else summary,
-            },
-        )
+        return self.verification_pipeline.build(state)
 
     def verify_decision(self, state: AgentState) -> Literal["execute", "answer"]:
         """Return verify-stage routing label for execute-loop or final answer path.
@@ -1713,230 +1424,6 @@ class AgentNodes:
                 "fused_tool_results": None,
             },
         )
-
-    @staticmethod
-    def _default_plan(intent: str, entities: dict) -> list[dict]:
-        """Build default fallback plan when no external plan is produced.
-        
-        Purpose:
-            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
-        
-        Args:
-            intent: Detected intent label used for SLO bucket aggregation.
-            entities: Structured entities parsed from intent stage output.
-        
-        Returns:
-            list[dict]: Computed value returned to the caller.
-        """
-        if intent == "recommend":
-            return [
-                {
-                    "step": 1,
-                    "step_id": "s1",
-                    "tool": "search_cities",
-                    "params": {"query": entities.get("query", "")},
-                    "description": "根据用户偏好检索候选城市",
-                    "depends_on": [],
-                }
-            ]
-        if intent == "attractions":
-            return [
-                {
-                    "step": 1,
-                    "step_id": "s1",
-                    "tool": "query_attractions",
-                    "params": {
-                        "city": entities.get("city", ""),
-                        "category": entities.get("category"),
-                    },
-                    "description": "查询城市核心景点",
-                    "depends_on": [],
-                }
-            ]
-        if intent == "itinerary":
-            return [
-                {
-                    "step": 1,
-                    "step_id": "s1",
-                    "tool": "query_attractions",
-                    "params": {"city": entities.get("city", "")},
-                    "description": "查询景点池",
-                    "depends_on": [],
-                },
-                {
-                    "step": 2,
-                    "step_id": "s2",
-                    "tool": "get_weather",
-                    "params": {"city": entities.get("city", ""), "days": entities.get("days", 3)},
-                    "description": "查询天气情况",
-                    "depends_on": [],
-                },
-                {
-                    "step": 3,
-                    "step_id": "s3",
-                    "tool": "plan_itinerary",
-                    "params": {
-                        "destination": entities.get("city", ""),
-                        "days": entities.get("days", 3),
-                        "interests": entities.get("interests"),
-                    },
-                    "description": "生成按天行程建议",
-                    "depends_on": ["s1", "s2"],
-                },
-            ]
-        if intent == "budget":
-            return [
-                {
-                    "step": 1,
-                    "step_id": "s1",
-                    "tool": "calculate_budget",
-                    "params": {
-                        "destination": entities.get("destination", ""),
-                        "days": entities.get("days", 3),
-                        "people": entities.get("people", 1),
-                        "accommodation_level": entities.get("level", "medium"),
-                    },
-                    "description": "估算总预算",
-                    "depends_on": [],
-                }
-            ]
-        if intent == "tips":
-            return [
-                {
-                    "step": 1,
-                    "step_id": "s1",
-                    "tool": "get_travel_tips",
-                    "params": {
-                        "destination": entities.get("destination", ""),
-                        "season": entities.get("season"),
-                    },
-                    "description": "获取出行提醒",
-                    "depends_on": [],
-                }
-            ]
-        return []
-
-    @staticmethod
-    def _merge_plans(primary: list[dict[str, Any]], secondary: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Merge generated plan with defaults and remove duplicate steps.
-        
-        Purpose:
-            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
-        
-        Args:
-            primary: Primary intent label candidate selected by routing logic.
-            secondary: Secondary intent label candidate used for tie-breaks/fallback.
-        
-        Returns:
-            list[dict[str, Any]]: Computed value returned to the caller.
-        """
-        merged = list(primary)
-        existing_signatures = {
-            f"{item.get('tool')}:{json.dumps(item.get('params', {}), ensure_ascii=False, sort_keys=True)}"
-            for item in merged
-        }
-        for item in secondary:
-            signature = f"{item.get('tool')}:{json.dumps(item.get('params', {}), ensure_ascii=False, sort_keys=True)}"
-            if signature not in existing_signatures:
-                merged.append(item)
-                existing_signatures.add(signature)
-        return merged
-
-    def _enforce_tool_policy(
-        self,
-        plan: list[dict[str, Any]],
-        required_tools: list[str],
-        optional_tools: list[str],
-        entities: dict[str, Any],
-    ) -> list[dict[str, Any]]:
-        """Enforce required/optional tool policy against candidate plan steps.
-        
-        Purpose:
-            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
-        
-        Args:
-            plan: Plan step list prepared by planner stage.
-            required_tools: Collection `required_tools` iterated or aggregated by this routine.
-            optional_tools: Collection `optional_tools` iterated or aggregated by this routine.
-            entities: Structured entities parsed from intent stage output.
-        
-        Returns:
-            list[dict[str, Any]]: Computed value returned to the caller.
-        """
-        merged = list(plan)
-        existing_tools = {str(item.get("tool", "")) for item in merged}
-        next_step = len(merged) + 1
-
-        for tool_name in required_tools:
-            if tool_name in existing_tools:
-                continue
-            step = self._default_step_for_tool(step_num=next_step, tool_name=tool_name, entities=entities, required=True)
-            if step:
-                merged.append(step)
-                existing_tools.add(tool_name)
-                next_step += 1
-
-        # Optional tools are only auto-injected when plan is very short.
-        if len(merged) <= 2:
-            for tool_name in optional_tools:
-                if tool_name in existing_tools:
-                    continue
-                step = self._default_step_for_tool(step_num=next_step, tool_name=tool_name, entities=entities, required=False)
-                if step:
-                    merged.append(step)
-                    existing_tools.add(tool_name)
-                    next_step += 1
-                if len(merged) >= self.runtime_config.max_plan_steps:
-                    break
-
-        return merged
-
-    @staticmethod
-    def _default_step_for_tool(step_num: int, tool_name: str, entities: dict[str, Any], required: bool) -> Optional[dict[str, Any]]:
-        """Build default parameters and description for a specific tool step.
-        
-        Purpose:
-            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
-        
-        Args:
-            step_num: Current plan step number written into execution traces.
-            tool_name: Registered tool identifier from the tool map.
-            entities: Structured entities parsed from intent stage output.
-            required: Collection `required` iterated or aggregated by this routine.
-        
-        Returns:
-            Optional[dict[str, Any]]: Computed value returned to the caller.
-        """
-        city = entities.get("city") or entities.get("destination") or "北京"
-        days = entities.get("days", 3)
-        mapping: dict[str, dict[str, Any]] = {
-            "search_cities": {"params": {"query": entities.get("query") or city}, "description": "补全候选目的地"},
-            "query_attractions": {"params": {"city": city, "category": entities.get("category")}, "description": "补全景点信息"},
-            "query_hotels": {"params": {"city": city}, "description": "补全酒店信息"},
-            "get_weather": {"params": {"city": city, "days": days}, "description": "补全天气信息"},
-            "plan_itinerary": {"params": {"destination": city, "days": days, "interests": entities.get("interests")}, "description": "补全行程规划"},
-            "calculate_budget": {
-                "params": {
-                    "destination": city,
-                    "days": days,
-                    "people": entities.get("people", 1),
-                    "accommodation_level": entities.get("level", "medium"),
-                },
-                "description": "补全预算测算",
-            },
-            "get_travel_tips": {"params": {"destination": city, "season": entities.get("season")}, "description": "补全出行建议"},
-        }
-        item = mapping.get(tool_name)
-        if not item:
-            return None
-        return {
-            "step": step_num,
-            "step_id": f"s{step_num}",
-            "tool": tool_name,
-            "params": item["params"],
-            "description": f"{item['description']} ({'required' if required else 'optional'})",
-            "depends_on": [],
-        }
 
     @staticmethod
     async def _invoke_tool(tool: Tool, params: dict) -> Any:
@@ -3109,60 +2596,6 @@ class AgentNodes:
             "open_circuit_count": sum(1 for item in tools.values() if item["is_circuit_open"]),
             "tools": tools,
         }
-
-    @staticmethod
-    def _normalize_plan(plan: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Normalize plan schema and fill defaults required by executor pipeline.
-        
-        Purpose:
-            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
-        
-        Args:
-            plan: Plan step list prepared by planner stage.
-        
-        Returns:
-            list[dict[str, Any]]: Computed value returned to the caller.
-        """
-        normalized: list[dict[str, Any]] = []
-        used_step_ids: set[str] = set()
-        for idx, raw in enumerate(plan, start=1):
-            step_id = str(raw.get("step_id") or f"s{idx}")
-            if step_id in used_step_ids:
-                step_id = f"{step_id}_{idx}"
-            used_step_ids.add(step_id)
-            depends_on = list(raw.get("depends_on", []))
-            normalized.append(
-                {
-                    "step": int(raw.get("step", idx)),
-                    "step_id": str(step_id),
-                    "tool": raw.get("tool", ""),
-                    "params": raw.get("params", {}),
-                    "depends_on": depends_on,
-                    "description": raw.get("description", ""),
-                    "timeout_seconds": raw.get("timeout_seconds"),
-                    "max_retries": raw.get("max_retries", get_runtime_config().default_tool_max_retries),
-                }
-            )
-        return normalized
-
-    @staticmethod
-    def _build_plan_explanation(intent: str, plan: list[dict[str, Any]]) -> str:
-        """Build human-readable explanation describing how the final plan was formed.
-        
-        Purpose:
-            Explain how this routine updates graph state, tool execution flow, and downstream decision logic.
-        
-        Args:
-            intent: Detected intent label used for SLO bucket aggregation.
-            plan: Plan step list prepared by planner stage.
-        
-        Returns:
-            str: Normalized text string used by downstream logic.
-        """
-        if not plan:
-            return f"intent={intent}, no tool plan required"
-        steps = [f"{item['step_id']}:{item['tool']}" for item in plan]
-        return f"intent={intent}, plan_steps={len(plan)}, chain={' -> '.join(steps)}"
 
     @staticmethod
     def _render_reasoning(state: AgentState, tools_used: list[str]) -> str:
