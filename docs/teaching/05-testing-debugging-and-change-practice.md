@@ -25,9 +25,9 @@
 
 ### 必读 3 个文件
 
-1. [test_sse_streaming.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_sse_streaming.py)
-2. [test_api_integration.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_api_integration.py)
-3. [agent_quality_gate.py](D:/projects/shuai/ShuaiTravelAgent/scripts/agent_quality_gate.py)
+1. [test_sse_streaming.py](D:/moyuan/moyuan-travel-agent/tests/test_sse_streaming.py)
+2. [test_api_integration.py](D:/moyuan/moyuan-travel-agent/tests/test_api_integration.py)
+3. [agent_quality_gate.py](D:/moyuan/moyuan-travel-agent/scripts/agent_quality_gate.py)
 
 ### 最常见 3 个坑
 
@@ -91,7 +91,7 @@
 
 ## 4. 当前测试版图怎么理解
 
-结合 [testing-guide.md](D:/projects/shuai/ShuaiTravelAgent/docs/testing/testing-guide.md) 和当前测试目录，可以把测试版图分成 4 层。
+结合 [testing-guide.md](D:/moyuan/moyuan-travel-agent/docs/testing/testing-guide.md) 和当前测试目录，可以把测试版图分成 4 层。
 
 ### 4.1 后端 / 集成测试
 
@@ -161,11 +161,11 @@ python scripts/agent_replay.py --session-id <session_id> --db data/langgraph_che
 
 | 测试文件 | 推荐对照看的实现文件 | 读这一对时最该问的问题 |
 | --- | --- | --- |
-| [test_sse_streaming.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_sse_streaming.py) | [chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)、[chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)、[api.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts) | SSE 契约到底由谁发、由谁解、由谁保证结束？ |
-| [test_api_integration.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_api_integration.py) | [chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)、[chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py) | 参数校验、模式切换、session 复用是谁在负责？ |
-| [test_agent_memory_unit.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_memory_unit.py) | [memory_integration.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/memory_integration.py) | memory 真正在保护哪些长期行为边界？ |
-| [test_agent_execution_optimization_integration.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_execution_optimization_integration.py) | [builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py) | 执行轮次、验证回环和结果聚合有没有退化？ |
-| [test_agent_p0_guardrails_unit.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_p0_guardrails_unit.py) | [nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py)、相关工具与验证逻辑 | 当前系统最不允许坏掉的底线是什么？ |
+| [test_sse_streaming.py](D:/moyuan/moyuan-travel-agent/tests/test_sse_streaming.py) | [chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)、[chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)、[api.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts) | SSE 契约到底由谁发、由谁解、由谁保证结束？ |
+| [test_api_integration.py](D:/moyuan/moyuan-travel-agent/tests/test_api_integration.py) | [chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)、[chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py) | 参数校验、模式切换、session 复用是谁在负责？ |
+| [test_agent_memory_unit.py](D:/moyuan/moyuan-travel-agent/tests/test_agent_memory_unit.py) | [memory_integration.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/memory_integration.py) | memory 真正在保护哪些长期行为边界？ |
+| [test_agent_execution_optimization_integration.py](D:/moyuan/moyuan-travel-agent/tests/test_agent_execution_optimization_integration.py) | [builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py) | 执行轮次、验证回环和结果聚合有没有退化？ |
+| [test_agent_p0_guardrails_unit.py](D:/moyuan/moyuan-travel-agent/tests/test_agent_p0_guardrails_unit.py) | [nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)、相关工具与验证逻辑 | 当前系统最不允许坏掉的底线是什么？ |
 
 ### 4.6 源码辅助学习：建议边看边搜的关键字
 
@@ -429,7 +429,7 @@ npm run build
 
 ### 8.4 发版前建议
 
-如果是比较完整的一轮发布前检查，建议按 [testing-guide.md](D:/projects/shuai/ShuaiTravelAgent/docs/testing/testing-guide.md) 的完整顺序跑一遍。
+如果是比较完整的一轮发布前检查，建议按 [testing-guide.md](D:/moyuan/moyuan-travel-agent/docs/testing/testing-guide.md) 的完整顺序跑一遍。
 
 ### 8.5 风险到回归的决策图
 
@@ -536,7 +536,7 @@ flowchart TD
 
 - `frontend/src/components/ChatArea.tsx`
 - `frontend/src/services/api.ts`
-- `web/shuai_web/services/chat_service.py`
+- `web/moyuan_web/services/chat_service.py`
 
 步骤：
 
@@ -607,8 +607,8 @@ npm run build
 
 入口：
 
-- `web/shuai_web/routes/city.py`
-- `web/shuai_web/services/city_service.py`
+- `web/moyuan_web/routes/city.py`
+- `web/moyuan_web/services/city_service.py`
 - `frontend/src/components/CityExplorer.tsx`
 
 建议回归：
@@ -670,7 +670,7 @@ npm run build
 
 - `agent/travel_agent/tools/travel_api.py`
 - `agent/travel_agent/graph/nodes.py`
-- `web/shuai_web/services/chat_service.py`
+- `web/moyuan_web/services/chat_service.py`
 
 验收：
 
@@ -707,13 +707,13 @@ npm run build
 
 ### 可能涉及的文件
 
-- [session.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/session.py)
-- [session_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/session_service.py)
-- [session_repository_impl.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/repositories/session_repository_impl.py)
-- [session_storage.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage/session_storage.py)
+- [session.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/session.py)
+- [session_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/session_service.py)
+- [session_repository_impl.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/repositories/session_repository_impl.py)
+- [session_storage.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py)
 - 相关前端 session 列表组件
-- [03-web-api-session-and-storage.md](D:/projects/shuai/ShuaiTravelAgent/docs/teaching/03-web-api-session-and-storage.md)
-- [07-thinking-questions-homework-and-answers.md](D:/projects/shuai/ShuaiTravelAgent/docs/teaching/07-thinking-questions-homework-and-answers.md)
+- [03-web-api-session-and-storage.md](D:/moyuan/moyuan-travel-agent/docs/teaching/03-web-api-session-and-storage.md)
+- [07-thinking-questions-homework-and-answers.md](D:/moyuan/moyuan-travel-agent/docs/teaching/07-thinking-questions-homework-and-answers.md)
 
 ### 建议步骤
 
@@ -821,23 +821,23 @@ npm run build
 
 如果时间有限，至少精读下面 6 个文件：
 
-1. [test_sse_streaming.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_sse_streaming.py)
+1. [test_sse_streaming.py](D:/moyuan/moyuan-travel-agent/tests/test_sse_streaming.py)
 作用：理解聊天主链最外层 SSE 契约在保护什么。
-2. [test_api_integration.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_api_integration.py)
+2. [test_api_integration.py](D:/moyuan/moyuan-travel-agent/tests/test_api_integration.py)
 作用：理解 API 契约、模式和会话行为的集成验证。
-3. [test_agent_memory_unit.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_memory_unit.py)
+3. [test_agent_memory_unit.py](D:/moyuan/moyuan-travel-agent/tests/test_agent_memory_unit.py)
 作用：理解 memory 相关边界和回归点。
-4. [test_agent_execution_optimization_integration.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_execution_optimization_integration.py)
+4. [test_agent_execution_optimization_integration.py](D:/moyuan/moyuan-travel-agent/tests/test_agent_execution_optimization_integration.py)
 作用：理解执行优化、并发和结果聚合的协作验证。
-5. [test_agent_p0_guardrails_unit.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_p0_guardrails_unit.py)
+5. [test_agent_p0_guardrails_unit.py](D:/moyuan/moyuan-travel-agent/tests/test_agent_p0_guardrails_unit.py)
 作用：理解高风险 guardrail 的底线在哪里。
-6. [agent_quality_gate.py](D:/projects/shuai/ShuaiTravelAgent/scripts/agent_quality_gate.py)
+6. [agent_quality_gate.py](D:/moyuan/moyuan-travel-agent/scripts/agent_quality_gate.py)
 作用：理解 benchmark 和 golden eval 最终怎样变成门禁。
 
 如果还能多看一点，再补：
 
-- [testing-guide.md](D:/projects/shuai/ShuaiTravelAgent/docs/testing/testing-guide.md)
-- [agent_replay.py](D:/projects/shuai/ShuaiTravelAgent/scripts/agent_replay.py)
+- [testing-guide.md](D:/moyuan/moyuan-travel-agent/docs/testing/testing-guide.md)
+- [agent_replay.py](D:/moyuan/moyuan-travel-agent/scripts/agent_replay.py)
 
 ## 补充二：本章最值得画的 2 张图
 

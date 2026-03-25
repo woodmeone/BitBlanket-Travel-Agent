@@ -20,9 +20,9 @@
 
 ### 必读 3 个文件
 
-1. [chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)
-2. [chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)
-3. [session_storage.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage/session_storage.py)
+1. [chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)
+2. [chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)
+3. [session_storage.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py)
 
 ### 最常见 3 个坑
 
@@ -58,23 +58,23 @@
 
 建议先围绕下面这些文件建立心智模型：
 
-- `web/shuai_web/main.py`
-- `web/shuai_web/bootstrap.py`
-- `web/shuai_web/dependencies/container.py`
-- `web/shuai_web/routes/chat.py`
-- `web/shuai_web/services/chat_service.py`
-- `web/shuai_web/routes/session.py`
-- `web/shuai_web/services/session_service.py`
-- `web/shuai_web/repositories/session_repository_impl.py`
-- `web/shuai_web/storage/session_storage.py`
+- `web/moyuan_web/main.py`
+- `web/moyuan_web/bootstrap.py`
+- `web/moyuan_web/dependencies/container.py`
+- `web/moyuan_web/routes/chat.py`
+- `web/moyuan_web/services/chat_service.py`
+- `web/moyuan_web/routes/session.py`
+- `web/moyuan_web/services/session_service.py`
+- `web/moyuan_web/repositories/session_repository_impl.py`
+- `web/moyuan_web/storage/session_storage.py`
 
 然后再扩展到：
 
-- `web/shuai_web/routes/city.py`
-- `web/shuai_web/routes/share.py`
-- `web/shuai_web/routes/map.py`
-- `web/shuai_web/routes/health.py`
-- `web/shuai_web/routes/model.py`
+- `web/moyuan_web/routes/city.py`
+- `web/moyuan_web/routes/share.py`
+- `web/moyuan_web/routes/map.py`
+- `web/moyuan_web/routes/health.py`
+- `web/moyuan_web/routes/model.py`
 
 ### 3.1 Web 分层总图
 
@@ -96,11 +96,11 @@ flowchart LR
 
 | 层 | 文件 | 最值得先看的函数 | 学习重点 |
 | --- | --- | --- | --- |
-| route | [chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py) | `_get_chat_service`、`stream_chat` | 看 route 为什么只做校验、取服务、返回 `StreamingResponse`。 |
-| service | [chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py) | `stream_chat`、`_ensure_session`、`_stream_agent_events`、`_generate_plan_preview`、`save_message` | 看 session、memory、Agent、SSE 事件是如何在一个 service 里被编排起来的。 |
-| service | [session_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/session_service.py) | `create_session`、`list_sessions`、`update_session_model`、`clear_chat` | 看“会话生命周期管理”和“聊天运行编排”为什么值得分开。 |
-| repository | [session_repository_impl.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/repositories/session_repository_impl.py) | `create`、`get`、`update`、`list_all`、`cleanup_expired` | 看 repository 怎样用业务语义包装底层读写。 |
-| storage | [session_storage.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage/session_storage.py) | `_load_from_file`、`_atomic_write_json`、`save`、`list_all` | 看底层真正处理了哪些文件级细节。 |
+| route | [chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py) | `_get_chat_service`、`stream_chat` | 看 route 为什么只做校验、取服务、返回 `StreamingResponse`。 |
+| service | [chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py) | `stream_chat`、`_ensure_session`、`_stream_agent_events`、`_generate_plan_preview`、`save_message` | 看 session、memory、Agent、SSE 事件是如何在一个 service 里被编排起来的。 |
+| service | [session_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/session_service.py) | `create_session`、`list_sessions`、`update_session_model`、`clear_chat` | 看“会话生命周期管理”和“聊天运行编排”为什么值得分开。 |
+| repository | [session_repository_impl.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/repositories/session_repository_impl.py) | `create`、`get`、`update`、`list_all`、`cleanup_expired` | 看 repository 怎样用业务语义包装底层读写。 |
+| storage | [session_storage.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py) | `_load_from_file`、`_atomic_write_json`、`save`、`list_all` | 看底层真正处理了哪些文件级细节。 |
 
 ### 3.3 源码辅助学习：建议边看边搜的关键字
 
@@ -135,7 +135,7 @@ Web 层位于前端和 Agent 之间，但它不是简单的透传层。
 
 ## 5. 从启动入口开始读
 
-### 5.1 `web/shuai_web/main.py`
+### 5.1 `web/moyuan_web/main.py`
 
 这一层最值得先看的通常是：
 
@@ -149,7 +149,7 @@ Web 层位于前端和 Agent 之间，但它不是简单的透传层。
 - 不同 router 是如何挂载到 `/api` 下的
 - 应用初始化和依赖初始化的顺序是什么
 
-### 5.2 `web/shuai_web/bootstrap.py`
+### 5.2 `web/moyuan_web/bootstrap.py`
 
 这个文件经常被新人忽略，但它很关键。
 
@@ -164,7 +164,7 @@ Web 层位于前端和 Agent 之间，但它不是简单的透传层。
 
 如果没有统一的导入路径准备，不同入口下很容易出现导入不稳定。
 
-### 5.3 `web/shuai_web/dependencies/container.py`
+### 5.3 `web/moyuan_web/dependencies/container.py`
 
 这是当前 Web 层最重要的“组织者”之一。
 
@@ -251,8 +251,8 @@ Web 层位于前端和 Agent 之间，但它不是简单的透传层。
 
 最关键的文件：
 
-- `web/shuai_web/routes/chat.py`
-- `web/shuai_web/services/chat_service.py`
+- `web/moyuan_web/routes/chat.py`
+- `web/moyuan_web/services/chat_service.py`
 
 ### 7.1 `routes/chat.py`
 
@@ -289,7 +289,7 @@ Web 层位于前端和 Agent 之间，但它不是简单的透传层。
 
 ### 7.2.1 最推荐的阅读顺序
 
-如果你第一次读 [chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)，建议按下面顺序：
+如果你第一次读 [chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)，建议按下面顺序：
 
 1. `stream_chat`
 先看整条聊天主链从 Web 视角到底怎么被组织。
@@ -393,10 +393,10 @@ sequenceDiagram
 
 最关键的文件：
 
-- `web/shuai_web/routes/session.py`
-- `web/shuai_web/services/session_service.py`
-- `web/shuai_web/repositories/session_repository_impl.py`
-- `web/shuai_web/storage/session_storage.py`
+- `web/moyuan_web/routes/session.py`
+- `web/moyuan_web/services/session_service.py`
+- `web/moyuan_web/repositories/session_repository_impl.py`
+- `web/moyuan_web/storage/session_storage.py`
 
 ### 8.1 推荐的读法
 
@@ -415,9 +415,9 @@ sequenceDiagram
 
 最常见的误区是只看到“session”这个词，却不知道每层都在做什么。更稳的读法是：
 
-1. 先在 [session_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/session_service.py) 看 `create_session`、`list_sessions`、`update_session_model`。
-2. 再去 [session_repository_impl.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/repositories/session_repository_impl.py) 看 `create / get / update / list_all`。
-3. 最后去 [session_storage.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage/session_storage.py) 看 `_atomic_write_json`、`_load_from_file`、`save`。
+1. 先在 [session_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/session_service.py) 看 `create_session`、`list_sessions`、`update_session_model`。
+2. 再去 [session_repository_impl.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/repositories/session_repository_impl.py) 看 `create / get / update / list_all`。
+3. 最后去 [session_storage.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py) 看 `_atomic_write_json`、`_load_from_file`、`save`。
 
 这样你就会明显感受到：
 
@@ -670,23 +670,23 @@ session 还包括：
 
 如果时间很紧，至少精读下面 6 个文件：
 
-1. [main.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/main.py)
+1. [main.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/main.py)
 作用：理解 FastAPI 应用入口与 router 注册。
-2. [container.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/dependencies/container.py)
+2. [container.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/dependencies/container.py)
 作用：理解依赖如何被统一装配。
-3. [chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)
+3. [chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)
 作用：理解聊天协议入口为什么应该很薄。
-4. [chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)
+4. [chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)
 作用：理解 session、memory、Agent、SSE 编排是怎么串起来的。
-5. [session_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/session_service.py)
+5. [session_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/session_service.py)
 作用：理解会话生命周期与聊天编排为什么分开。
-6. [session_storage.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage/session_storage.py)
+6. [session_storage.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py)
 作用：理解文件存储并不只是简单 `json.dump`。
 
 如果还能多看 2 个文件，再补：
 
-- [session_repository_impl.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/repositories/session_repository_impl.py)
-- [session.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/session.py)
+- [session_repository_impl.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/repositories/session_repository_impl.py)
+- [session.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/session.py)
 
 ## 补充二：本章最值得画的 2 张图
 

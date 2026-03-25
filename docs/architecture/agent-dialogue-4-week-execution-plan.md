@@ -31,7 +31,7 @@
 |---|---|---|---|---|
 | W1-1 | 计划阶段工具注册预检（防 `TOOL_NOT_FOUND`） | `agent/travel_agent/graph/nodes.py`（`plan_node`、执行前校验函数）、`agent/travel_agent/graph/state.py`（新增校验结果字段） | `POST /api/chat/stream` 的 `plan_preview` 增加 `validation_status`/`validation_errors`（仅 plan 模式） | 计划阶段即拦截未注册工具；执行阶段不再出现 `TOOL_NOT_FOUND` |
 | W1-2 | 修正 benchmark 时延口径 | `scripts/agent_benchmark.py`、`tests/test_agent_benchmark_script_unit.py` | `agent_benchmark_latest.json/md` 增加并统一使用 `elapsed_ms`、`avg_elapsed_ms` | 报告不再出现全量 `avg_duration_ms=0` 的失真 |
-| W1-3 | 增强工具健康诊断（SLO 结构化输出） | `web/shuai_web/services/chat_service.py`（聚合 run 指标）、`web/shuai_web/routes/health.py`（响应模型扩展） | `GET /api/health/tools` 增加 `slo`、`intent_aggregate`、`window_minutes` | 健康接口可直接看超时率/失败率/fallback 率是否越线 |
+| W1-3 | 增强工具健康诊断（SLO 结构化输出） | `web/moyuan_web/services/chat_service.py`（聚合 run 指标）、`web/moyuan_web/routes/health.py`（响应模型扩展） | `GET /api/health/tools` 增加 `slo`、`intent_aggregate`、`window_minutes` | 健康接口可直接看超时率/失败率/fallback 率是否越线 |
 | W1-4 | 失败回放工具 v1（基于 checkpoint） | 新增 `scripts/agent_replay.py`；必要时补 `agent/travel_agent/graph/persistent_checkpointer.py` 读取能力 | CLI：`python scripts/agent_replay.py --session-id ... --db ...` | 线上失败会话可本地复现并输出 replay 报告 |
 | W1-5 | 补齐稳定性回归测试 | `tests/test_agent_p0_guardrails_unit.py`、`tests/test_chat_stream_local.py`、新增 `tests/test_agent_replay_script_unit.py` | `pytest tests -q` | 新增用例覆盖：计划预检、健康聚合、回放脚本 |
 
@@ -48,7 +48,7 @@
 | W2-1 | 关键工具 stale 自动刷新（weather/hotels） | `agent/travel_agent/graph/nodes.py`（`verify_node/execute_node` 刷新策略）、`agent/travel_agent/tools/travel_api.py`（支持 bypass cache）、`agent/travel_agent/tools/travel_tools.py`（透传 refresh 参数） | tool `_meta` 增加 `refresh_attempted`、`refresh_success` | stale 数据优先刷新；无法刷新时输出明确降级说明 |
 | W2-2 | 答案证据化模板强化 | `agent/travel_agent/graph/prompt_templates.py`、`agent/travel_agent/graph/nodes.py`（`answer_node` 证据段渲染） | `POST /api/chat/stream` 最终回答要求显式包含 `source/fetched_at`（高风险场景强制） | 抽样问答中高风险场景证据覆盖率 >= 98% |
 | W2-3 | 安全策略分级与配置化 | `agent/travel_agent/graph/nodes.py`（注入规则分级）、`agent/travel_agent/graph/runtime_config.py`（新增 guardrail 阈值） | 新增环境变量写入 `docs/reference/configuration-reference.md` | 注入样例拦截率上升，且误杀率可控（通过 golden 子集验证） |
-| W2-4 | SSE 元数据补全验证状态 | `web/shuai_web/services/chat_service.py`（metadata 拼装）、`frontend/src/services/api.ts`（解析元数据）、`frontend/src/types/index.ts`（类型扩展） | SSE `metadata` 增加 `verification_passed`、`stale_result_count`、`fallback_steps` | 前端可展示“是否通过验证”和“是否有过期数据” |
+| W2-4 | SSE 元数据补全验证状态 | `web/moyuan_web/services/chat_service.py`（metadata 拼装）、`frontend/src/services/api.ts`（解析元数据）、`frontend/src/types/index.ts`（类型扩展） | SSE `metadata` 增加 `verification_passed`、`stale_result_count`、`fallback_steps` | 前端可展示“是否通过验证”和“是否有过期数据” |
 | W2-5 | 回归测试扩展 | `tests/test_travel_provider_metadata_unit.py`、`tests/test_agent_execution_optimization_integration.py`、`frontend/tests/unit/components/MessageList.test.tsx` | `pytest` + `npm run test:run` | stale 刷新路径和元数据展示路径均有自动化覆盖 |
 
 **Week 2 交付件**
@@ -63,7 +63,7 @@
 |---|---|---|---|---|
 | W3-1 | Golden 数据集扩容（高风险/降级场景） | `tests/golden/agent_react_golden.json`、`scripts/agent_golden_eval.py` | `agent_golden_eval_latest.json` 增加 intent 维度统计 | Golden 覆盖 recommend/attractions/itinerary/budget/policy/fallback |
 | W3-2 | Benchmark 场景扩容与趋势对比 | `scripts/agent_benchmark.py`、新增 `scripts/agent_benchmark_trend.py` | 产出 `docs/benchmarks/agent_benchmark_trend_latest.md` | 可比较“当前 vs 基线”成功率、时延、fallback 变化 |
-| W3-3 | 意图维度运行统计接口 | `web/shuai_web/services/chat_service.py`（按 intent 聚合窗口）、`web/shuai_web/routes/health.py`（新增子路由） | 新增 `GET /api/health/tools/intents` | 可直接查询每种 intent 的成功率/超时率/fallback 率 |
+| W3-3 | 意图维度运行统计接口 | `web/moyuan_web/services/chat_service.py`（按 intent 聚合窗口）、`web/moyuan_web/routes/health.py`（新增子路由） | 新增 `GET /api/health/tools/intents` | 可直接查询每种 intent 的成功率/超时率/fallback 率 |
 | W3-4 | 前端诊断可视化（轻量） | `frontend/src/components/ChatArea.tsx`、`frontend/src/components/MessageList.tsx`、`frontend/src/context/AppContext.tsx` | 前端展示本轮 `tools_used/fallback_steps/verification_passed` | 用户可感知回答可信度，不再只看到文本 |
 | W3-5 | 测试与报告流水线 | `tests/test_agent_benchmark_script_unit.py`、新增 `tests/test_agent_benchmark_trend_script_unit.py` | `python scripts/agent_benchmark.py` + trend 脚本可稳定产报告 | 报告生成纳入可重复流程 |
 
@@ -108,7 +108,7 @@
 ## 7. 建议的责任分工（可按人名替换）
 
 - BE-Agent：`agent/travel_agent/graph/*`、`agent/travel_agent/tools/*`、`scripts/*`
-- BE-API：`web/shuai_web/services/*`、`web/shuai_web/routes/*`
+- BE-API：`web/moyuan_web/services/*`、`web/moyuan_web/routes/*`
 - FE：`frontend/src/components/*`、`frontend/src/services/api.ts`、`frontend/src/types/index.ts`
 - QA：`tests/*`、`frontend/tests/*`、CI 门禁脚本
 

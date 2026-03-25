@@ -3,7 +3,7 @@
 ## 顶层目录
 
 ```text
-ShuaiTravelAgent/
+moyuan-travel-agent/
 ├── .editorconfig         # 编辑器编码、换行、缩进规范
 ├── .gitattributes        # Git 文本归一化与二进制文件策略
 ├── agent/                # LangGraph Agent 逻辑
@@ -97,13 +97,13 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 
 重点路径：
 
-- [`web/shuai_web/main.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/main.py)
-- [`web/shuai_web/routes/`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes)
-- [`web/shuai_web/services/`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services)
-- [`web/shuai_web/repositories/`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/repositories)
-- [`web/shuai_web/storage/`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage)
-- [`web/shuai_web/observability.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/observability.py)
-- [`web/shuai_web/startup_checks.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/startup_checks.py)
+- [`web/moyuan_web/main.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/main.py)
+- [`web/moyuan_web/routes/`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes)
+- [`web/moyuan_web/services/`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services)
+- [`web/moyuan_web/repositories/`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/repositories)
+- [`web/moyuan_web/storage/`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage)
+- [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py)
+- [`web/moyuan_web/startup_checks.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/startup_checks.py)
 
 ### `frontend/`
 
@@ -111,12 +111,12 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 
 重点路径：
 
-- [`frontend/src/app/`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/app)
-- [`frontend/src/components/`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components)
-- [`frontend/src/context/`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/context)
-- [`frontend/src/services/api.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
-- [`frontend/src/utils/`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/utils)
-- [`frontend/Dockerfile`](/D:/projects/shuai/ShuaiTravelAgent/frontend/Dockerfile)
+- [`frontend/src/app/`](/D:/moyuan/moyuan-travel-agent/frontend/src/app)
+- [`frontend/src/components/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components)
+- [`frontend/src/context/`](/D:/moyuan/moyuan-travel-agent/frontend/src/context)
+- [`frontend/src/services/api.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
+- [`frontend/src/utils/`](/D:/moyuan/moyuan-travel-agent/frontend/src/utils)
+- [`frontend/Dockerfile`](/D:/moyuan/moyuan-travel-agent/frontend/Dockerfile)
 
 ### `config/`
 
@@ -124,9 +124,9 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 
 关键文件：
 
-- [`config/__init__.py`](/D:/projects/shuai/ShuaiTravelAgent/config/__init__.py)
-- [`config/server_config.yaml.example`](/D:/projects/shuai/ShuaiTravelAgent/config/server_config.yaml.example)
-- [`config/llm_config.yaml.example`](/D:/projects/shuai/ShuaiTravelAgent/config/llm_config.yaml.example)
+- [`config/__init__.py`](/D:/moyuan/moyuan-travel-agent/config/__init__.py)
+- [`config/server_config.yaml.example`](/D:/moyuan/moyuan-travel-agent/config/server_config.yaml.example)
+- [`config/llm_config.yaml.example`](/D:/moyuan/moyuan-travel-agent/config/llm_config.yaml.example)
 
 ### `tests/`
 
@@ -134,14 +134,14 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 
 重点文件：
 
-- [`tests/test_api_smoke_local.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_api_smoke_local.py)
-- [`tests/test_chat_stream_local.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_chat_stream_local.py)
-- [`tests/test_agent_runtime_phase1_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_runtime_phase1_unit.py)
-- [`tests/test_agent_subagent_phase2_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_subagent_phase2_unit.py)
-- [`tests/test_runtime_data_lifecycle_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_runtime_data_lifecycle_unit.py)
-- [`tests/test_export_openapi_snapshot_script_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_export_openapi_snapshot_script_unit.py)
-- [`tests/test_export_sse_contract_snapshot_script_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_export_sse_contract_snapshot_script_unit.py)
-- [`tests/test_export_support_bundle_script_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_export_support_bundle_script_unit.py)
+- [`tests/test_api_smoke_local.py`](/D:/moyuan/moyuan-travel-agent/tests/test_api_smoke_local.py)
+- [`tests/test_chat_stream_local.py`](/D:/moyuan/moyuan-travel-agent/tests/test_chat_stream_local.py)
+- [`tests/test_agent_runtime_phase1_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_runtime_phase1_unit.py)
+- [`tests/test_agent_subagent_phase2_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_subagent_phase2_unit.py)
+- [`tests/test_runtime_data_lifecycle_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_data_lifecycle_unit.py)
+- [`tests/test_export_openapi_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_openapi_snapshot_script_unit.py)
+- [`tests/test_export_sse_contract_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_sse_contract_snapshot_script_unit.py)
+- [`tests/test_export_support_bundle_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_support_bundle_script_unit.py)
 
 ### `docs/`
 
@@ -158,9 +158,9 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 
 维护者最常用：
 
-- [`docs/architecture/infrastructure-foundations.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/architecture/infrastructure-foundations.md)
-- [`docs/reference/backend-maintainer-playbook.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/backend-maintainer-playbook.md)
-- [`docs/testing/testing-guide.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/testing/testing-guide.md)
+- [`docs/architecture/infrastructure-foundations.md`](/D:/moyuan/moyuan-travel-agent/docs/architecture/infrastructure-foundations.md)
+- [`docs/reference/backend-maintainer-playbook.md`](/D:/moyuan/moyuan-travel-agent/docs/reference/backend-maintainer-playbook.md)
+- [`docs/testing/testing-guide.md`](/D:/moyuan/moyuan-travel-agent/docs/testing/testing-guide.md)
 
 ### `scripts/`
 
@@ -179,47 +179,47 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 
 基础设施运行资产目录，当前重点是 `observability/`：
 
-- [`ops/observability/README.md`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/README.md)
-- [`ops/observability/grafana-dashboard.json`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/grafana-dashboard.json)
-- [`ops/observability/prometheus-alerts.yml`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/prometheus-alerts.yml)
-- [`ops/observability/prometheus.yml`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/prometheus.yml)
-- [`ops/observability/grafana-provisioning/`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/grafana-provisioning)
+- [`ops/observability/README.md`](/D:/moyuan/moyuan-travel-agent/ops/observability/README.md)
+- [`ops/observability/grafana-dashboard.json`](/D:/moyuan/moyuan-travel-agent/ops/observability/grafana-dashboard.json)
+- [`ops/observability/prometheus-alerts.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus-alerts.yml)
+- [`ops/observability/prometheus.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus.yml)
+- [`ops/observability/grafana-provisioning/`](/D:/moyuan/moyuan-travel-agent/ops/observability/grafana-provisioning)
 
 ## 当前最常用的代码入口
 
 ### 前端
 
-- [`frontend/src/components/ChatArea.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)
-- [`frontend/src/components/MessageList.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)
-- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)
-- [`frontend/src/components/CityExplorer.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/CityExplorer.tsx)
-- [`frontend/src/services/api.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
+- [`frontend/src/components/ChatArea.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)
+- [`frontend/src/components/MessageList.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)
+- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
+- [`frontend/src/components/CityExplorer.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/CityExplorer.tsx)
+- [`frontend/src/services/api.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
 
 ### 后端
 
-- [`web/shuai_web/routes/chat.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)
-- [`web/shuai_web/routes/health.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/health.py)
-- [`web/shuai_web/services/chat_service.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)
-- [`web/shuai_web/services/share_service.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/share_service.py)
-- [`web/shuai_web/observability.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/observability.py)
-- [`web/shuai_web/startup_checks.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/startup_checks.py)
+- [`web/moyuan_web/routes/chat.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)
+- [`web/moyuan_web/routes/health.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/health.py)
+- [`web/moyuan_web/services/chat_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)
+- [`web/moyuan_web/services/share_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/share_service.py)
+- [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py)
+- [`web/moyuan_web/startup_checks.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/startup_checks.py)
 
 ### Agent
 
-- [`agent/travel_agent/runtime/agent_runtime.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/runtime/agent_runtime.py)
-- [`agent/travel_agent/supervisor/builder.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/supervisor/builder.py)
-- [`agent/travel_agent/supervisor/nodes.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/supervisor/nodes.py)
-- [`agent/travel_agent/subagents/registry.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/subagents/registry.py)
-- [`agent/travel_agent/subagents/research.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/subagents/research.py)
-- [`agent/travel_agent/subagents/planning.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/subagents/planning.py)
-- [`agent/travel_agent/subagents/verification.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/subagents/verification.py)
-- [`agent/travel_agent/skills/registry.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/skills/registry.py)
-- [`agent/travel_agent/artifacts/models.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/artifacts/models.py)
-- [`agent/travel_agent/graph/builder.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)
-- [`agent/travel_agent/graph/nodes.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py)
-- [`agent/travel_agent/graph/runtime_config.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/runtime_config.py)
-- [`agent/travel_agent/graph/memory_integration.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/memory_integration.py)
-- [`agent/travel_agent/tools/travel_tools.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/tools/travel_tools.py)
+- [`agent/travel_agent/runtime/agent_runtime.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/runtime/agent_runtime.py)
+- [`agent/travel_agent/supervisor/builder.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/supervisor/builder.py)
+- [`agent/travel_agent/supervisor/nodes.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/supervisor/nodes.py)
+- [`agent/travel_agent/subagents/registry.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/registry.py)
+- [`agent/travel_agent/subagents/research.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/research.py)
+- [`agent/travel_agent/subagents/planning.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/planning.py)
+- [`agent/travel_agent/subagents/verification.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/verification.py)
+- [`agent/travel_agent/skills/registry.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/skills/registry.py)
+- [`agent/travel_agent/artifacts/models.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/artifacts/models.py)
+- [`agent/travel_agent/graph/builder.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)
+- [`agent/travel_agent/graph/nodes.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)
+- [`agent/travel_agent/graph/runtime_config.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/runtime_config.py)
+- [`agent/travel_agent/graph/memory_integration.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/memory_integration.py)
+- [`agent/travel_agent/tools/travel_tools.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/tools/travel_tools.py)
 
 ## 修改时的联动建议
 
@@ -236,10 +236,10 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 
 通常需要同时关注：
 
-- `web/shuai_web/main.py`
-- `web/shuai_web/middleware/__init__.py`
-- `web/shuai_web/routes/*`
-- `web/shuai_web/services/*`
+- `web/moyuan_web/main.py`
+- `web/moyuan_web/middleware/__init__.py`
+- `web/moyuan_web/routes/*`
+- `web/moyuan_web/services/*`
 - `config/__init__.py`
 - `tests/test_api_smoke_local.py`
 - `tests/test_chat_stream_local.py`
@@ -256,7 +256,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - `agent/travel_agent/skills/*`
 - `agent/travel_agent/artifacts/*`
 - `agent/travel_agent/graph/*`
-- `web/shuai_web/services/chat_service.py`
+- `web/moyuan_web/services/chat_service.py`
 - `tests/test_agent_runtime_phase1_unit.py`
 - `tests/test_agent_subagent_phase2_unit.py`
 - `docs/architecture/system-architecture.md`
@@ -286,23 +286,23 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 
 The artifact-first UI slice introduced these additional frontend responsibilities:
 
-- [`frontend/src/types/index.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/types/index.ts)
+- [`frontend/src/types/index.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/types/index.ts)
   - streaming artifact / subagent event contracts
-- [`frontend/src/utils/agentArtifacts.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/utils/agentArtifacts.ts)
+- [`frontend/src/utils/agentArtifacts.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/utils/agentArtifacts.ts)
   - frontend-side artifact merge helpers
-- [`frontend/src/components/ChatArea.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)
+- [`frontend/src/components/ChatArea.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)
   - per-run artifact merge + subagent timeline state
-- [`frontend/src/components/MessageList.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)
+- [`frontend/src/components/MessageList.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)
   - artifact/subagent diagnostics rendering
-- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)
+- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
   - structured artifact summary + text fallback itinerary processing
-- [`frontend/tests/unit/utils/agentArtifacts.test.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/tests/unit/utils/agentArtifacts.test.ts)
+- [`frontend/tests/unit/utils/agentArtifacts.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/utils/agentArtifacts.test.ts)
   - protects artifact merge semantics
 ## Session Hydration Additions
 
-- `web/shuai_web/routes/session.py`
+- `web/moyuan_web/routes/session.py`
   - 新增 `GET /session/{session_id}/messages`，作为前端恢复会话消息的公开入口
-- `web/shuai_web/services/chat_service.py`
+- `web/moyuan_web/services/chat_service.py`
   - assistant 消息现在会把 `diagnostics.artifact` 与 `diagnostics.subagentEvents` 一并落盘
   - user 消息支持 `display_message` / `model_content` 分离
 - `frontend/src/context/AppContext.tsx`

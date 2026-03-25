@@ -2,7 +2,7 @@
 
 ## Scope
 - Runtime baseline: `langchain>=1.0.0`, `langgraph>=1.0.0`
-- Focus modules: `agent/travel_agent/graph`, `agent/travel_agent/llm`, `web/shuai_web/services/chat_service.py`
+- Focus modules: `agent/travel_agent/graph`, `agent/travel_agent/llm`, `web/moyuan_web/services/chat_service.py`
 
 ## Phase 1 (Stability Hardening, 1-2 weeks)
 - Standardize streaming payload handling for all chat model chunk shapes.

@@ -15,13 +15,13 @@ def test_grafana_dashboard_asset_is_valid_json():
     dashboard_path = PROJECT_ROOT / "ops" / "observability" / "grafana-dashboard.json"
     payload = json.loads(dashboard_path.read_text(encoding="utf-8"))
 
-    assert payload["title"] == "ShuaiTravelAgent Overview"
+    assert payload["title"] == "moyuan-travel-agent Overview"
     assert len(payload.get("panels", [])) >= 6
     expressions = [target["expr"] for panel in payload["panels"] for target in panel.get("targets", [])]
-    assert any("shuai_http_requests_total" in expr for expr in expressions)
-    assert any("shuai_chat_stream_requests_total" in expr for expr in expressions)
-    assert any("shuai_rate_limit_rejections_total" in expr for expr in expressions)
-    assert any("shuai_http_timeouts_total" in expr for expr in expressions)
+    assert any("moyuan_http_requests_total" in expr for expr in expressions)
+    assert any("moyuan_chat_stream_requests_total" in expr for expr in expressions)
+    assert any("moyuan_rate_limit_rejections_total" in expr for expr in expressions)
+    assert any("moyuan_http_timeouts_total" in expr for expr in expressions)
 
 
 def test_prometheus_alert_asset_is_valid_yaml():
@@ -31,9 +31,9 @@ def test_prometheus_alert_asset_is_valid_yaml():
     groups = payload.get("groups", [])
     assert len(groups) == 1
     rule_names = [rule["alert"] for rule in groups[0].get("rules", [])]
-    assert "ShuaiReadinessDown" in rule_names
-    assert "ShuaiChatStreamFailures" in rule_names
-    assert "ShuaiHttpTimeoutSpike" in rule_names
+    assert "MoyuanReadinessDown" in rule_names
+    assert "MoyuanChatStreamFailures" in rule_names
+    assert "MoyuanHttpTimeoutSpike" in rule_names
 
 
 def test_local_prometheus_scrape_config_is_valid_yaml():
@@ -42,6 +42,6 @@ def test_local_prometheus_scrape_config_is_valid_yaml():
 
     scrape_configs = payload.get("scrape_configs", [])
     assert len(scrape_configs) == 1
-    assert scrape_configs[0]["job_name"] == "shuai-backend"
+    assert scrape_configs[0]["job_name"] == "moyuan-backend"
     assert scrape_configs[0]["metrics_path"] == "/api/metrics"
     assert scrape_configs[0]["static_configs"][0]["targets"] == ["backend:38000"]

@@ -3,7 +3,7 @@
 ## 当前策略
 
 - 会话数据默认采用文件存储
-- 存储实现位于 [`web/shuai_web/storage/session_storage.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage/session_storage.py)
+- 存储实现位于 [`web/moyuan_web/storage/session_storage.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py)
 - 运行数据位于 `data/`（已被 `.gitignore` 忽略）
 - Agent memory 独立持久化到 `data/agent_memory.json`
 - Agent memory 已启用原子写入（临时文件 + `os.replace`）并保留 `data/agent_memory.json.bak` 热备

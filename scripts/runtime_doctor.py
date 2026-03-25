@@ -372,7 +372,7 @@ def render_text_report(report: dict[str, Any]) -> str:
 
 def build_parser() -> argparse.ArgumentParser:
     """Construct CLI parser for runtime diagnostics utility."""
-    parser = argparse.ArgumentParser(description="Run runtime diagnostics for ShuaiTravelAgent.")
+    parser = argparse.ArgumentParser(description="Run runtime diagnostics for moyuan-travel-agent.")
     parser.add_argument(
         "--base-url",
         default=None,

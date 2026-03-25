@@ -1,8 +1,8 @@
-# ShuaiTravelAgent Agent Guide
+# moyuan-travel-agent Agent Guide
 
 ## Project Overview
 
-ShuaiTravelAgent is an AI travel assistant project built with:
+moyuan-travel-agent is an AI travel assistant project built with:
 
 - Frontend: Next.js 16 + React 19 + TypeScript + antd
 - Web API: FastAPI
@@ -24,7 +24,7 @@ ShuaiTravelAgent is an AI travel assistant project built with:
 ## Current Route Structure
 
 ```text
-web/shuai_web/routes/
+web/moyuan_web/routes/
 ├── api_docs.py
 ├── chat.py
 ├── city.py

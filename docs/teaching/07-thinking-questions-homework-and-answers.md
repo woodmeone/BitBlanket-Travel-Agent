@@ -100,7 +100,7 @@
 源码绑定：
 
 - 必读文件：
-  [README.md](D:/projects/shuai/ShuaiTravelAgent/README.md)、[docs/README.md](D:/projects/shuai/ShuaiTravelAgent/docs/README.md)、[quick-start.md](D:/projects/shuai/ShuaiTravelAgent/docs/getting-started/quick-start.md)、[main.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/main.py)
+  [README.md](D:/moyuan/moyuan-travel-agent/README.md)、[docs/README.md](D:/moyuan/moyuan-travel-agent/docs/README.md)、[quick-start.md](D:/moyuan/moyuan-travel-agent/docs/getting-started/quick-start.md)、[main.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/main.py)
 - 建议搜索词：
   `33001`、`38000`、`rapidoc`、`health`、`Home`
 - 做题提醒：
@@ -182,7 +182,7 @@
 源码绑定：
 
 - 必读文件：
-  [page.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/app/page.tsx)、[ChatArea.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)、[api.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)、[chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)、[chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)、[builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)、[MessageList.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)、[TravelPlanToolkit.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)
+  [page.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/app/page.tsx)、[ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)、[api.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)、[chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)、[chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)、[builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)、[MessageList.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)、[TravelPlanToolkit.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
 - 建议搜索词：
   `handleSend`、`fetchStreamChat`、`stream_chat`、`plan_preview`、`stage`、`metadata`、`onComplete`
 - 做题提醒：
@@ -275,7 +275,7 @@
 源码绑定：
 
 - 必读文件：
-  [AppContext.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/context/AppContext.tsx)、[ChatArea.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)、[MessageList.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)、[TravelPlanToolkit.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)、[travelPlan.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/utils/travelPlan.ts)
+  [AppContext.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/context/AppContext.tsx)、[ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)、[MessageList.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)、[TravelPlanToolkit.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)、[travelPlan.ts](D:/moyuan/moyuan-travel-agent/frontend/src/utils/travelPlan.ts)
 - 建议搜索词：
   `streamingMessage`、`streamingReasoning`、`metadataRef`、`prepareMarkdownContent`、`extractThinkBlocks`、`looksLikeItineraryContent`、`runQuickRefine`
 - 做题提醒：
@@ -358,7 +358,7 @@
 源码绑定：
 
 - 必读文件：
-  [main.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/main.py)、[container.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/dependencies/container.py)、[chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)、[chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)、[session_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/session_service.py)、[session_repository_impl.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/repositories/session_repository_impl.py)、[session_storage.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage/session_storage.py)
+  [main.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/main.py)、[container.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/dependencies/container.py)、[chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)、[chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)、[session_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/session_service.py)、[session_repository_impl.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/repositories/session_repository_impl.py)、[session_storage.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py)
 - 建议搜索词：
   `StreamingResponse`、`stream_chat`、`_ensure_session`、`create_session`、`list_sessions`、`cleanup_expired`、`_atomic_write_json`
 - 做题提醒：
@@ -435,7 +435,7 @@
 源码绑定：
 
 - 必读文件：
-  [state.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/state.py)、[builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py)
+  [state.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/state.py)、[builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)
 - 建议搜索词：
   `AgentState`、`create_initial_state`、`routing_decision`、`execute_node`、`verify_node`、`verify_decision`、`should_continue`、`self_check_node`
 - 做题提醒：
@@ -530,7 +530,7 @@
 源码绑定：
 
 - 必读文件：
-  [travel_api.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/tools/travel_api.py)、[travel_tools.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/tools/travel_tools.py)、[memory_integration.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/memory_integration.py)、[persistent_checkpointer.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/persistent_checkpointer.py)
+  [travel_api.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/tools/travel_api.py)、[travel_tools.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/tools/travel_tools.py)、[memory_integration.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/memory_integration.py)、[persistent_checkpointer.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/persistent_checkpointer.py)
 - 建议搜索词：
   `_meta`、`stale`、`fallback`、`refresh`、`build_context_messages`、`add_message`、`checkpoint`
 - 做题提醒：
@@ -607,7 +607,7 @@ memory、checkpoint、session 的核心差异是什么？
 源码绑定：
 
 - 必读文件：
-  [test_sse_streaming.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_sse_streaming.py)、[test_api_integration.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_api_integration.py)、[test_agent_memory_unit.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_memory_unit.py)、[test_agent_execution_optimization_integration.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_execution_optimization_integration.py)、[test_agent_p0_guardrails_unit.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_p0_guardrails_unit.py)、[agent_quality_gate.py](D:/projects/shuai/ShuaiTravelAgent/scripts/agent_quality_gate.py)
+  [test_sse_streaming.py](D:/moyuan/moyuan-travel-agent/tests/test_sse_streaming.py)、[test_api_integration.py](D:/moyuan/moyuan-travel-agent/tests/test_api_integration.py)、[test_agent_memory_unit.py](D:/moyuan/moyuan-travel-agent/tests/test_agent_memory_unit.py)、[test_agent_execution_optimization_integration.py](D:/moyuan/moyuan-travel-agent/tests/test_agent_execution_optimization_integration.py)、[test_agent_p0_guardrails_unit.py](D:/moyuan/moyuan-travel-agent/tests/test_agent_p0_guardrails_unit.py)、[agent_quality_gate.py](D:/moyuan/moyuan-travel-agent/scripts/agent_quality_gate.py)
 - 建议搜索词：
   `text/event-stream`、`quality_gate`、`benchmark`、`golden eval`、`replay`、`fallback_steps`
 - 做题提醒：
@@ -684,7 +684,7 @@ memory、checkpoint、session 的核心差异是什么？
 源码绑定：
 
 - 必读文件：
-  [ChatArea.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)、[chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)、[builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py)、[session_storage.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage/session_storage.py)、[agent_quality_gate.py](D:/projects/shuai/ShuaiTravelAgent/scripts/agent_quality_gate.py)
+  [ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)、[chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)、[builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)、[session_storage.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py)、[agent_quality_gate.py](D:/moyuan/moyuan-travel-agent/scripts/agent_quality_gate.py)
 - 建议搜索词：
   `verify`、`StreamingResponse`、`streamingMessage`、`_meta`、`checkpoint`、`quality gate`
 - 做题提醒：

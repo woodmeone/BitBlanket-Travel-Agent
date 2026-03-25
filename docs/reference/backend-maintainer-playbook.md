@@ -6,8 +6,8 @@
 
 以 `POST /api/chat/stream` 为例：
 
-1. `web/shuai_web/routes/chat.py`
-2. `web/shuai_web/services/chat_service.py`
+1. `web/moyuan_web/routes/chat.py`
+2. `web/moyuan_web/services/chat_service.py`
 3. `agent/travel_agent/graph/builder.py`
 4. `agent/travel_agent/graph/nodes.py`
 5. `agent/travel_agent/tools/travel_tools.py` / `agent/travel_agent/tools/travel_api.py`
@@ -125,13 +125,13 @@ npm run lint
 
 如果这次改动涉及发布链路、镜像标签或运行面板，优先看：
 
-- [`.github/workflows/release.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/release.yml)
-- [`scripts/export_release_manifest.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/export_release_manifest.py)
-- [`scripts/export_support_bundle.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/export_support_bundle.py)
-- [`ops/observability/README.md`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/README.md)
-- [`ops/observability/grafana-dashboard.json`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/grafana-dashboard.json)
-- [`ops/observability/prometheus-alerts.yml`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/prometheus-alerts.yml)
-- [`ops/observability/prometheus.yml`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/prometheus.yml)
+- [`.github/workflows/release.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/release.yml)
+- [`scripts/export_release_manifest.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_release_manifest.py)
+- [`scripts/export_support_bundle.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_support_bundle.py)
+- [`ops/observability/README.md`](/D:/moyuan/moyuan-travel-agent/ops/observability/README.md)
+- [`ops/observability/grafana-dashboard.json`](/D:/moyuan/moyuan-travel-agent/ops/observability/grafana-dashboard.json)
+- [`ops/observability/prometheus-alerts.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus-alerts.yml)
+- [`ops/observability/prometheus.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus.yml)
 
 推荐最小核对顺序：
 

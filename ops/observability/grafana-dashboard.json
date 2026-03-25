@@ -6,7 +6,7 @@
   "graphTooltip": 0,
   "panels": [
     {
-      "datasource": "Shuai Prometheus",
+      "datasource": "moyuan-travel-agent Prometheus",
       "fieldConfig": {
         "defaults": {
           "unit": "reqps"
@@ -22,7 +22,7 @@
       "id": 1,
       "targets": [
         {
-          "expr": "sum by (status) (rate(shuai_http_requests_total[5m]))",
+          "expr": "sum by (status) (rate(moyuan_http_requests_total[5m]))",
           "legendFormat": "{{status}}",
           "refId": "A"
         }
@@ -31,7 +31,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "Shuai Prometheus",
+      "datasource": "moyuan-travel-agent Prometheus",
       "fieldConfig": {
         "defaults": {
           "unit": "s"
@@ -47,7 +47,7 @@
       "id": 2,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, path) (rate(shuai_http_request_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le, path) (rate(moyuan_http_request_duration_seconds_bucket[5m])))",
           "legendFormat": "{{path}}",
           "refId": "A"
         }
@@ -56,7 +56,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "Shuai Prometheus",
+      "datasource": "moyuan-travel-agent Prometheus",
       "fieldConfig": {
         "defaults": {
           "unit": "short"
@@ -72,7 +72,7 @@
       "id": 3,
       "targets": [
         {
-          "expr": "shuai_http_in_flight_requests",
+          "expr": "moyuan_http_in_flight_requests",
           "refId": "A"
         }
       ],
@@ -80,7 +80,7 @@
       "type": "stat"
     },
     {
-      "datasource": "Shuai Prometheus",
+      "datasource": "moyuan-travel-agent Prometheus",
       "fieldConfig": {
         "defaults": {
           "unit": "reqps"
@@ -96,7 +96,7 @@
       "id": 4,
       "targets": [
         {
-          "expr": "sum by (mode, outcome) (rate(shuai_chat_stream_requests_total[5m]))",
+          "expr": "sum by (mode, outcome) (rate(moyuan_chat_stream_requests_total[5m]))",
           "legendFormat": "{{mode}} / {{outcome}}",
           "refId": "A"
         }
@@ -105,7 +105,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "Shuai Prometheus",
+      "datasource": "moyuan-travel-agent Prometheus",
       "fieldConfig": {
         "defaults": {
           "unit": "short"
@@ -121,7 +121,7 @@
       "id": 5,
       "targets": [
         {
-          "expr": "shuai_readiness_state",
+          "expr": "moyuan_readiness_state",
           "refId": "A"
         }
       ],
@@ -129,7 +129,7 @@
       "type": "stat"
     },
     {
-      "datasource": "Shuai Prometheus",
+      "datasource": "moyuan-travel-agent Prometheus",
       "fieldConfig": {
         "defaults": {
           "unit": "ops"
@@ -145,7 +145,7 @@
       "id": 6,
       "targets": [
         {
-          "expr": "sum by (event_type) (rate(shuai_sse_events_total[5m]))",
+          "expr": "sum by (event_type) (rate(moyuan_sse_events_total[5m]))",
           "legendFormat": "{{event_type}}",
           "refId": "A"
         }
@@ -154,7 +154,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "Shuai Prometheus",
+      "datasource": "moyuan-travel-agent Prometheus",
       "fieldConfig": {
         "defaults": {
           "unit": "ops"
@@ -170,7 +170,7 @@
       "id": 7,
       "targets": [
         {
-          "expr": "sum by (path) (rate(shuai_rate_limit_rejections_total[5m]))",
+          "expr": "sum by (path) (rate(moyuan_rate_limit_rejections_total[5m]))",
           "legendFormat": "{{path}}",
           "refId": "A"
         }
@@ -179,7 +179,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "Shuai Prometheus",
+      "datasource": "moyuan-travel-agent Prometheus",
       "fieldConfig": {
         "defaults": {
           "unit": "ops"
@@ -195,7 +195,7 @@
       "id": 8,
       "targets": [
         {
-          "expr": "sum by (path) (rate(shuai_http_timeouts_total[5m]))",
+          "expr": "sum by (path) (rate(moyuan_http_timeouts_total[5m]))",
           "legendFormat": "{{path}}",
           "refId": "A"
         }
@@ -208,7 +208,7 @@
   "schemaVersion": 39,
   "style": "dark",
   "tags": [
-    "shuai",
+    "moyuan",
     "observability"
   ],
   "templating": {
@@ -219,7 +219,7 @@
     "to": "now"
   },
   "timezone": "",
-  "title": "ShuaiTravelAgent Overview",
-  "uid": "shuai-overview",
+  "title": "moyuan-travel-agent Overview",
+  "uid": "moyuan-overview",
   "version": 2
 }

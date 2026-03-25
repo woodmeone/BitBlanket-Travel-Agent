@@ -10,11 +10,11 @@ services:
     ports:
       - "38000:38000"
     environment:
-      SHUAI_WEB_HOST: "0.0.0.0"
-      SHUAI_WEB_PORT: "38000"
-      SHUAI_FRONTEND_PORT: "33001"
+      MOYUAN_WEB_HOST: "0.0.0.0"
+      MOYUAN_WEB_PORT: "38000"
+      MOYUAN_FRONTEND_PORT: "33001"
       CORS_ORIGINS: "http://localhost:33001,http://localhost:38000"
-      SHUAI_METRICS_ENABLED: "true"
+      MOYUAN_METRICS_ENABLED: "true"
     volumes:
       - ./config:/app/config
       - ./data:/app/data
@@ -65,7 +65,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: "admin"
     volumes:
       - ./ops/observability/grafana-provisioning:/etc/grafana/provisioning:ro
-      - ./ops/observability/grafana-dashboard.json:/var/lib/grafana/dashboards/shuai-overview.json:ro
+      - ./ops/observability/grafana-dashboard.json:/var/lib/grafana/dashboards/moyuan-overview.json:ro
     depends_on:
       - prometheus
     restart: unless-stopped

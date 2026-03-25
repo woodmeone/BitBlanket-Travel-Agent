@@ -2,7 +2,7 @@
 
 ## 总体结构
 
-ShuaiTravelAgent 由三层组成：
+moyuan-travel-agent 由三层组成：
 
 1. Frontend：Next.js 对话与旅行工具 UI
 2. Web API：FastAPI 路由、服务编排、startup checks、observability
@@ -39,15 +39,15 @@ Browser
 
 关键文件：
 
-- [`frontend/src/app/page.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/app/page.tsx)
-- [`frontend/src/components/ChatArea.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)
-- [`frontend/src/components/MessageList.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)
-- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)
-- [`frontend/src/components/CityExplorer.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/CityExplorer.tsx)
-- [`frontend/src/services/api.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
-- [`frontend/next.config.js`](/D:/projects/shuai/ShuaiTravelAgent/frontend/next.config.js)
+- [`frontend/src/app/page.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/app/page.tsx)
+- [`frontend/src/components/ChatArea.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)
+- [`frontend/src/components/MessageList.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)
+- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
+- [`frontend/src/components/CityExplorer.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/CityExplorer.tsx)
+- [`frontend/src/services/api.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
+- [`frontend/next.config.js`](/D:/moyuan/moyuan-travel-agent/frontend/next.config.js)
 
-### Web API (`web/shuai_web/`)
+### Web API (`web/moyuan_web/`)
 
 负责把前端请求组织成稳定的服务入口，并承接会话、城市、分享、健康状态、metrics 与 startup readiness。
 
@@ -62,13 +62,13 @@ Browser
 
 关键文件：
 
-- [`web/shuai_web/main.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/main.py)
-- [`web/shuai_web/middleware/__init__.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/middleware/__init__.py)
-- [`web/shuai_web/observability.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/observability.py)
-- [`web/shuai_web/startup_checks.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/startup_checks.py)
-- [`web/shuai_web/routes/chat.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)
-- [`web/shuai_web/routes/health.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/health.py)
-- [`web/shuai_web/services/chat_service.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)
+- [`web/moyuan_web/main.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/main.py)
+- [`web/moyuan_web/middleware/__init__.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/middleware/__init__.py)
+- [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py)
+- [`web/moyuan_web/startup_checks.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/startup_checks.py)
+- [`web/moyuan_web/routes/chat.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)
+- [`web/moyuan_web/routes/health.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/health.py)
+- [`web/moyuan_web/services/chat_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)
 
 ### Agent (`agent/travel_agent/`)
 
@@ -86,21 +86,21 @@ Browser
 
 关键文件：
 
-- [`agent/travel_agent/runtime/agent_runtime.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/runtime/agent_runtime.py)
-- [`agent/travel_agent/supervisor/builder.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/supervisor/builder.py)
-- [`agent/travel_agent/supervisor/nodes.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/supervisor/nodes.py)
-- [`agent/travel_agent/subagents/registry.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/subagents/registry.py)
-- [`agent/travel_agent/subagents/research.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/subagents/research.py)
-- [`agent/travel_agent/subagents/planning.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/subagents/planning.py)
-- [`agent/travel_agent/subagents/verification.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/subagents/verification.py)
-- [`agent/travel_agent/skills/registry.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/skills/registry.py)
-- [`agent/travel_agent/artifacts/models.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/artifacts/models.py)
-- [`agent/travel_agent/graph/builder.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)
-- [`agent/travel_agent/graph/nodes.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py)
-- [`agent/travel_agent/graph/runtime_config.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/runtime_config.py)
-- [`agent/travel_agent/graph/memory_integration.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/memory_integration.py)
-- [`agent/travel_agent/graph/persistent_checkpointer.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/persistent_checkpointer.py)
-- [`agent/travel_agent/tools/travel_tools.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/tools/travel_tools.py)
+- [`agent/travel_agent/runtime/agent_runtime.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/runtime/agent_runtime.py)
+- [`agent/travel_agent/supervisor/builder.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/supervisor/builder.py)
+- [`agent/travel_agent/supervisor/nodes.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/supervisor/nodes.py)
+- [`agent/travel_agent/subagents/registry.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/registry.py)
+- [`agent/travel_agent/subagents/research.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/research.py)
+- [`agent/travel_agent/subagents/planning.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/planning.py)
+- [`agent/travel_agent/subagents/verification.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/verification.py)
+- [`agent/travel_agent/skills/registry.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/skills/registry.py)
+- [`agent/travel_agent/artifacts/models.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/artifacts/models.py)
+- [`agent/travel_agent/graph/builder.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)
+- [`agent/travel_agent/graph/nodes.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)
+- [`agent/travel_agent/graph/runtime_config.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/runtime_config.py)
+- [`agent/travel_agent/graph/memory_integration.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/memory_integration.py)
+- [`agent/travel_agent/graph/persistent_checkpointer.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/persistent_checkpointer.py)
+- [`agent/travel_agent/tools/travel_tools.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/tools/travel_tools.py)
 
 ## 主要请求链路
 
@@ -142,7 +142,7 @@ flowchart TD
     B --> F["dependency container check"]
     B --> G["chat runtime initialization"]
     B --> H["app.state.readiness_snapshot"]
-    B --> I["shuai_readiness_state gauge"]
+    B --> I["moyuan_readiness_state gauge"]
     H --> J["/api/ready"]
     I --> K["/api/metrics"]
 ```
@@ -180,7 +180,7 @@ flowchart TD
 
 结构化日志入口：
 
-- [`web/shuai_web/observability.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/observability.py)
+- [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py)
 
 当前重点事件：
 
@@ -196,12 +196,12 @@ flowchart TD
 
 默认指标：
 
-- `shuai_http_requests_total`
-- `shuai_http_request_duration_seconds`
-- `shuai_http_in_flight_requests`
-- `shuai_chat_stream_requests_total`
-- `shuai_sse_events_total`
-- `shuai_readiness_state`
+- `moyuan_http_requests_total`
+- `moyuan_http_request_duration_seconds`
+- `moyuan_http_in_flight_requests`
+- `moyuan_chat_stream_requests_total`
+- `moyuan_sse_events_total`
+- `moyuan_readiness_state`
 
 默认出口：
 
@@ -222,10 +222,10 @@ flowchart TD
 
 当前本地与容器启动的核心资产：
 
-- [`compose.yaml`](/D:/projects/shuai/ShuaiTravelAgent/compose.yaml)
-- [`Dockerfile.backend`](/D:/projects/shuai/ShuaiTravelAgent/Dockerfile.backend)
-- [`frontend/Dockerfile`](/D:/projects/shuai/ShuaiTravelAgent/frontend/Dockerfile)
-- [`config/server_config.yaml.example`](/D:/projects/shuai/ShuaiTravelAgent/config/server_config.yaml.example)
+- [`compose.yaml`](/D:/moyuan/moyuan-travel-agent/compose.yaml)
+- [`Dockerfile.backend`](/D:/moyuan/moyuan-travel-agent/Dockerfile.backend)
+- [`frontend/Dockerfile`](/D:/moyuan/moyuan-travel-agent/frontend/Dockerfile)
+- [`config/server_config.yaml.example`](/D:/moyuan/moyuan-travel-agent/config/server_config.yaml.example)
 
 ## 当前设计重点
 
@@ -294,19 +294,19 @@ flowchart TD
 
 The current system is no longer only "artifact-capable" on the backend. The frontend now consumes the new application-layer payloads directly:
 
-- [`frontend/src/services/api.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
+- [`frontend/src/services/api.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
   - parses `subagent_start`
   - parses `subagent_end`
   - parses `artifact_patch`
   - carries `artifact` through `plan_preview`, `metadata`, and `done`
-- [`frontend/src/components/ChatArea.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)
+- [`frontend/src/components/ChatArea.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)
   - merges incremental artifact patches during one run
   - records subagent timeline events
   - persists final artifact/subagent diagnostics into the assistant message
-- [`frontend/src/components/MessageList.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)
+- [`frontend/src/components/MessageList.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)
   - renders artifact-backed diagnostics
   - shows subagent trace in message-level diagnostics and streaming state
-- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)
+- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
   - prefers structured artifact metadata for intent / plan / verification / evidence summary
   - keeps free-text itinerary parsing as a compatibility fallback instead of the primary source of truth
 

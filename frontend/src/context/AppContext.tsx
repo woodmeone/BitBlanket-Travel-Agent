@@ -16,7 +16,7 @@ const DEFAULT_MODELS: ModelInfo[] = [
 ];
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:38000';
-const SESSION_STORAGE_KEY = 'shuai-current-session-id';
+const SESSION_STORAGE_KEY = 'moyuan-current-session-id';
 
 function hasOwnSessionMessages(cache: Record<string, Message[]>, sessionId: string): boolean {
   return Object.prototype.hasOwnProperty.call(cache, sessionId);

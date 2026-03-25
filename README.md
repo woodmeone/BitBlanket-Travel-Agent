@@ -1,4 +1,4 @@
-﻿# ShuaiTravelAgent
+# moyuan-travel-agent
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-111111?logo=next.js)
 ![React](https://img.shields.io/badge/React-19-149ECA?logo=react)
@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript)
 ![Docs](https://img.shields.io/badge/Docs-Updated-2563EB)
 
-ShuaiTravelAgent 是一个面向真实旅行决策场景的 AI 旅行助手项目，覆盖“问问题 -> 生成方案 -> 调整预算/约束 -> 对比方案 -> 导出分享”的完整链路。
+moyuan-travel-agent 是一个面向真实旅行决策场景的 AI 旅行助手项目，覆盖“问问题 -> 生成方案 -> 调整预算/约束 -> 对比方案 -> 导出分享”的完整链路。
 
 它不是只输出一段长文本，而是尽量把旅行建议整理成可继续操作的结构化结果：每日行程卡、预算联动、候选城市探索、对比模式、冲突检测、导出图片与分享链接。
 
@@ -86,7 +86,7 @@ ShuaiTravelAgent 是一个面向真实旅行决策场景的 AI 旅行助手项�
 ## 项目结构
 
 ```text
-ShuaiTravelAgent/
+moyuan-travel-agent/
 ├── .editorconfig         # 编辑器编码、换行与缩进规范
 ├── .gitattributes        # Git 文本归一化与二进制文件策略
 ├── agent/                  # Agent 图、节点、工具、记忆、checkpoint
@@ -174,7 +174,7 @@ uv pip install -r requirements.txt
 ### 4. 启动后端
 
 ```bash
-.\.venv\Scripts\python.exe -m uvicorn shuai_web.main:app --host 0.0.0.0 --port 38000 --app-dir web
+.\.venv\Scripts\python.exe -m uvicorn moyuan_web.main:app --host 0.0.0.0 --port 38000 --app-dir web
 ```
 
 ### 5. 启动前端
@@ -242,9 +242,9 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke `
 
 相关资产：
 
-- [compose.yaml](/D:/projects/shuai/ShuaiTravelAgent/compose.yaml)
-- [Dockerfile.backend](/D:/projects/shuai/ShuaiTravelAgent/Dockerfile.backend)
-- [frontend/Dockerfile](/D:/projects/shuai/ShuaiTravelAgent/frontend/Dockerfile)
+- [compose.yaml](/D:/moyuan/moyuan-travel-agent/compose.yaml)
+- [Dockerfile.backend](/D:/moyuan/moyuan-travel-agent/Dockerfile.backend)
+- [frontend/Dockerfile](/D:/moyuan/moyuan-travel-agent/frontend/Dockerfile)
 
 ## 常用接口
 
@@ -306,7 +306,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke `
 如果希望启动失败时直接退出，可设置：
 
 ```bash
-set SHUAI_FAIL_FAST_STARTUP_VALIDATION=true
+set MOYUAN_FAIL_FAST_STARTUP_VALIDATION=true
 ```
 
 ### request_id / trace_id
@@ -347,12 +347,12 @@ python scripts/runtime_doctor.py --base-url http://localhost:38000 --strict
 
 主要指标包括：
 
-- `shuai_http_requests_total`
-- `shuai_http_request_duration_seconds`
-- `shuai_http_in_flight_requests`
-- `shuai_chat_stream_requests_total`
-- `shuai_sse_events_total`
-- `shuai_readiness_state`
+- `moyuan_http_requests_total`
+- `moyuan_http_request_duration_seconds`
+- `moyuan_http_in_flight_requests`
+- `moyuan_chat_stream_requests_total`
+- `moyuan_sse_events_total`
+- `moyuan_readiness_state`
 
 ## 测试与质量
 
@@ -370,9 +370,9 @@ npm run build
 ```bash
 python -m pytest tests -m "unit and not local and not external_api" -q
 python -m pytest tests -m "local and not external_api" -q
-python -m ruff check --config ruff.toml scripts web/shuai_web
+python -m ruff check --config ruff.toml scripts web/moyuan_web
 python scripts/docstring_audit.py --strict
-mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/shuai_web/app_meta.py web/shuai_web/main.py web/shuai_web/middleware/__init__.py web/shuai_web/observability.py web/shuai_web/routes/chat.py web/shuai_web/routes/health.py web/shuai_web/services/share_service.py web/shuai_web/startup_checks.py
+mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
 ```
 
 ### 推荐统一入口
@@ -405,22 +405,22 @@ mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_re
 - OpenAPI snapshot: [docs/reference/openapi.snapshot.json](docs/reference/openapi.snapshot.json)
 - SSE snapshot: [docs/reference/sse-contract.snapshot.json](docs/reference/sse-contract.snapshot.json)
 - CI dependency audit: `pip-audit -r requirements.txt`
-- CI secret scan: Dockerized `gitleaks` with [`.gitleaks.toml`](/D:/projects/shuai/ShuaiTravelAgent/.gitleaks.toml)
+- CI secret scan: Dockerized `gitleaks` with [`.gitleaks.toml`](/D:/moyuan/moyuan-travel-agent/.gitleaks.toml)
 
 ### 发布与观测资产
 
-- Release workflow: [`.github/workflows/release.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/release.yml)
-- Release manifest: [`scripts/export_release_manifest.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/export_release_manifest.py)
-- Support bundle: [`scripts/export_support_bundle.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/export_support_bundle.py)
-- Grafana dashboard: [`ops/observability/grafana-dashboard.json`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/grafana-dashboard.json)
-- Prometheus alerts: [`ops/observability/prometheus-alerts.yml`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/prometheus-alerts.yml)
-- Local Prometheus config: [`ops/observability/prometheus.yml`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/prometheus.yml)
+- Release workflow: [`.github/workflows/release.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/release.yml)
+- Release manifest: [`scripts/export_release_manifest.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_release_manifest.py)
+- Support bundle: [`scripts/export_support_bundle.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_support_bundle.py)
+- Grafana dashboard: [`ops/observability/grafana-dashboard.json`](/D:/moyuan/moyuan-travel-agent/ops/observability/grafana-dashboard.json)
+- Prometheus alerts: [`ops/observability/prometheus-alerts.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus-alerts.yml)
+- Local Prometheus config: [`ops/observability/prometheus.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus.yml)
 
 ### 仓库规范与容器校验
 
-- 编辑器规范：[`/.editorconfig`](/D:/projects/shuai/ShuaiTravelAgent/.editorconfig)
-- Git 文本归一化：[`/.gitattributes`](/D:/projects/shuai/ShuaiTravelAgent/.gitattributes)
-- 本地命令入口：[`/dev.ps1`](/D:/projects/shuai/ShuaiTravelAgent/dev.ps1)
+- 编辑器规范：[`/.editorconfig`](/D:/moyuan/moyuan-travel-agent/.editorconfig)
+- Git 文本归一化：[`/.gitattributes`](/D:/moyuan/moyuan-travel-agent/.gitattributes)
+- 本地命令入口：[`/dev.ps1`](/D:/moyuan/moyuan-travel-agent/dev.ps1)
 - CI 的 `container-validate` 会执行 `docker compose config`、`docker compose --profile observability config`、后端镜像 smoke build、前端镜像 smoke build，并上传 `deployment-validation-artifacts`
 
 更多测试与回放说明见 [docs/testing/testing-guide.md](docs/testing/testing-guide.md)。

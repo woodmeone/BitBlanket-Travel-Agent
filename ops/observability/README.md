@@ -15,8 +15,8 @@ This folder contains importable observability assets for the web/API runtime.
 
 ## Recommended usage
 
-1. Import [`grafana-dashboard.json`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/grafana-dashboard.json) into Grafana.
-2. Load [`prometheus-alerts.yml`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/prometheus-alerts.yml) into your Prometheus rules path.
+1. Import [`grafana-dashboard.json`](/D:/moyuan/moyuan-travel-agent/ops/observability/grafana-dashboard.json) into Grafana.
+2. Load [`prometheus-alerts.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus-alerts.yml) into your Prometheus rules path.
 3. Ensure Prometheus scrapes `/api/metrics` from the backend service.
 
 ## Local stack
@@ -36,16 +36,16 @@ Local ports:
 
 The bundled Grafana stack auto-provisions:
 
-- datasource `Shuai Prometheus`
-- dashboard `ShuaiTravelAgent Overview`
+- datasource `moyuan-travel-agent Prometheus`
+- dashboard `moyuan-travel-agent Overview`
 
 ## Metrics used
 
-- `shuai_http_requests_total`
-- `shuai_http_request_duration_seconds`
-- `shuai_http_in_flight_requests`
-- `shuai_chat_stream_requests_total`
-- `shuai_rate_limit_rejections_total`
-- `shuai_http_timeouts_total`
-- `shuai_sse_events_total`
-- `shuai_readiness_state`
+- `moyuan_http_requests_total`
+- `moyuan_http_request_duration_seconds`
+- `moyuan_http_in_flight_requests`
+- `moyuan_chat_stream_requests_total`
+- `moyuan_rate_limit_rejections_total`
+- `moyuan_http_timeouts_total`
+- `moyuan_sse_events_total`
+- `moyuan_readiness_state`

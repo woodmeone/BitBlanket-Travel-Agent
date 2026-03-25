@@ -6,8 +6,8 @@
 
 当前 marker 定义见：
 
-- [`pytest.ini`](/D:/projects/shuai/ShuaiTravelAgent/pytest.ini)
-- [`tests/conftest.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/conftest.py)
+- [`pytest.ini`](/D:/moyuan/moyuan-travel-agent/pytest.ini)
+- [`tests/conftest.py`](/D:/moyuan/moyuan-travel-agent/tests/conftest.py)
 
 主要分层：
 
@@ -54,9 +54,9 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke
 python -m pytest tests -m "unit and not local and not external_api" -q
 python -m pytest tests -m "local and not external_api" -q
 python -m pytest tests/test_agent_runtime_phase1_unit.py tests/test_agent_subagent_phase2_unit.py tests/test_chat_stream_local.py tests/test_chat_service_health_metrics_unit.py tests/test_langchain_1x_agent_unit.py -q
-python -m ruff check --config ruff.toml scripts web/shuai_web
+python -m ruff check --config ruff.toml scripts web/moyuan_web
 python scripts/docstring_audit.py --strict
-python -m mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/shuai_web/app_meta.py web/shuai_web/main.py web/shuai_web/middleware/__init__.py web/shuai_web/observability.py web/shuai_web/routes/chat.py web/shuai_web/routes/health.py web/shuai_web/services/share_service.py web/shuai_web/startup_checks.py
+python -m mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
 cd frontend
 npm run lint
 npm run build
@@ -100,8 +100,8 @@ python scripts/export_sse_contract_snapshot.py
 
 产物：
 
-- [`docs/reference/openapi.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/openapi.snapshot.json)
-- [`docs/reference/sse-contract.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/sse-contract.snapshot.json)
+- [`docs/reference/openapi.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/openapi.snapshot.json)
+- [`docs/reference/sse-contract.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/sse-contract.snapshot.json)
 
 ## 4. 运行维护脚本
 
@@ -118,38 +118,38 @@ python scripts/export_support_bundle.py --base-url http://localhost:38000
 
 ```bash
 python scripts/docstring_audit.py --strict
-ruff check --config ruff.toml scripts web/shuai_web
-mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/shuai_web/app_meta.py web/shuai_web/main.py web/shuai_web/middleware/__init__.py web/shuai_web/observability.py web/shuai_web/routes/chat.py web/shuai_web/routes/health.py web/shuai_web/services/share_service.py web/shuai_web/startup_checks.py
+ruff check --config ruff.toml scripts web/moyuan_web
+mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
 ```
 
 ## 6. 关键测试文件保护什么
 
-- [`tests/test_api_smoke_local.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_api_smoke_local.py)
+- [`tests/test_api_smoke_local.py`](/D:/moyuan/moyuan-travel-agent/tests/test_api_smoke_local.py)
   - 保护 `/`、`/api/health`、`/api/ready`、`/api/live`、`/api/metrics`
-- [`tests/test_chat_stream_local.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_chat_stream_local.py)
+- [`tests/test_chat_stream_local.py`](/D:/moyuan/moyuan-travel-agent/tests/test_chat_stream_local.py)
   - 保护 `/api/chat/stream` 和 `request_id / trace_id`
-- [`tests/test_agent_runtime_phase1_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_runtime_phase1_unit.py)
+- [`tests/test_agent_runtime_phase1_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_runtime_phase1_unit.py)
   - 保护 phase-1 `AgentRuntime / Skills / Artifact` 兼容层
-- [`tests/test_agent_subagent_phase2_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_agent_subagent_phase2_unit.py)
+- [`tests/test_agent_subagent_phase2_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_subagent_phase2_unit.py)
   - 保护 phase-2 `Research / Planning / Verification` subagent 映射与事件编排
-- [`tests/test_runtime_data_lifecycle_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_runtime_data_lifecycle_unit.py)
+- [`tests/test_runtime_data_lifecycle_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_data_lifecycle_unit.py)
   - 保护 backup / restore / prune
-- [`tests/test_runtime_doctor_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_runtime_doctor_unit.py)
+- [`tests/test_runtime_doctor_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_doctor_unit.py)
   - 保护 runtime doctor
-- [`tests/test_export_openapi_snapshot_script_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_export_openapi_snapshot_script_unit.py)
+- [`tests/test_export_openapi_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_openapi_snapshot_script_unit.py)
   - 保护 OpenAPI 快照导出
-- [`tests/test_export_sse_contract_snapshot_script_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_export_sse_contract_snapshot_script_unit.py)
+- [`tests/test_export_sse_contract_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_sse_contract_snapshot_script_unit.py)
   - 保护 SSE 快照导出
-- [`tests/test_export_release_manifest_script_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_export_release_manifest_script_unit.py)
+- [`tests/test_export_release_manifest_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_release_manifest_script_unit.py)
   - 保护 release manifest
-- [`tests/test_export_support_bundle_script_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_export_support_bundle_script_unit.py)
+- [`tests/test_export_support_bundle_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_support_bundle_script_unit.py)
   - 保护 support bundle
-- [`tests/test_observability_assets_unit.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/test_observability_assets_unit.py)
+- [`tests/test_observability_assets_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_observability_assets_unit.py)
   - 保护 dashboard 和 alert 资产
 
 ## 7. CI 当前如何跑
 
-CI 配置见：[`.github/workflows/ci.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/ci.yml)
+CI 配置见：[`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml)
 
 主要任务包括：
 
@@ -194,7 +194,7 @@ CI 配置见：[`.github/workflows/ci.yml`](/D:/projects/shuai/ShuaiTravelAgent/
 
 ## 9. 常见失败点
 
-- 编码与换行问题：优先检查 [`.editorconfig`](/D:/projects/shuai/ShuaiTravelAgent/.editorconfig) 和 [`.gitattributes`](/D:/projects/shuai/ShuaiTravelAgent/.gitattributes)
+- 编码与换行问题：优先检查 [`.editorconfig`](/D:/moyuan/moyuan-travel-agent/.editorconfig) 和 [`.gitattributes`](/D:/moyuan/moyuan-travel-agent/.gitattributes)
 - readiness / 配置问题：优先检查 `config/llm_config.yaml`、`config/server_config.yaml` 和 `/api/ready`
 - SSE 流式不稳定：优先检查 `/api/chat/stream`、headers、payload 和 timeout
 - 契约快照失败：优先检查是否刷新 OpenAPI / SSE 快照
@@ -209,11 +209,11 @@ CI 配置见：[`.github/workflows/ci.yml`](/D:/projects/shuai/ShuaiTravelAgent/
 
 The frontend artifact-first slice is currently covered by:
 
-- [`frontend/tests/unit/components/MessageList.test.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/tests/unit/components/MessageList.test.tsx)
+- [`frontend/tests/unit/components/MessageList.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/MessageList.test.tsx)
   - protects assistant rendering, diagnostics, markdown blocks, and artifact-backed toolkit summary
-- [`frontend/tests/unit/utils/agentArtifacts.test.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/tests/unit/utils/agentArtifacts.test.ts)
+- [`frontend/tests/unit/utils/agentArtifacts.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/utils/agentArtifacts.test.ts)
   - protects artifact patch merge semantics
-- [`frontend/tests/unit/utils/travelPlan.test.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/tests/unit/utils/travelPlan.test.ts)
+- [`frontend/tests/unit/utils/travelPlan.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/utils/travelPlan.test.ts)
   - protects free-text itinerary fallback parsing
 
 Recommended local regression after changing artifact/subagent UI behavior:

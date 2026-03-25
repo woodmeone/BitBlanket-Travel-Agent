@@ -27,39 +27,39 @@
 对应核心代码路径：
 
 - 运行与部署
-  - [`compose.yaml`](/D:/projects/shuai/ShuaiTravelAgent/compose.yaml)
-  - [`Dockerfile.backend`](/D:/projects/shuai/ShuaiTravelAgent/Dockerfile.backend)
-  - [`frontend/Dockerfile`](/D:/projects/shuai/ShuaiTravelAgent/frontend/Dockerfile)
-  - [`frontend/docker-compose.yml`](/D:/projects/shuai/ShuaiTravelAgent/frontend/docker-compose.yml)
+  - [`compose.yaml`](/D:/moyuan/moyuan-travel-agent/compose.yaml)
+  - [`Dockerfile.backend`](/D:/moyuan/moyuan-travel-agent/Dockerfile.backend)
+  - [`frontend/Dockerfile`](/D:/moyuan/moyuan-travel-agent/frontend/Dockerfile)
+  - [`frontend/docker-compose.yml`](/D:/moyuan/moyuan-travel-agent/frontend/docker-compose.yml)
 - 配置与 readiness
-  - [`config/__init__.py`](/D:/projects/shuai/ShuaiTravelAgent/config/__init__.py)
-  - [`config/server_config.yaml.example`](/D:/projects/shuai/ShuaiTravelAgent/config/server_config.yaml.example)
-  - [`web/shuai_web/startup_checks.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/startup_checks.py)
-  - [`web/shuai_web/routes/health.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/health.py)
+  - [`config/__init__.py`](/D:/moyuan/moyuan-travel-agent/config/__init__.py)
+  - [`config/server_config.yaml.example`](/D:/moyuan/moyuan-travel-agent/config/server_config.yaml.example)
+  - [`web/moyuan_web/startup_checks.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/startup_checks.py)
+  - [`web/moyuan_web/routes/health.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/health.py)
 - CI 与测试分层
-  - [`.github/workflows/ci.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/ci.yml)
-  - [`pytest.ini`](/D:/projects/shuai/ShuaiTravelAgent/pytest.ini)
-  - [`tests/conftest.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/conftest.py)
+  - [`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml)
+  - [`pytest.ini`](/D:/moyuan/moyuan-travel-agent/pytest.ini)
+  - [`tests/conftest.py`](/D:/moyuan/moyuan-travel-agent/tests/conftest.py)
 - Trace 与 metrics
-  - [`web/shuai_web/observability.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/observability.py)
-  - [`web/shuai_web/middleware/__init__.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/middleware/__init__.py)
-  - [`web/shuai_web/routes/chat.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)
-  - [`web/shuai_web/services/chat_service.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)
-  - [`frontend/src/services/api.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
+  - [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py)
+  - [`web/moyuan_web/middleware/__init__.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/middleware/__init__.py)
+  - [`web/moyuan_web/routes/chat.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)
+  - [`web/moyuan_web/services/chat_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)
+  - [`frontend/src/services/api.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
 - 数据生命周期
-  - [`scripts/runtime_backup.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/runtime_backup.py)
-  - [`scripts/runtime_restore.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/runtime_restore.py)
-  - [`scripts/runtime_prune.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/runtime_prune.py)
-  - [`scripts/runtime_doctor.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/runtime_doctor.py)
-  - [`docs/architecture/data-storage.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/architecture/data-storage.md)
+  - [`scripts/runtime_backup.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_backup.py)
+  - [`scripts/runtime_restore.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_restore.py)
+  - [`scripts/runtime_prune.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_prune.py)
+  - [`scripts/runtime_doctor.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_doctor.py)
+  - [`docs/architecture/data-storage.md`](/D:/moyuan/moyuan-travel-agent/docs/architecture/data-storage.md)
 - 安全与契约治理
-  - [`SECURITY.md`](/D:/projects/shuai/ShuaiTravelAgent/SECURITY.md)
-  - [`.github/dependabot.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/dependabot.yml)
-  - [`.gitleaks.toml`](/D:/projects/shuai/ShuaiTravelAgent/.gitleaks.toml)
-  - [`scripts/export_openapi_snapshot.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/export_openapi_snapshot.py)
-  - [`scripts/export_sse_contract_snapshot.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/export_sse_contract_snapshot.py)
-  - [`docs/reference/openapi.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/openapi.snapshot.json)
-  - [`docs/reference/sse-contract.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/sse-contract.snapshot.json)
+  - [`SECURITY.md`](/D:/moyuan/moyuan-travel-agent/SECURITY.md)
+  - [`.github/dependabot.yml`](/D:/moyuan/moyuan-travel-agent/.github/dependabot.yml)
+  - [`.gitleaks.toml`](/D:/moyuan/moyuan-travel-agent/.gitleaks.toml)
+  - [`scripts/export_openapi_snapshot.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_openapi_snapshot.py)
+  - [`scripts/export_sse_contract_snapshot.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_sse_contract_snapshot.py)
+  - [`docs/reference/openapi.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/openapi.snapshot.json)
+  - [`docs/reference/sse-contract.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/sse-contract.snapshot.json)
 
 ## 2. 运行与部署收敛
 
@@ -91,15 +91,15 @@ docker compose up --build
 
 对应职责：
 
-- [`Dockerfile.backend`](/D:/projects/shuai/ShuaiTravelAgent/Dockerfile.backend)
+- [`Dockerfile.backend`](/D:/moyuan/moyuan-travel-agent/Dockerfile.backend)
   - 安装 Python 依赖
   - 拷贝 `agent/`、`web/`、`config/`、`scripts/`
-  - 以 `uvicorn` 启动 `shuai_web.main:app`
-- [`frontend/Dockerfile`](/D:/projects/shuai/ShuaiTravelAgent/frontend/Dockerfile)
+  - 以 `uvicorn` 启动 `moyuan_web.main:app`
+- [`frontend/Dockerfile`](/D:/moyuan/moyuan-travel-agent/frontend/Dockerfile)
   - 先 `npm ci`
   - 再 `next build`
   - 最后以 standalone 模式运行前端
-- [`compose.yaml`](/D:/projects/shuai/ShuaiTravelAgent/compose.yaml)
+- [`compose.yaml`](/D:/moyuan/moyuan-travel-agent/compose.yaml)
   - 把 `backend` 与 `frontend` 放进统一网络
   - 对外暴露 `38000/33001`
   - 挂载 `config/`、`data/`、`logs/`
@@ -128,7 +128,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-up `
    - `docker compose up --build`
    - 适合复现部署环境和验证配置
 3. CI 运行
-   - 由 [`.github/workflows/ci.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/ci.yml) 自动准备配置、跑测试、跑质量门禁
+   - 由 [`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml) 自动准备配置、跑测试、跑质量门禁
 
 ## 3. 配置与 readiness 治理
 
@@ -138,7 +138,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-up `
 
 `环境变量 > config/server_config.yaml > 代码默认值`
 
-实现入口在 [`config/__init__.py`](/D:/projects/shuai/ShuaiTravelAgent/config/__init__.py)。
+实现入口在 [`config/__init__.py`](/D:/moyuan/moyuan-travel-agent/config/__init__.py)。
 
 其中重点字段包括：
 
@@ -156,7 +156,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-up `
 
 ### 3.2 启动校验
 
-启动校验在 [`web/shuai_web/startup_checks.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/startup_checks.py)。
+启动校验在 [`web/moyuan_web/startup_checks.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/startup_checks.py)。
 
 当前会检查：
 
@@ -174,7 +174,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-up `
 
 ### 3.3 `/api/ready`
 
-[`web/shuai_web/routes/health.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/health.py) 里的 `/api/ready` 现在返回真实检查结果，不再是静态 `ok`。
+[`web/moyuan_web/routes/health.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/health.py) 里的 `/api/ready` 现在返回真实检查结果，不再是静态 `ok`。
 
 返回规则：
 
@@ -199,7 +199,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-up `
 如果设置：
 
 ```bash
-SHUAI_FAIL_FAST_STARTUP_VALIDATION=true
+MOYUAN_FAIL_FAST_STARTUP_VALIDATION=true
 ```
 
 那么应用在启动校验失败时会直接抛错退出，而不是“服务起来了但 readiness 一直不通过”。
@@ -218,12 +218,12 @@ SHUAI_FAIL_FAST_STARTUP_VALIDATION=true
 
 定义位置：
 
-- [`pytest.ini`](/D:/projects/shuai/ShuaiTravelAgent/pytest.ini)
-- [`tests/conftest.py`](/D:/projects/shuai/ShuaiTravelAgent/tests/conftest.py)
+- [`pytest.ini`](/D:/moyuan/moyuan-travel-agent/pytest.ini)
+- [`tests/conftest.py`](/D:/moyuan/moyuan-travel-agent/tests/conftest.py)
 
 ### 4.2 当前 CI 分层
 
-[`ci.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/ci.yml) 里当前主要分成：
+[`ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml) 里当前主要分成：
 
 1. Backend unit
    - `pytest tests -m "unit and not local and not external_api" -q`
@@ -274,7 +274,7 @@ flowchart LR
 
 ### 5.2 结构化日志
 
-结构化日志入口在 [`web/shuai_web/observability.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/observability.py)。
+结构化日志入口在 [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py)。
 
 目前会输出这些事件：
 
@@ -289,29 +289,29 @@ flowchart LR
 如果配置：
 
 ```bash
-SHUAI_STRUCTURED_LOGGING=false
+MOYUAN_STRUCTURED_LOGGING=false
 ```
 
 则会回退成普通日志文本，而不是 JSON 日志。
 
 ### 5.3 Prometheus metrics
 
-Prometheus 指标同样由 [`web/shuai_web/observability.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/observability.py) 统一定义。
+Prometheus 指标同样由 [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py) 统一定义。
 
 当前主要指标：
 
-- `shuai_http_requests_total`
-- `shuai_http_request_duration_seconds`
-- `shuai_http_in_flight_requests`
-- `shuai_chat_stream_requests_total`
-- `shuai_sse_events_total`
-- `shuai_readiness_state`
+- `moyuan_http_requests_total`
+- `moyuan_http_request_duration_seconds`
+- `moyuan_http_in_flight_requests`
+- `moyuan_chat_stream_requests_total`
+- `moyuan_sse_events_total`
+- `moyuan_readiness_state`
 
 指标出口：
 
 - 默认：`GET /api/metrics`
-- 可通过 `observability.metrics_path` 或 `SHUAI_METRICS_PATH` 添加别名路径
-- 可通过 `SHUAI_METRICS_ENABLED=false` 关闭
+- 可通过 `observability.metrics_path` 或 `MOYUAN_METRICS_PATH` 添加别名路径
+- 可通过 `MOYUAN_METRICS_ENABLED=false` 关闭
 
 ## 6. 推荐的运维自检顺序
 
@@ -335,7 +335,7 @@ curl http://localhost:38000/api/metrics
 1. 浏览器或前端日志中是否打印了 `request_id / trace_id`
 2. `/api/chat/stream` 响应头是否带 `X-Request-ID / X-Trace-ID`
 3. SSE payload 中是否有 `request_id / trace_id`
-4. `/api/metrics` 中 `shuai_sse_events_total` 是否增长
+4. `/api/metrics` 中 `moyuan_sse_events_total` 是否增长
 
 ## 7. 数据生命周期治理
 
@@ -383,8 +383,8 @@ python scripts/runtime_prune.py --max-session-age-seconds 2592000 --max-failure-
 
 当前仓库已经补上：
 
-- [`SECURITY.md`](/D:/projects/shuai/ShuaiTravelAgent/SECURITY.md)
-- [`.github/dependabot.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/dependabot.yml)
+- [`SECURITY.md`](/D:/moyuan/moyuan-travel-agent/SECURITY.md)
+- [`.github/dependabot.yml`](/D:/moyuan/moyuan-travel-agent/.github/dependabot.yml)
 
 这代表项目已经至少有：
 
@@ -404,7 +404,7 @@ python scripts/export_openapi_snapshot.py
 
 默认产物：
 
-- [`docs/reference/openapi.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/openapi.snapshot.json)
+- [`docs/reference/openapi.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/openapi.snapshot.json)
 
 这个文件的用途不是“给用户看”，而是：
 
@@ -422,7 +422,7 @@ python scripts/export_sse_contract_snapshot.py
 
 默认产物：
 
-- [`docs/reference/sse-contract.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/sse-contract.snapshot.json)
+- [`docs/reference/sse-contract.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/sse-contract.snapshot.json)
 
 它重点保护：
 
@@ -436,35 +436,35 @@ python scripts/export_sse_contract_snapshot.py
 
 至少同步：
 
-- [`README.md`](/D:/projects/shuai/ShuaiTravelAgent/README.md)
-- [`docs/getting-started/quick-start.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/getting-started/quick-start.md)
-- [`docs/reference/configuration-reference.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/configuration-reference.md)
-- [`docs/reference/project-structure.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/project-structure.md)
+- [`README.md`](/D:/moyuan/moyuan-travel-agent/README.md)
+- [`docs/getting-started/quick-start.md`](/D:/moyuan/moyuan-travel-agent/docs/getting-started/quick-start.md)
+- [`docs/reference/configuration-reference.md`](/D:/moyuan/moyuan-travel-agent/docs/reference/configuration-reference.md)
+- [`docs/reference/project-structure.md`](/D:/moyuan/moyuan-travel-agent/docs/reference/project-structure.md)
 
 ### 改 readiness / health / startup check
 
 至少同步：
 
-- [`docs/reference/api-reference.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/api-reference.md)
-- [`docs/architecture/system-architecture.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/architecture/system-architecture.md)
-- [`docs/architecture/infrastructure-foundations.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/architecture/infrastructure-foundations.md)
+- [`docs/reference/api-reference.md`](/D:/moyuan/moyuan-travel-agent/docs/reference/api-reference.md)
+- [`docs/architecture/system-architecture.md`](/D:/moyuan/moyuan-travel-agent/docs/architecture/system-architecture.md)
+- [`docs/architecture/infrastructure-foundations.md`](/D:/moyuan/moyuan-travel-agent/docs/architecture/infrastructure-foundations.md)
 
 ### 改 trace / metrics / 日志
 
 至少同步：
 
-- [`README.md`](/D:/projects/shuai/ShuaiTravelAgent/README.md)
-- [`docs/reference/api-reference.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/api-reference.md)
-- [`docs/testing/testing-guide.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/testing/testing-guide.md)
-- [`docs/architecture/system-architecture.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/architecture/system-architecture.md)
+- [`README.md`](/D:/moyuan/moyuan-travel-agent/README.md)
+- [`docs/reference/api-reference.md`](/D:/moyuan/moyuan-travel-agent/docs/reference/api-reference.md)
+- [`docs/testing/testing-guide.md`](/D:/moyuan/moyuan-travel-agent/docs/testing/testing-guide.md)
+- [`docs/architecture/system-architecture.md`](/D:/moyuan/moyuan-travel-agent/docs/architecture/system-architecture.md)
 
 ### 改 CI / pytest marker / quality gate
 
 至少同步：
 
-- [`README.md`](/D:/projects/shuai/ShuaiTravelAgent/README.md)
-- [`docs/getting-started/development-workflow.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/getting-started/development-workflow.md)
-- [`docs/testing/testing-guide.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/testing/testing-guide.md)
+- [`README.md`](/D:/moyuan/moyuan-travel-agent/README.md)
+- [`docs/getting-started/development-workflow.md`](/D:/moyuan/moyuan-travel-agent/docs/getting-started/development-workflow.md)
+- [`docs/testing/testing-guide.md`](/D:/moyuan/moyuan-travel-agent/docs/testing/testing-guide.md)
 
 ## 10. P1 基础设施继续完善
 
@@ -472,8 +472,8 @@ python scripts/export_sse_contract_snapshot.py
 
 为了减少 Windows / Linux 之间的换行、编码和 diff 噪音，仓库现在补上了两份顶层规范文件：
 
-- [`.editorconfig`](/D:/projects/shuai/ShuaiTravelAgent/.editorconfig)
-- [`.gitattributes`](/D:/projects/shuai/ShuaiTravelAgent/.gitattributes)
+- [`.editorconfig`](/D:/moyuan/moyuan-travel-agent/.editorconfig)
+- [`.gitattributes`](/D:/moyuan/moyuan-travel-agent/.gitattributes)
 
 这两份文件分别负责：
 
@@ -490,7 +490,7 @@ python scripts/export_sse_contract_snapshot.py
 
 根目录新增了统一命令脚本：
 
-- [`dev.ps1`](/D:/projects/shuai/ShuaiTravelAgent/dev.ps1)
+- [`dev.ps1`](/D:/moyuan/moyuan-travel-agent/dev.ps1)
 
 它把原来分散的本地命令统一成固定任务，包括：
 
@@ -513,7 +513,7 @@ python scripts/export_sse_contract_snapshot.py
 
 CI 现在多了一层专门的部署验证任务：
 
-- [`.github/workflows/ci.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/ci.yml) 中的 `container-validate`
+- [`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml) 中的 `container-validate`
 
 它覆盖：
 
@@ -544,9 +544,9 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke `
 
 当前新增的静态质量基线包括：
 
-- [`ruff.toml`](/D:/projects/shuai/ShuaiTravelAgent/ruff.toml)
-- [`mypy.ini`](/D:/projects/shuai/ShuaiTravelAgent/mypy.ini)
-- [`.github/workflows/ci.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/ci.yml)
+- [`ruff.toml`](/D:/moyuan/moyuan-travel-agent/ruff.toml)
+- [`mypy.ini`](/D:/moyuan/moyuan-travel-agent/mypy.ini)
+- [`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml)
 
 CI 里当前会对基础设施相关核心文件执行：
 
@@ -559,9 +559,9 @@ CI 里当前会对基础设施相关核心文件执行：
 
 当前 release 基础设施已经补到：
 
-- [`.github/workflows/release.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/release.yml)
-- [`scripts/export_release_manifest.py`](/D:/projects/shuai/ShuaiTravelAgent/scripts/export_release_manifest.py)
-- [`web/shuai_web/app_meta.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/app_meta.py)
+- [`.github/workflows/release.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/release.yml)
+- [`scripts/export_release_manifest.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_release_manifest.py)
+- [`web/moyuan_web/app_meta.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/app_meta.py)
 
 这套流程的目标是：
 
@@ -576,9 +576,9 @@ CI 里当前会对基础设施相关核心文件执行：
 
 当前仓库已经补了最小可用的观测消费资产：
 
-- [`ops/observability/README.md`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/README.md)
-- [`ops/observability/grafana-dashboard.json`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/grafana-dashboard.json)
-- [`ops/observability/prometheus-alerts.yml`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/prometheus-alerts.yml)
+- [`ops/observability/README.md`](/D:/moyuan/moyuan-travel-agent/ops/observability/README.md)
+- [`ops/observability/grafana-dashboard.json`](/D:/moyuan/moyuan-travel-agent/ops/observability/grafana-dashboard.json)
+- [`ops/observability/prometheus-alerts.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus-alerts.yml)
 
 Dashboard 重点覆盖：
 
@@ -591,10 +591,10 @@ Dashboard 重点覆盖：
 
 Alert 重点覆盖：
 
-- `ShuaiReadinessDown`
-- `ShuaiHttp5xxSpike`
-- `ShuaiChatStreamFailures`
-- `ShuaiSseEventStall`
+- `MoyuanReadinessDown`
+- `MoyuanHttp5xxSpike`
+- `MoyuanChatStreamFailures`
+- `MoyuanSseEventStall`
 
 ### 10.4 local observability stack 与 support bundle
 

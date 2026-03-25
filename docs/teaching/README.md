@@ -1,4 +1,4 @@
-# ShuaiTravelAgent 教学总入口
+# moyuan-travel-agent 教学总入口
 
 `docs/teaching/` 现在保持为 `README + 7 篇主文档` 的结构。
 

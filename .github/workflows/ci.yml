@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 on:
   push:
@@ -47,14 +47,14 @@ jobs:
             scripts/runtime_doctor.py \
             scripts/runtime_prune.py \
             scripts/runtime_restore.py \
-            web/shuai_web/app_meta.py \
-            web/shuai_web/main.py \
-            web/shuai_web/middleware/__init__.py \
-            web/shuai_web/observability.py \
-            web/shuai_web/routes/chat.py \
-            web/shuai_web/routes/health.py \
-            web/shuai_web/services/share_service.py \
-            web/shuai_web/startup_checks.py
+            web/moyuan_web/app_meta.py \
+            web/moyuan_web/main.py \
+            web/moyuan_web/middleware/__init__.py \
+            web/moyuan_web/observability.py \
+            web/moyuan_web/routes/chat.py \
+            web/moyuan_web/routes/health.py \
+            web/moyuan_web/services/share_service.py \
+            web/moyuan_web/startup_checks.py
 
       - name: Run mypy static checks
         run: |
@@ -68,14 +68,14 @@ jobs:
             scripts/runtime_doctor.py \
             scripts/runtime_prune.py \
             scripts/runtime_restore.py \
-            web/shuai_web/app_meta.py \
-            web/shuai_web/main.py \
-            web/shuai_web/middleware/__init__.py \
-            web/shuai_web/observability.py \
-            web/shuai_web/routes/chat.py \
-            web/shuai_web/routes/health.py \
-            web/shuai_web/services/share_service.py \
-            web/shuai_web/startup_checks.py
+            web/moyuan_web/app_meta.py \
+            web/moyuan_web/main.py \
+            web/moyuan_web/middleware/__init__.py \
+            web/moyuan_web/observability.py \
+            web/moyuan_web/routes/chat.py \
+            web/moyuan_web/routes/health.py \
+            web/moyuan_web/services/share_service.py \
+            web/moyuan_web/startup_checks.py
 
       - name: Run pip-audit
         env:
@@ -232,7 +232,7 @@ jobs:
             --file Dockerfile.backend \
             --build-arg APP_BUILD_SHA="${{ github.sha }}" \
             --build-arg APP_BUILD_CREATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-            --tag shuai-backend:ci .
+            --tag moyuan-backend:ci .
 
       - name: Build frontend image smoke
         run: |
@@ -242,7 +242,7 @@ jobs:
             --build-arg INTERNAL_API_BASE=http://backend:38000 \
             --build-arg APP_BUILD_SHA="${{ github.sha }}" \
             --build-arg APP_BUILD_CREATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-            --tag shuai-frontend:ci ./frontend
+            --tag moyuan-frontend:ci ./frontend
 
       - name: Upload deployment validation artifacts
         uses: actions/upload-artifact@v4

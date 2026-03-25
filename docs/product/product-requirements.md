@@ -1,8 +1,8 @@
-﻿# Product Requirements
+# Product Requirements
 
 ## 产品定位
 
-ShuaiTravelAgent 的目标不是做一个“会回答旅行问题的聊天框”，而是做一个更接近真实决策场景的 AI 旅行助手：帮助用户从模糊需求走到可执行方案。
+moyuan-travel-agent 的目标不是做一个“会回答旅行问题的聊天框”，而是做一个更接近真实决策场景的 AI 旅行助手：帮助用户从模糊需求走到可执行方案。
 
 ## 目标用户
 

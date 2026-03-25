@@ -4,20 +4,20 @@
 
 当前与运行时相关的核心配置文件有：
 
-- [`config/server_config.yaml`](/D:/projects/shuai/ShuaiTravelAgent/config/server_config.yaml)
+- [`config/server_config.yaml`](/D:/moyuan/moyuan-travel-agent/config/server_config.yaml)
   - 服务端口、CORS、中间件、metrics、startup 校验
-- [`config/server_config.yaml.example`](/D:/projects/shuai/ShuaiTravelAgent/config/server_config.yaml.example)
+- [`config/server_config.yaml.example`](/D:/moyuan/moyuan-travel-agent/config/server_config.yaml.example)
   - 服务配置模板
-- [`config/llm_config.yaml`](/D:/projects/shuai/ShuaiTravelAgent/config/llm_config.yaml)
+- [`config/llm_config.yaml`](/D:/moyuan/moyuan-travel-agent/config/llm_config.yaml)
   - LLM provider / model 配置
-- [`config/llm_config.yaml.example`](/D:/projects/shuai/ShuaiTravelAgent/config/llm_config.yaml.example)
+- [`config/llm_config.yaml.example`](/D:/moyuan/moyuan-travel-agent/config/llm_config.yaml.example)
   - LLM 配置模板
-- [`.env.example`](/D:/projects/shuai/ShuaiTravelAgent/.env.example)
+- [`.env.example`](/D:/moyuan/moyuan-travel-agent/.env.example)
   - 常用环境变量参考
 
 ## 配置来源优先级
 
-[`config/__init__.py`](/D:/projects/shuai/ShuaiTravelAgent/config/__init__.py) 当前采用：
+[`config/__init__.py`](/D:/moyuan/moyuan-travel-agent/config/__init__.py) 当前采用：
 
 `环境变量 > YAML 配置 > 代码默认值`
 
@@ -100,21 +100,21 @@ startup:
 
 ## Web / observability 环境变量
 
-这些变量主要由 [`config/__init__.py`](/D:/projects/shuai/ShuaiTravelAgent/config/__init__.py) 解析：
+这些变量主要由 [`config/__init__.py`](/D:/moyuan/moyuan-travel-agent/config/__init__.py) 解析：
 
-- `SHUAI_WEB_HOST`
-- `SHUAI_WEB_PORT`
-- `SHUAI_WEB_DEBUG`
-- `SHUAI_FRONTEND_PORT`
+- `MOYUAN_WEB_HOST`
+- `MOYUAN_WEB_PORT`
+- `MOYUAN_WEB_DEBUG`
+- `MOYUAN_FRONTEND_PORT`
 - `CORS_ORIGINS`
-- `SHUAI_CORS_ORIGINS`
-- `SHUAI_REQUEST_TIMEOUT_SECONDS`
-- `SHUAI_RATE_LIMIT_MAX_REQUESTS`
-- `SHUAI_RATE_LIMIT_WINDOW_SECONDS`
-- `SHUAI_METRICS_ENABLED`
-- `SHUAI_METRICS_PATH`
-- `SHUAI_STRUCTURED_LOGGING`
-- `SHUAI_FAIL_FAST_STARTUP_VALIDATION`
+- `MOYUAN_CORS_ORIGINS`
+- `MOYUAN_REQUEST_TIMEOUT_SECONDS`
+- `MOYUAN_RATE_LIMIT_MAX_REQUESTS`
+- `MOYUAN_RATE_LIMIT_WINDOW_SECONDS`
+- `MOYUAN_METRICS_ENABLED`
+- `MOYUAN_METRICS_PATH`
+- `MOYUAN_STRUCTURED_LOGGING`
+- `MOYUAN_FAIL_FAST_STARTUP_VALIDATION`
 
 ## Build metadata 环境变量
 
@@ -129,9 +129,9 @@ startup:
 
 对应实现入口：
 
-- [`web/shuai_web/app_meta.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/app_meta.py)
-- [`Dockerfile.backend`](/D:/projects/shuai/ShuaiTravelAgent/Dockerfile.backend)
-- [`frontend/Dockerfile`](/D:/projects/shuai/ShuaiTravelAgent/frontend/Dockerfile)
+- [`web/moyuan_web/app_meta.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/app_meta.py)
+- [`Dockerfile.backend`](/D:/moyuan/moyuan-travel-agent/Dockerfile.backend)
+- [`frontend/Dockerfile`](/D:/moyuan/moyuan-travel-agent/frontend/Dockerfile)
 
 ### 推荐用途
 
@@ -141,7 +141,7 @@ startup:
 
 ## LLM 相关配置
 
-LLM 配置路径由 [`web/shuai_web/config/runtime.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/config/runtime.py) 统一解析：
+LLM 配置路径由 [`web/moyuan_web/config/runtime.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/config/runtime.py) 统一解析：
 
 - 默认路径：`config/llm_config.yaml`
 
@@ -169,12 +169,12 @@ LLM 配置路径由 [`web/shuai_web/config/runtime.py`](/D:/projects/shuai/Shuai
 
 对应代码路径：
 
-- [`frontend/src/services/api.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
-- [`frontend/next.config.js`](/D:/projects/shuai/ShuaiTravelAgent/frontend/next.config.js)
+- [`frontend/src/services/api.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
+- [`frontend/next.config.js`](/D:/moyuan/moyuan-travel-agent/frontend/next.config.js)
 
 ## Agent 运行时配置分组（可灰度启停）
 
-以下变量由 [`runtime_config.py`](/D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/runtime_config.py) 统一读取。
+以下变量由 [`runtime_config.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/runtime_config.py) 统一读取。
 
 ### 可靠性（Reliability）
 
@@ -207,7 +207,7 @@ LLM 配置路径由 [`web/shuai_web/config/runtime.py`](/D:/projects/shuai/Shuai
 
 ### 健康诊断（SLO）
 
-以下变量由 [`chat_service.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py) 使用：
+以下变量由 [`chat_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py) 使用：
 
 - `AGENT_HEALTH_WINDOW_MINUTES`
 - `AGENT_SLO_TIMEOUT_RATE_THRESHOLD`
@@ -218,8 +218,8 @@ LLM 配置路径由 [`web/shuai_web/config/runtime.py`](/D:/projects/shuai/Shuai
 
 readiness 检查的核心实现：
 
-- [`web/shuai_web/startup_checks.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/startup_checks.py)
-- [`web/shuai_web/routes/health.py`](/D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/health.py)
+- [`web/moyuan_web/startup_checks.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/startup_checks.py)
+- [`web/moyuan_web/routes/health.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/health.py)
 
 启动后建议立即检查：
 
@@ -234,5 +234,5 @@ curl http://localhost:38000/api/metrics
 - `config/llm_config.yaml`
 - `config/server_config.yaml`
 - `data/` 目录权限
-- `SHUAI_FAIL_FAST_STARTUP_VALIDATION`
+- `MOYUAN_FAIL_FAST_STARTUP_VALIDATION`
 - 启动日志中的 `startup_validation`

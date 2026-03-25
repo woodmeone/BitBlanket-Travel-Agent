@@ -576,7 +576,7 @@ const ExportImageButton: React.FC<{
 
       const brandText = document.createElement('div');
       const brandTitle = document.createElement('div');
-      brandTitle.textContent = 'Shuai Travel Agent';
+      brandTitle.textContent = 'Moyuan Travel Agent';
       brandTitle.style.fontSize = '16px';
       brandTitle.style.fontWeight = '700';
       const brandSubtitle = document.createElement('div');

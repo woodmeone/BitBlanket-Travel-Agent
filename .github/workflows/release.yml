@@ -49,8 +49,8 @@ jobs:
           if [[ "${WORKFLOW_PUBLISH_LATEST}" == "true" ]]; then
             publish_latest="true"
           fi
-          backend_image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/shuai-travel-agent-backend"
-          frontend_image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/shuai-travel-agent-frontend"
+          backend_image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/moyuan-travel-agent-backend"
+          frontend_image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/moyuan-travel-agent-frontend"
           backend_tags="${backend_image}:${release_tag},${backend_image}:sha-${short_sha}"
           frontend_tags="${frontend_image}:${release_tag},${frontend_image}:sha-${short_sha}"
           if [[ "${publish_latest}" == "true" ]]; then

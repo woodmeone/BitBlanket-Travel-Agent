@@ -27,14 +27,14 @@ $staticTargets = @(
     "scripts/runtime_doctor.py",
     "scripts/runtime_prune.py",
     "scripts/runtime_restore.py",
-    "web/shuai_web/app_meta.py",
-    "web/shuai_web/main.py",
-    "web/shuai_web/middleware/__init__.py",
-    "web/shuai_web/observability.py",
-    "web/shuai_web/routes/chat.py",
-    "web/shuai_web/routes/health.py",
-    "web/shuai_web/services/share_service.py",
-    "web/shuai_web/startup_checks.py"
+    "web/moyuan_web/app_meta.py",
+    "web/moyuan_web/main.py",
+    "web/moyuan_web/middleware/__init__.py",
+    "web/moyuan_web/observability.py",
+    "web/moyuan_web/routes/chat.py",
+    "web/moyuan_web/routes/health.py",
+    "web/moyuan_web/services/share_service.py",
+    "web/moyuan_web/startup_checks.py"
 )
 
 function Show-Help {
@@ -174,7 +174,7 @@ function Run-BackendImageSmoke {
         --build-arg "PYTHON_BASE_IMAGE=$PythonBaseImage" `
         --build-arg "APP_BUILD_SHA=$GitSha" `
         --build-arg "APP_BUILD_CREATED_AT=$(Get-BuildCreatedAt)" `
-        --tag shuai-backend:local .
+        --tag moyuan-backend:local .
 }
 
 function Run-FrontendImageSmoke {
@@ -185,7 +185,7 @@ function Run-FrontendImageSmoke {
         --build-arg "INTERNAL_API_BASE=http://backend:38000" `
         --build-arg "APP_BUILD_SHA=$GitSha" `
         --build-arg "APP_BUILD_CREATED_AT=$(Get-BuildCreatedAt)" `
-        --tag shuai-frontend:local ./frontend
+        --tag moyuan-frontend:local ./frontend
 }
 
 switch ($Task.ToLowerInvariant()) {

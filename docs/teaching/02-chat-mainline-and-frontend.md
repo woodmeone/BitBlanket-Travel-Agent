@@ -19,9 +19,9 @@
 
 ### 必读 3 个文件
 
-1. [ChatArea.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)
-2. [api.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
-3. [TravelPlanToolkit.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)
+1. [ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)
+2. [api.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
+3. [TravelPlanToolkit.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
 
 ### 最常见 3 个坑
 
@@ -65,8 +65,8 @@
 frontend/src/app/page.tsx
   -> frontend/src/components/ChatArea.tsx
   -> frontend/src/services/api.ts
-  -> web/shuai_web/routes/chat.py
-  -> web/shuai_web/services/chat_service.py
+  -> web/moyuan_web/routes/chat.py
+  -> web/moyuan_web/services/chat_service.py
   -> agent/travel_agent/graph/builder.py / nodes.py
   -> frontend/src/components/MessageList.tsx
   -> frontend/src/components/TravelPlanToolkit.tsx
@@ -76,7 +76,7 @@ frontend/src/app/page.tsx
 
 ### 3.1 聊天主链总图
 
-下面这张图建议你和源码一起看。它不是额外概念，而是 [page.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/app/page.tsx)、[ChatArea.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)、[api.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)、[chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)、[chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)、[MessageList.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)、[TravelPlanToolkit.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx) 之间的真实协作关系。
+下面这张图建议你和源码一起看。它不是额外概念，而是 [page.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/app/page.tsx)、[ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)、[api.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)、[chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)、[chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)、[MessageList.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)、[TravelPlanToolkit.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx) 之间的真实协作关系。
 
 ```mermaid
 flowchart LR
@@ -98,12 +98,12 @@ flowchart LR
 
 | 文件 | 先看什么 | 为什么先看这里 |
 | --- | --- | --- |
-| [page.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/app/page.tsx) | `Home` 组件 | 先确认聊天区在整页产品里处于什么位置。 |
-| [ChatArea.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx) | `handleSend`、`flushStreamingQueue`、`drainStreamingQueueToRefs`、`handleStop` | 这是前端主链最关键的 4 个读点，分别对应“发请求、平滑刷新、最终合并、主动停止”。 |
-| [api.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts) | `fetchStreamChat`、`executeStreamRequest`、`handleSSELine` | 这 3 个入口刚好回答“请求怎么发、连接怎么保、事件怎么解”。 |
-| [chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py) | `_get_chat_service`、`stream_chat` | 先确认真正的 HTTP / SSE 协议入口有多薄。 |
-| [MessageList.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx) | `prepareMarkdownContent`、`extractThinkBlocks`、`MessageList` | 这里能看清文本、`<think>`、诊断面板和最终展示是怎么被加工的。 |
-| [TravelPlanToolkit.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx) | `looksLikeItineraryContent`、`runQuickRefine`、`handleChooseVariant`、`TravelPlanToolkit` 组件本体 | 这里最能体现“答案如何被前端继续产品化”。 |
+| [page.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/app/page.tsx) | `Home` 组件 | 先确认聊天区在整页产品里处于什么位置。 |
+| [ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx) | `handleSend`、`flushStreamingQueue`、`drainStreamingQueueToRefs`、`handleStop` | 这是前端主链最关键的 4 个读点，分别对应“发请求、平滑刷新、最终合并、主动停止”。 |
+| [api.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts) | `fetchStreamChat`、`executeStreamRequest`、`handleSSELine` | 这 3 个入口刚好回答“请求怎么发、连接怎么保、事件怎么解”。 |
+| [chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py) | `_get_chat_service`、`stream_chat` | 先确认真正的 HTTP / SSE 协议入口有多薄。 |
+| [MessageList.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx) | `prepareMarkdownContent`、`extractThinkBlocks`、`MessageList` | 这里能看清文本、`<think>`、诊断面板和最终展示是怎么被加工的。 |
+| [TravelPlanToolkit.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx) | `looksLikeItineraryContent`、`runQuickRefine`、`handleChooseVariant`、`TravelPlanToolkit` 组件本体 | 这里最能体现“答案如何被前端继续产品化”。 |
 
 ### 3.3 源码辅助学习：建议边看边搜的关键字
 
@@ -254,7 +254,7 @@ runQuickRefine
 
 ### 7.0 推荐的阅读顺序
 
-如果你刚打开 [api.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)，最推荐按这个顺序读：
+如果你刚打开 [api.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)，最推荐按这个顺序读：
 
 1. `SSEConnectionStatus`
 先知道前端怎样理解连接生命周期。
@@ -660,23 +660,23 @@ sequenceDiagram
 
 如果时间非常有限，至少精读下面 6 个文件：
 
-1. [page.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/app/page.tsx)
+1. [page.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/app/page.tsx)
 作用：确认聊天页在整个产品页面中的位置。
-2. [ChatArea.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)
+2. [ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)
 作用：看清请求发起、流式状态、阶段事件、完成合并。
-3. [api.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
+3. [api.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
 作用：看清 SSE 协议怎么被解析成前端回调。
-4. [chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)
+4. [chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)
 作用：确认前端真正命中的 Web 入口是什么。
-5. [MessageList.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)
+5. [MessageList.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)
 作用：看清流式文本、最终消息、思考区块如何落地展示。
-6. [TravelPlanToolkit.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)
+6. [TravelPlanToolkit.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
 作用：看清“聊天答案如何升级成产品结果”。
 
 如果还有一点时间，再补：
 
-- [AppContext.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/context/AppContext.tsx)
-- [travelPlan.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/utils/travelPlan.ts)
+- [AppContext.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/context/AppContext.tsx)
+- [travelPlan.ts](D:/moyuan/moyuan-travel-agent/frontend/src/utils/travelPlan.ts)
 
 ## 补充二：本章最值得画的 2 张图
 
@@ -769,7 +769,7 @@ sequenceDiagram
 | metadata | 指运行诊断信息、统计信息或结构化补充数据，主要用于调试、面板展示和后续加工。 |
 | streamingMessage | 指前端尚未落入正式 `messages` 列表、但正在持续增长的答案正文。 |
 | streamingReasoning | 指前端尚未结束的推理文本缓存，和最终答案正文是两条不同状态链。 |
-| Toolkit | 指 [TravelPlanToolkit.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx) 这一层。它不是简单展示组件，而是把文本答案加工成更可操作的旅行结果。 |
+| Toolkit | 指 [TravelPlanToolkit.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx) 这一层。它不是简单展示组件，而是把文本答案加工成更可操作的旅行结果。 |
 
 ## 16. 本章验收标准
 
@@ -812,11 +812,11 @@ sequenceDiagram
 
 建议你对着这几个真实文件一起看：
 
-1. [`frontend/src/services/api.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
-2. [`frontend/src/components/ChatArea.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)
-3. [`frontend/src/components/MessageList.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)
-4. [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)
-5. [`frontend/src/utils/agentArtifacts.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/utils/agentArtifacts.ts)
+1. [`frontend/src/services/api.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
+2. [`frontend/src/components/ChatArea.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)
+3. [`frontend/src/components/MessageList.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)
+4. [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
+5. [`frontend/src/utils/agentArtifacts.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/utils/agentArtifacts.ts)
 
 新的学习重点是：
 
@@ -838,7 +838,7 @@ sequenceDiagram
 
 - `frontend/src/context/AppContext.tsx`
 - `frontend/src/utils/sessionMessages.ts`
-- `web/shuai_web/routes/session.py`
-- `web/shuai_web/services/chat_service.py`
+- `web/moyuan_web/routes/session.py`
+- `web/moyuan_web/services/chat_service.py`
 
 这一段非常适合作为面试里的“为什么你的 Agent UI 刷新后还能保留结构化计划结果”的追问材料。

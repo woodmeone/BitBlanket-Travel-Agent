@@ -80,14 +80,14 @@ Prometheus 指标出口。
 
 默认会暴露：
 
-- `shuai_http_requests_total`
-- `shuai_http_request_duration_seconds`
-- `shuai_http_in_flight_requests`
-- `shuai_chat_stream_requests_total`
-- `shuai_rate_limit_rejections_total`
-- `shuai_http_timeouts_total`
-- `shuai_sse_events_total`
-- `shuai_readiness_state`
+- `moyuan_http_requests_total`
+- `moyuan_http_request_duration_seconds`
+- `moyuan_http_in_flight_requests`
+- `moyuan_chat_stream_requests_total`
+- `moyuan_rate_limit_rejections_total`
+- `moyuan_http_timeouts_total`
+- `moyuan_sse_events_total`
+- `moyuan_readiness_state`
 
 ### 其他健康接口
 
@@ -176,7 +176,7 @@ Prometheus 指标出口。
 
 当前仓库会额外维护一份稳定的 SSE 契约快照，便于评审字段和顺序变更：
 
-- [sse-contract.snapshot.json](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/sse-contract.snapshot.json)
+- [sse-contract.snapshot.json](/D:/moyuan/moyuan-travel-agent/docs/reference/sse-contract.snapshot.json)
 
 导出命令：
 
@@ -372,8 +372,8 @@ python scripts/export_sse_contract_snapshot.py
 
 当前仓库还会维护一份 OpenAPI 快照文件：
 
-- [`openapi.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/openapi.snapshot.json)
-- [`sse-contract.snapshot.json`](/D:/projects/shuai/ShuaiTravelAgent/docs/reference/sse-contract.snapshot.json)
+- [`openapi.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/openapi.snapshot.json)
+- [`sse-contract.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/sse-contract.snapshot.json)
 
 ## 9. 调试建议
 
@@ -389,7 +389,7 @@ python scripts/export_sse_contract_snapshot.py
 
 - `/api/ready` 返回的是 `200` 还是 `503`
 - `checks` 里是哪一项失败
-- `/api/metrics` 中 `shuai_readiness_state` 是否为 `1`
+- `/api/metrics` 中 `moyuan_readiness_state` 是否为 `1`
 - 启动日志里是否有 `startup_validation`
 ## 10. Frontend Artifact Consumption Notes
 
@@ -406,10 +406,10 @@ The current frontend streaming consumer now treats these SSE fields as first-cla
 
 Primary frontend landing points:
 
-- [`frontend/src/services/api.ts`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
-- [`frontend/src/components/ChatArea.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)
-- [`frontend/src/components/MessageList.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/MessageList.tsx)
-- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx)
+- [`frontend/src/services/api.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
+- [`frontend/src/components/ChatArea.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)
+- [`frontend/src/components/MessageList.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)
+- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
 
 Compatibility rule:
 

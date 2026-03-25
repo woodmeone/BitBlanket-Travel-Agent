@@ -207,32 +207,32 @@
 
 | 主题 | 至少要引用的代码路径 | 最推荐点名的函数/关键字 | 回答时最该强调什么 |
 | --- | --- | --- | --- |
-| 三层拆分 | [page.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/app/page.tsx)、[chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)、[builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py) | `Home`、`stream_chat`、`build` | 前端、Web、Agent 各自承担的是不同复杂度。 |
-| 为什么选 SSE | [api.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)、[chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py) | `fetchStreamChat`、`handleSSELine`、`stream_chat`、`reasoning_start`、`metadata` | 当前不是只推答案，还要推阶段、工具和诊断。 |
-| 前端临时流式状态 | [ChatArea.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)、[AppContext.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/context/AppContext.tsx) | `streamingMessage`、`streamingReasoning`、`drainStreamingQueueToRefs` | UI 临时态和最终持久态生命周期不同。 |
-| Web 分层 | [chat.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/routes/chat.py)、[chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)、[session_repository_impl.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/repositories/session_repository_impl.py)、[session_storage.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage/session_storage.py) | `StreamingResponse`、`_ensure_session`、`create`、`_atomic_write_json` | route、service、repository、storage 回答的是不同问题。 |
-| Agent 状态机 | [state.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/state.py)、[builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py) | `AgentState`、`create_initial_state`、`routing_decision`、`should_continue`、`verify_decision` | 这里有分叉、有回环、有验证，不适合线性链。 |
-| `direct / react / plan` | [nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py)、[builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py) | `strategy_node`、`routing_decision`、`plan_node`、`direct_answer_node` | 三种模式不是重复，而是复杂度和成本的不同取舍。 |
-| `verify / self_check` | [nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py) | `verify_node`、`verify_decision`、`self_check_node` | 这是结果质量控制，而不是“多此一举”。 |
-| memory / checkpoint / session | [memory_integration.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/memory_integration.py)、[persistent_checkpointer.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/persistent_checkpointer.py)、[session_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/session_service.py) | `add_message`、`build_context_messages`、checkpoint、`create_session` | 三者时间尺度不同、恢复目标不同。 |
-| 测试与质量门禁 | [test_sse_streaming.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_sse_streaming.py)、[test_api_integration.py](D:/projects/shuai/ShuaiTravelAgent/tests/test_api_integration.py)、[agent_quality_gate.py](D:/projects/shuai/ShuaiTravelAgent/scripts/agent_quality_gate.py) | `text/event-stream`、benchmark、golden eval、quality gate | 不是只靠点页面，而是分层保护行为边界。 |
-| 系统演进 | [session_storage.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/storage/session_storage.py)、[llm/](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/llm)、[TravelPlanToolkit.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/TravelPlanToolkit.tsx) | `_atomic_write_json`、adapter、`runQuickRefine` | 演进要从当前实现自然推出来，不要凭空发散。 |
+| 三层拆分 | [page.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/app/page.tsx)、[chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)、[builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py) | `Home`、`stream_chat`、`build` | 前端、Web、Agent 各自承担的是不同复杂度。 |
+| 为什么选 SSE | [api.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)、[chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py) | `fetchStreamChat`、`handleSSELine`、`stream_chat`、`reasoning_start`、`metadata` | 当前不是只推答案，还要推阶段、工具和诊断。 |
+| 前端临时流式状态 | [ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)、[AppContext.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/context/AppContext.tsx) | `streamingMessage`、`streamingReasoning`、`drainStreamingQueueToRefs` | UI 临时态和最终持久态生命周期不同。 |
+| Web 分层 | [chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)、[chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)、[session_repository_impl.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/repositories/session_repository_impl.py)、[session_storage.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py) | `StreamingResponse`、`_ensure_session`、`create`、`_atomic_write_json` | route、service、repository、storage 回答的是不同问题。 |
+| Agent 状态机 | [state.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/state.py)、[builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py) | `AgentState`、`create_initial_state`、`routing_decision`、`should_continue`、`verify_decision` | 这里有分叉、有回环、有验证，不适合线性链。 |
+| `direct / react / plan` | [nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)、[builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py) | `strategy_node`、`routing_decision`、`plan_node`、`direct_answer_node` | 三种模式不是重复，而是复杂度和成本的不同取舍。 |
+| `verify / self_check` | [nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py) | `verify_node`、`verify_decision`、`self_check_node` | 这是结果质量控制，而不是“多此一举”。 |
+| memory / checkpoint / session | [memory_integration.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/memory_integration.py)、[persistent_checkpointer.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/persistent_checkpointer.py)、[session_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/session_service.py) | `add_message`、`build_context_messages`、checkpoint、`create_session` | 三者时间尺度不同、恢复目标不同。 |
+| 测试与质量门禁 | [test_sse_streaming.py](D:/moyuan/moyuan-travel-agent/tests/test_sse_streaming.py)、[test_api_integration.py](D:/moyuan/moyuan-travel-agent/tests/test_api_integration.py)、[agent_quality_gate.py](D:/moyuan/moyuan-travel-agent/scripts/agent_quality_gate.py) | `text/event-stream`、benchmark、golden eval、quality gate | 不是只靠点页面，而是分层保护行为边界。 |
+| 系统演进 | [session_storage.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py)、[llm/](D:/moyuan/moyuan-travel-agent/agent/travel_agent/llm)、[TravelPlanToolkit.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx) | `_atomic_write_json`、adapter、`runQuickRefine` | 演进要从当前实现自然推出来，不要凭空发散。 |
 
 ### 5.2 面试前最后一遍最值得看的代码
 
 如果你只剩 20-30 分钟复习时间，最推荐再快速扫一遍下面这些代码：
 
-1. [ChatArea.tsx](D:/projects/shuai/ShuaiTravelAgent/frontend/src/components/ChatArea.tsx)
+1. [ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)
 重点看：`handleSend`、`flushStreamingQueue`、`onComplete`
-2. [api.ts](D:/projects/shuai/ShuaiTravelAgent/frontend/src/services/api.ts)
+2. [api.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
 重点看：`StreamCallbacks`、`fetchStreamChat`、`handleSSELine`
-3. [chat_service.py](D:/projects/shuai/ShuaiTravelAgent/web/shuai_web/services/chat_service.py)
+3. [chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)
 重点看：`stream_chat`、`_ensure_session`、`_stream_agent_events`
-4. [builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)
+4. [builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)
 重点看：`build`
-5. [nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py)
+5. [nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)
 重点看：`routing_decision`、`execute_node`、`verify_node`、`verify_decision`
-6. [agent_quality_gate.py](D:/projects/shuai/ShuaiTravelAgent/scripts/agent_quality_gate.py)
+6. [agent_quality_gate.py](D:/moyuan/moyuan-travel-agent/scripts/agent_quality_gate.py)
 重点看：系统最后是怎样把质量要求变成门禁的
 
 ## 补充一：30 秒 / 2 分钟 / 5 分钟短答卡

@@ -49,7 +49,7 @@ describe('AppProvider session hydration', () => {
 
   it('restores stored session messages and diagnostics after refresh', async () => {
     const now = new Date().toISOString();
-    window.localStorage.setItem('shuai-current-session-id', 'session-1');
+    window.localStorage.setItem('moyuan-current-session-id', 'session-1');
 
     apiServiceMock.getSessions.mockResolvedValue({
       sessions: [{ session_id: 'session-1', message_count: 2, last_active: now, name: 'Saved session' }],

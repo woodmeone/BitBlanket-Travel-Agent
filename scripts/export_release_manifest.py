@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
 if str(WEB_DIR) not in sys.path:
     sys.path.insert(0, str(WEB_DIR))
 
-from shuai_web.app_meta import APP_NAME, APP_VERSION
+from moyuan_web.app_meta import APP_NAME, APP_VERSION
 
 
 DEFAULT_OUTPUT = ROOT / "artifacts" / "release" / "release-manifest.json"
@@ -57,12 +57,12 @@ def export_release_manifest(
             "backend": {
                 "name": APP_NAME,
                 "version": APP_VERSION,
-                "image": f"{registry}/{owner}/shuai-travel-agent-backend",
+                "image": f"{registry}/{owner}/moyuan-travel-agent-backend",
             },
             "frontend": {
-                "name": "shuai-travel-agent-frontend",
+                "name": "moyuan-travel-agent-frontend",
                 "version": _load_frontend_version(ROOT),
-                "image": f"{registry}/{owner}/shuai-travel-agent-frontend",
+                "image": f"{registry}/{owner}/moyuan-travel-agent-frontend",
             },
         },
     }
@@ -76,7 +76,7 @@ def export_release_manifest(
 
 def build_parser() -> argparse.ArgumentParser:
     """Construct CLI parser for release manifest export utility."""
-    parser = argparse.ArgumentParser(description="Export release manifest for ShuaiTravelAgent.")
+    parser = argparse.ArgumentParser(description="Export release manifest for moyuan-travel-agent.")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT), help="Output path for the release manifest.")
     parser.add_argument("--git-sha", required=True, help="Git SHA recorded in the release manifest.")
     parser.add_argument("--git-ref", required=True, help="Git ref or tag recorded in the release manifest.")

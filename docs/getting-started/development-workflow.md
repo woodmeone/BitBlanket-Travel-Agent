@@ -11,7 +11,7 @@
 3. 启动 Web API：
 
 ```bash
-.\.venv\Scripts\python.exe -m uvicorn shuai_web.main:app --host 0.0.0.0 --port 38000 --app-dir web
+.\.venv\Scripts\python.exe -m uvicorn moyuan_web.main:app --host 0.0.0.0 --port 38000 --app-dir web
 ```
 
 4. 启动前端：
@@ -35,7 +35,7 @@ uv pip install -r requirements-dev.txt
 
 ## 2. 统一命令入口
 
-根目录的 [`dev.ps1`](/D:/projects/shuai/ShuaiTravelAgent/dev.ps1) 是本地开发、测试和基础设施校验的统一入口，推荐优先使用。
+根目录的 [`dev.ps1`](/D:/moyuan/moyuan-travel-agent/dev.ps1) 是本地开发、测试和基础设施校验的统一入口，推荐优先使用。
 
 ```bash
 powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
@@ -104,8 +104,8 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-up `
 ```bash
 python -m pytest tests -m "unit and not local and not external_api" -q
 python -m pytest tests -m "local and not external_api" -q
-python -m ruff check --config ruff.toml scripts web/shuai_web
-python -m mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/shuai_web/app_meta.py web/shuai_web/main.py web/shuai_web/middleware/__init__.py web/shuai_web/observability.py web/shuai_web/routes/chat.py web/shuai_web/routes/health.py web/shuai_web/services/share_service.py web/shuai_web/startup_checks.py
+python -m ruff check --config ruff.toml scripts web/moyuan_web
+python -m mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
 python scripts/docstring_audit.py --strict
 cd frontend
 npm run lint
@@ -160,11 +160,11 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke
 ### 5.3 改 Docker / compose / release / dashboard / alert
 
 1. `powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-config`
-2. 检查 [`compose.yaml`](/D:/projects/shuai/ShuaiTravelAgent/compose.yaml)
-3. 检查 [`.github/workflows/ci.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/ci.yml) 的 `container-validate`
-4. 检查 [`.github/workflows/release.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/release.yml)
-5. 检查 [`ops/observability/grafana-dashboard.json`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/grafana-dashboard.json)
-6. 检查 [`ops/observability/prometheus-alerts.yml`](/D:/projects/shuai/ShuaiTravelAgent/ops/observability/prometheus-alerts.yml)
+2. 检查 [`compose.yaml`](/D:/moyuan/moyuan-travel-agent/compose.yaml)
+3. 检查 [`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml) 的 `container-validate`
+4. 检查 [`.github/workflows/release.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/release.yml)
+5. 检查 [`ops/observability/grafana-dashboard.json`](/D:/moyuan/moyuan-travel-agent/ops/observability/grafana-dashboard.json)
+6. 检查 [`ops/observability/prometheus-alerts.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus-alerts.yml)
 7. 必要时用 Compose 真实拉起服务
 
 如果只是 Docker Hub 拉取问题，优先改用镜像站复现：

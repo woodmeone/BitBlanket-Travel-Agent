@@ -31,5 +31,5 @@ def test_export_release_manifest_writes_versions_and_images(tmp_path):
     assert payload["source"]["git_ref"] == "v3.3.0"
     assert payload["applications"]["backend"]["version"]
     assert payload["applications"]["frontend"]["version"]
-    assert payload["applications"]["backend"]["image"].endswith("/shuai-travel-agent-backend")
-    assert payload["applications"]["frontend"]["image"].endswith("/shuai-travel-agent-frontend")
+    assert payload["applications"]["backend"]["image"].endswith("/moyuan-travel-agent-backend")
+    assert payload["applications"]["frontend"]["image"].endswith("/moyuan-travel-agent-frontend")

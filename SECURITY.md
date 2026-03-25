@@ -41,11 +41,11 @@
 
 当前仓库已经具备这些基础安全资产：
 
-- [`.github/workflows/ci.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/workflows/ci.yml)
+- [`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml)
   - 基础测试与质量门禁
-- [`.github/dependabot.yml`](/D:/projects/shuai/ShuaiTravelAgent/.github/dependabot.yml)
+- [`.github/dependabot.yml`](/D:/moyuan/moyuan-travel-agent/.github/dependabot.yml)
   - Python / npm 依赖更新建议
-- [`docs/architecture/infrastructure-foundations.md`](/D:/projects/shuai/ShuaiTravelAgent/docs/architecture/infrastructure-foundations.md)
+- [`docs/architecture/infrastructure-foundations.md`](/D:/moyuan/moyuan-travel-agent/docs/architecture/infrastructure-foundations.md)
   - 基础设施与运行治理总览
 
 ## Secrets and Local Configuration

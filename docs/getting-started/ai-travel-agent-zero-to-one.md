@@ -1,6 +1,6 @@
-﻿# AI 旅游 Agent 从 0 到 1 教学教程
+# AI 旅游 Agent 从 0 到 1 教学教程
 
-这篇文档给第一次接触 `ShuaiTravelAgent` 的同学准备。
+这篇文档给第一次接触 `moyuan-travel-agent` 的同学准备。
 
 目标不是只让你“把项目跑起来”，而是帮助你真正理解这类项目最重要的部分:
 
@@ -18,7 +18,7 @@
 
 ## 1. 先建立一个总认知
 
-`ShuaiTravelAgent` 不是“用户问一句，LLM 回一段文字”的 Demo。
+`moyuan-travel-agent` 不是“用户问一句，LLM 回一段文字”的 Demo。
 
 它想解决的是一个更接近真实业务的问题:
 
@@ -56,8 +56,8 @@ Frontend (Next.js)
 
 - 前端入口: `frontend/src/app/page.tsx`
 - 前端主工作区: `frontend/src/components/ChatArea.tsx`
-- API 入口: `web/shuai_web/main.py`
-- 对话服务: `web/shuai_web/services/chat_service.py`
+- API 入口: `web/moyuan_web/main.py`
+- 对话服务: `web/moyuan_web/services/chat_service.py`
 - Agent 图入口: `agent/travel_agent/graph/builder.py`
 - Agent 节点实现: `agent/travel_agent/graph/nodes.py`
 
@@ -74,7 +74,7 @@ Frontend (Next.js)
 ```mermaid
 flowchart LR
   A["用户在 ChatArea 输入需求"] --> B["frontend/src/services/api.ts 发起 POST /api/chat/stream"]
-  B --> C["web/shuai_web/routes/chat.py 返回 SSE StreamingResponse"]
+  B --> C["web/moyuan_web/routes/chat.py 返回 SSE StreamingResponse"]
   C --> D["ChatService.stream_chat"]
   D --> E["run_travel_agent_streaming_with_memory"]
   E --> F["LangGraph: intent -> strategy -> plan -> execute -> verify -> answer -> self_check"]
@@ -346,7 +346,7 @@ plan -> execute -> verify -> (必要时回 execute) -> answer
 
 ### 6.1 `ChatService` 的作用
 
-入口在 `web/shuai_web/services/chat_service.py`。
+入口在 `web/moyuan_web/services/chat_service.py`。
 
 它主要做这些事:
 
@@ -485,9 +485,9 @@ Checkpoint 是 LangGraph 执行层概念。
 
 ### 第二步: 看 API 编排层
 
-- `web/shuai_web/main.py`
-- `web/shuai_web/routes/chat.py`
-- `web/shuai_web/services/chat_service.py`
+- `web/moyuan_web/main.py`
+- `web/moyuan_web/routes/chat.py`
+- `web/moyuan_web/services/chat_service.py`
 
 先知道 SSE 是怎么从后端出去的。
 
@@ -721,7 +721,7 @@ python scripts/agent_golden_eval.py --dataset tests/golden/agent_react_golden.js
 
 如果只用一句话总结这个项目:
 
-`ShuaiTravelAgent` 是一个把“旅行问答”升级成“可验证、可诊断、可继续操作的旅行决策系统”的 Agent 工程样例。
+`moyuan-travel-agent` 是一个把“旅行问答”升级成“可验证、可诊断、可继续操作的旅行决策系统”的 Agent 工程样例。
 
 而你真正需要学会的，不只是 LangGraph 的写法，而是这套系统如何把:
 

@@ -17,9 +17,9 @@
 
 ### 必读 3 个文件
 
-1. [state.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/state.py)
-2. [builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)
-3. [nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py)
+1. [state.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/state.py)
+2. [builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)
+3. [nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)
 
 ### 最常见 3 个坑
 
@@ -104,12 +104,12 @@ flowchart LR
 
 | 阅读阶段 | 文件 | 最值得先看的符号 | 学习目标 |
 | --- | --- | --- | --- |
-| 第一步：看状态 | [state.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/state.py) | `AgentState`、`create_initial_state` | 先搞清一次运行里到底共享了哪些信息。 |
-| 第二步：看图 | [builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py) | `build`、`_build_thread_config` | 先搞清节点怎么连、session 怎样和 graph thread 绑定。 |
-| 第三步：看节点 | [nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py) | `intent_node`、`strategy_node`、`routing_decision`、`plan_node`、`execute_node`、`verify_node`、`verify_decision`、`answer_node`、`self_check_node`、`direct_answer_node`、`should_continue` | 逐段理解状态机每一步的职责和决策点。 |
-| 第四步：看工具契约 | [travel_api.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/tools/travel_api.py) | 与 `_meta`、stale、fallback 相关的返回结构 | 看“证据链”到底怎么被表达。 |
-| 第五步：看长期上下文 | [memory_integration.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/memory_integration.py) | memory 写入、摘要、上下文构建相关逻辑 | 看长期记忆怎样进入一次运行。 |
-| 第六步：看恢复能力 | [persistent_checkpointer.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/persistent_checkpointer.py) | 初始化、保存、恢复入口 | 看 checkpoint 为什么不等于 memory。 |
+| 第一步：看状态 | [state.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/state.py) | `AgentState`、`create_initial_state` | 先搞清一次运行里到底共享了哪些信息。 |
+| 第二步：看图 | [builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py) | `build`、`_build_thread_config` | 先搞清节点怎么连、session 怎样和 graph thread 绑定。 |
+| 第三步：看节点 | [nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py) | `intent_node`、`strategy_node`、`routing_decision`、`plan_node`、`execute_node`、`verify_node`、`verify_decision`、`answer_node`、`self_check_node`、`direct_answer_node`、`should_continue` | 逐段理解状态机每一步的职责和决策点。 |
+| 第四步：看工具契约 | [travel_api.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/tools/travel_api.py) | 与 `_meta`、stale、fallback 相关的返回结构 | 看“证据链”到底怎么被表达。 |
+| 第五步：看长期上下文 | [memory_integration.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/memory_integration.py) | memory 写入、摘要、上下文构建相关逻辑 | 看长期记忆怎样进入一次运行。 |
+| 第六步：看恢复能力 | [persistent_checkpointer.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/persistent_checkpointer.py) | 初始化、保存、恢复入口 | 看 checkpoint 为什么不等于 memory。 |
 
 ### 3.3 源码辅助学习：建议边看边搜的关键字
 
@@ -181,7 +181,7 @@ Agent 最忌讳的读法是：
 
 ### 5.1 `builder.py` 最推荐的读法
 
-打开 [builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py) 后，最推荐只盯 3 个块：
+打开 [builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py) 后，最推荐只盯 3 个块：
 
 1. `graph.add_node(...)`
 先确认系统到底有哪些核心阶段。
@@ -373,7 +373,7 @@ flowchart TD
 
 ### 9.0 节点阅读建议
 
-读 [nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py) 时，最稳的方法不是一口气顺着看，而是每读一个节点都固定回答 4 个问题：
+读 [nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py) 时，最稳的方法不是一口气顺着看，而是每读一个节点都固定回答 4 个问题：
 
 1. 它读了哪些状态字段？
 2. 它改了哪些状态字段？
@@ -880,23 +880,23 @@ flowchart TD
 
 如果时间有限，至少精读下面 6 个文件：
 
-1. [state.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/state.py)
+1. [state.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/state.py)
 作用：理解共享状态到底长什么样。
-2. [builder.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/builder.py)
+2. [builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)
 作用：理解节点和边是怎么接起来的。
-3. [nodes.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/nodes.py)
+3. [nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)
 作用：理解每个阶段具体做什么。
-4. [travel_api.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/tools/travel_api.py)
+4. [travel_api.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/tools/travel_api.py)
 作用：理解工具结果和 `_meta` 的事实性边界。
-5. [memory_integration.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/memory_integration.py)
+5. [memory_integration.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/memory_integration.py)
 作用：理解长期记忆如何写入、清理、注入。
-6. [persistent_checkpointer.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/graph/persistent_checkpointer.py)
+6. [persistent_checkpointer.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/persistent_checkpointer.py)
 作用：理解图执行恢复和长期记忆不是一回事。
 
 如果还能多看一点，再补：
 
-- [travel_tools.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/tools/travel_tools.py)
-- [llm_adapters.py](D:/projects/shuai/ShuaiTravelAgent/agent/travel_agent/llm/llm_adapters.py)
+- [travel_tools.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/tools/travel_tools.py)
+- [llm_adapters.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/llm/llm_adapters.py)
 
 ## 补充二：本章最值得画的 2 张图
 

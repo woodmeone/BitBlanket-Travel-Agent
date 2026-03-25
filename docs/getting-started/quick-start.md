@@ -1,6 +1,6 @@
-﻿# Quick Start
+# Quick Start
 
-这份文档面向第一次本地运行 ShuaiTravelAgent 的开发者，默认环境为 Windows + PowerShell。
+这份文档面向第一次本地运行 moyuan-travel-agent 的开发者，默认环境为 Windows + PowerShell。
 
 ## 前置条件
 
@@ -70,7 +70,7 @@ copy config\server_config.yaml.example config\server_config.yaml
 ## 4. 启动后端 API
 
 ```bash
-.\.venv\Scripts\python.exe -m uvicorn shuai_web.main:app --host 0.0.0.0 --port 38000 --app-dir web
+.\.venv\Scripts\python.exe -m uvicorn moyuan_web.main:app --host 0.0.0.0 --port 38000 --app-dir web
 ```
 
 启动成功后可访问：
@@ -111,7 +111,7 @@ Compose 默认会：
 - 暴露后端 `38000`
 - 挂载 `config/`、`data/`、`logs/`
 - 为前端注入 `NEXT_PUBLIC_API_BASE`
-- 为后端注入 `SHUAI_WEB_PORT`、`SHUAI_FRONTEND_PORT`、`SHUAI_METRICS_ENABLED`
+- 为后端注入 `MOYUAN_WEB_PORT`、`MOYUAN_FRONTEND_PORT`、`MOYUAN_METRICS_ENABLED`
 
 对应文件：
 
