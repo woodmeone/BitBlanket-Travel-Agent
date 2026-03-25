@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Progress, Space, Spin, Statistic, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined } from '@ant-design/icons';
-import { apiService } from '@/services/api';
+import { healthClient } from '@/services/api';
 import type {
   HealthResponse,
   LLMHealthResponse,
@@ -61,10 +61,10 @@ const SystemStatusPanel: React.FC = () => {
       setIsLoading(true);
       setError(null);
       const [h, llm, tools, intents] = await Promise.all([
-        apiService.checkHealth(),
-        apiService.checkLLMHealth(),
-        apiService.checkToolsHealth(),
-        apiService.checkToolsIntentsHealth(),
+        healthClient.checkHealth(),
+        healthClient.checkLLMHealth(),
+        healthClient.checkToolsHealth(),
+        healthClient.checkToolsIntentsHealth(),
       ]);
       setHealth(h);
       setLlmHealth(llm);

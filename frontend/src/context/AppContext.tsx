@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { apiService } from '@/services/api';
+import { modelClient, sessionClient } from '@/services/api';
 import type { AppConfig, ChatMode, Message, ModelInfo, SessionInfo } from '@/types';
 import { logger } from '@/utils/logger';
 import { normalizePersistedMessages } from '@/utils/sessionMessages';
@@ -15,7 +15,10 @@ const DEFAULT_MODELS: ModelInfo[] = [
   },
 ];
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:38000';
+const DEFAULT_API_BASE =
+  (typeof window !== 'undefined' && window.ENV?.NEXT_PUBLIC_API_BASE) ||
+  process.env.NEXT_PUBLIC_API_BASE ||
+  'http://localhost:38000';
 const SESSION_STORAGE_KEY = 'moyuan-current-session-id';
 
 function hasOwnSessionMessages(cache: Record<string, Message[]>, sessionId: string): boolean {
@@ -54,7 +57,7 @@ interface AppState {
 const AppContext = createContext<AppState | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [config, setConfig] = useState<AppConfig>({ apiBase: API_BASE });
+  const [config, setConfig] = useState<AppConfig>({ apiBase: DEFAULT_API_BASE });
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>(DEFAULT_MODELS);
   const [currentModelId, setCurrentModelIdState] = useState<string | null>('minimax-m2-5');
   const [loadingModels] = useState(false);
@@ -82,7 +85,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return sessionMessagesRef.current[sessionId];
     }
 
-    const data = await apiService.getSessionMessages(sessionId);
+    const data = await sessionClient.getSessionMessages(sessionId);
     const normalizedMessages = normalizePersistedMessages(data.messages);
     cacheSessionMessages(sessionId, normalizedMessages);
     return normalizedMessages;
@@ -90,7 +93,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const loadSessions = async () => {
     try {
-      const data = await apiService.getSessions();
+      const data = await sessionClient.getSessions();
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
       // Keep recent empty sessions visible for short-term navigation continuity.
       const activeSessions = data.sessions.filter(
@@ -104,15 +107,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   useEffect(() => {
     const loadModels = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
       try {
-        // Use native fetch + short timeout here so model bootstrap failure never blocks app shell.
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-        const response = await fetch(`${API_BASE}/api/models`, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (!response.ok) return;
-
-        const data = await response.json();
+        // Keep model bootstrap isolated so shell rendering never depends on it.
+        const data = await modelClient.getAvailableModels({ signal: controller.signal, timeoutMs: 3000 });
         if (!data.success || !Array.isArray(data.models) || data.models.length === 0) return;
 
         const modelExists = data.models.some((model: ModelInfo) => model.model_id === currentModelId);
@@ -120,6 +119,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setCurrentModelIdState(modelExists ? currentModelId : data.models[0].model_id);
       } catch {
         // Keep default models silently.
+      } finally {
+        clearTimeout(timeoutId);
       }
     };
 
@@ -135,7 +136,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCurrentModelIdState(modelId);
     if (!currentSessionId) return;
     try {
-      await apiService.setSessionModel(currentSessionId, modelId);
+      await modelClient.setSessionModel(currentSessionId, modelId);
     } catch (error) {
       logger.error('设置会话模型失败:', error);
     }
@@ -165,7 +166,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const refreshSessions = async (includeEmpty: boolean = false) => {
     try {
-      const data = await apiService.getSessions();
+      const data = await sessionClient.getSessions();
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
       const uniqueSessionsMap = new Map(data.sessions.map((session) => [session.session_id, session]));
       const uniqueSessions = Array.from(uniqueSessionsMap.values());
@@ -206,7 +207,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     try {
-      const data = await apiService.getSessionModel(id);
+      const data = await modelClient.getSessionModel(id);
       if (data.success && data.model_id && data.model_id !== 'default') {
         setCurrentModelIdState(data.model_id);
       }

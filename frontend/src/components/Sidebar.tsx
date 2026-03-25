@@ -15,7 +15,7 @@ import {
   ClearOutlined,
 } from '@ant-design/icons';
 import { useAppContext } from '../context/AppContext';
-import { apiService } from '../services/api';
+import { chatClient, sessionClient } from '../services/api';
 import { logger } from '../utils/logger';
 import { SessionInfo } from '../types';
 
@@ -44,7 +44,7 @@ const Sidebar: React.FC = () => {
   const handleCreateSession = async () => {
     try {
       setLoading(true);
-      const data = await apiService.createSession();
+      const data = await sessionClient.createSession();
       switchSession(data.session_id);
       await refreshSessions();
       message.success('新会话已创建');
@@ -58,7 +58,7 @@ const Sidebar: React.FC = () => {
   // 删除会话
   const handleDeleteSession = async (sessionId: string) => {
     try {
-      await apiService.deleteSession(sessionId);
+      await sessionClient.deleteSession(sessionId);
       if (sessionId === currentSessionId) {
         switchSession(null);
       }
@@ -91,7 +91,7 @@ const Sidebar: React.FC = () => {
     if (!editingSessionId || !editingName.trim()) return;
 
     try {
-      await apiService.updateSessionName(editingSessionId, editingName.trim());
+      await sessionClient.updateSessionName(editingSessionId, editingName.trim());
       await refreshSessions();
       setEditingSessionId(null);
       setEditingName('');
@@ -109,7 +109,7 @@ const Sidebar: React.FC = () => {
     }
 
     try {
-      await apiService.clearChat(currentSessionId);
+      await chatClient.clearChat(currentSessionId);
       clearMessages();
       message.success('对话已清空');
     } catch (error) {

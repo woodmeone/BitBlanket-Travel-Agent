@@ -2,15 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 
-const apiServiceMock = vi.hoisted(() => ({
+const sessionClientMock = vi.hoisted(() => ({
   getSessions: vi.fn(),
   getSessionMessages: vi.fn(),
+}));
+
+const modelClientMock = vi.hoisted(() => ({
   getSessionModel: vi.fn(),
   setSessionModel: vi.fn(),
 }));
 
 vi.mock('@/services/api', () => ({
-  apiService: apiServiceMock,
+  sessionClient: sessionClientMock,
+  modelClient: modelClientMock,
 }));
 
 import { AppProvider, useAppContext } from '@/context/AppContext';
@@ -30,10 +34,10 @@ function Probe() {
 describe('AppProvider session hydration', () => {
   beforeEach(() => {
     window.localStorage.clear();
-    apiServiceMock.getSessions.mockReset();
-    apiServiceMock.getSessionMessages.mockReset();
-    apiServiceMock.getSessionModel.mockReset();
-    apiServiceMock.setSessionModel.mockReset();
+    sessionClientMock.getSessions.mockReset();
+    sessionClientMock.getSessionMessages.mockReset();
+    modelClientMock.getSessionModel.mockReset();
+    modelClientMock.setSessionModel.mockReset();
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -51,10 +55,10 @@ describe('AppProvider session hydration', () => {
     const now = new Date().toISOString();
     window.localStorage.setItem('moyuan-current-session-id', 'session-1');
 
-    apiServiceMock.getSessions.mockResolvedValue({
+    sessionClientMock.getSessions.mockResolvedValue({
       sessions: [{ session_id: 'session-1', message_count: 2, last_active: now, name: 'Saved session' }],
     });
-    apiServiceMock.getSessionMessages.mockResolvedValue({
+    sessionClientMock.getSessionMessages.mockResolvedValue({
       success: true,
       messages: [
         {
@@ -83,7 +87,7 @@ describe('AppProvider session hydration', () => {
         },
       ],
     });
-    apiServiceMock.getSessionModel.mockResolvedValue({
+    modelClientMock.getSessionModel.mockResolvedValue({
       success: true,
       model_id: 'minimax-m2-5',
     });
@@ -97,6 +101,6 @@ describe('AppProvider session hydration', () => {
     await waitFor(() => expect(screen.getByTestId('session-id')).toHaveTextContent('session-1'));
     await waitFor(() => expect(screen.getByTestId('message-content')).toHaveTextContent('saved answer'));
     expect(screen.getByTestId('plan-id')).toHaveTextContent('plan-restored');
-    expect(apiServiceMock.getSessionMessages).toHaveBeenCalledWith('session-1');
+    expect(sessionClientMock.getSessionMessages).toHaveBeenCalledWith('session-1');
   });
 });

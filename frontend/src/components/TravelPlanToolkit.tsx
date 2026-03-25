@@ -32,8 +32,9 @@ import {
 } from '@ant-design/icons';
 import html2canvas from 'html2canvas';
 import type { Message, RoutePreviewResponse, SubagentEvent, TripPlanArtifact } from '@/types';
-import { apiService } from '@/services/api';
+import { mapClient, shareClient } from '@/services/api';
 import { hasArtifactData } from '@/utils/agentArtifacts';
+import { buildSubagentEventKey } from '@/utils/subagentEvents';
 import {
   applyConflictFixes,
   buildChecklist,
@@ -368,7 +369,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({
 
     try {
       setRouteLoadingDay(dayKey);
-      const result = await apiService.getRoutePreview({ spots: day.spots.slice(0, 12), provider: 'amap' });
+      const result = await mapClient.getRoutePreview({ spots: day.spots.slice(0, 12), provider: 'amap' });
       setRouteByDay((prev) => ({ ...prev, [dayKey]: result }));
       message.success(`已获取 ${day.dayLabel} 真实路线`);
     } catch (error) {
@@ -426,7 +427,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({
 
   const handleShare = async () => {
     try {
-      const result = await apiService.createShareLink({
+      const result = await shareClient.createShareLink({
         title: '旅行方案',
         content,
       });
@@ -543,7 +544,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({
             <div style={{ fontSize: 12, fontWeight: 700, color: '#155e75' }}>子 Agent 轨迹</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {subagentEvents.map((event, index) => (
-                <Tag key={`${event.subagent}-${event.sequence || index}-${event.timestamp || index}`} color={event.status ? 'green' : 'blue'}>
+                <Tag key={buildSubagentEventKey(event, index)} color={event.status ? 'green' : 'blue'}>
                   {subagentLabel(event.subagent)}
                   {event.status ? `:${event.status}` : ''}
                 </Tag>

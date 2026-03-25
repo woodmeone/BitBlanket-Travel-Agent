@@ -11,8 +11,9 @@ import {
   ToolOutlined,
 } from '@ant-design/icons';
 import { useAppContext } from '@/context/AppContext';
-import { apiService, type StreamMetadata } from '@/services/api';
+import { chatClient, sessionClient, shareClient, type StreamMetadata } from '@/services/api';
 import type { ArtifactPatch, PlanPreview, StreamStageEvent, SubagentEvent, TripPlanArtifact } from '@/types';
+import { buildSubagentEventKey } from '@/utils/subagentEvents';
 import { logger } from '@/utils/logger';
 import { mergeTripPlanArtifact } from '@/utils/agentArtifacts';
 import MessageList from './MessageList';
@@ -119,6 +120,7 @@ const ChatArea: React.FC = () => {
   const fullResponseRef = useRef('');
   const fullReasoningRef = useRef('');
   const reasoningTimestampRef = useRef('');
+  const subagentEventKeyRef = useRef(0);
   // Queue is used to smooth incoming SSE bursts and avoid re-rendering on every token.
   const streamQueueRef = useRef({ answer: '', reasoning: '' });
   const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -142,7 +144,12 @@ const ChatArea: React.FC = () => {
   };
 
   const recordSubagentEvent = (event: SubagentEvent) => {
-    const stamped = { ...event, timestamp: nowLabel() };
+    subagentEventKeyRef.current += 1;
+    const stamped: SubagentEvent = {
+      ...event,
+      timestamp: event.timestamp || nowLabel(),
+      clientKey: event.clientKey || `subagent-event-${Date.now()}-${subagentEventKeyRef.current}`,
+    };
     const nextEvents = [...subagentEventsRef.current.slice(-MAX_SUBAGENT_EVENTS + 1), stamped];
     subagentEventsRef.current = nextEvents;
     setSubagentEvents(nextEvents);
@@ -236,6 +243,7 @@ const ChatArea: React.FC = () => {
   const clearArtifactRuntimeState = () => {
     artifactRef.current = null;
     subagentEventsRef.current = [];
+    subagentEventKeyRef.current = 0;
     metadataRef.current = null;
     setArtifactState(null);
     setSubagentEvents([]);
@@ -264,7 +272,7 @@ const ChatArea: React.FC = () => {
     hasHandledShareRef.current = true;
     const loadSharedContent = async () => {
       try {
-        const result = await apiService.getShareDetail(shareId);
+        const result = await shareClient.getShareDetail(shareId);
         setCurrentSessionId(null);
         setMessages([
           {
@@ -347,7 +355,7 @@ const ChatArea: React.FC = () => {
       const isFirstMessage = !currentSessionId || messages.length === 0;
       let sessionId = currentSessionId;
       if (!sessionId) {
-        const data = await apiService.createSession();
+        const data = await sessionClient.createSession();
         sessionId = data.session_id;
         skipNextSessionResetRef.current = true;
         setCurrentSessionId(sessionId);
@@ -379,13 +387,13 @@ const ChatArea: React.FC = () => {
       if (isFirstMessage && sessionId) {
         try {
           const sessionName = trimmed.slice(0, 15) + (trimmed.length > 15 ? '...' : '');
-          await apiService.updateSessionName(sessionId, sessionName);
+          await sessionClient.updateSessionName(sessionId, sessionName);
         } catch (err) {
           logger.error('设置会话名称失败:', err);
         }
       }
 
-      await apiService.fetchStreamChat(
+      await chatClient.fetchStreamChat(
         { message: enrichedPrompt, display_message: trimmed, session_id: sessionId, mode: chatMode },
         {
           // SSE callbacks are intentionally state-minimal: persist authoritative values
@@ -1001,7 +1009,7 @@ const ExecutionInsights: React.FC<{
                 .slice()
                 .reverse()
                 .map((event, index) => (
-                  <div key={`${event.subagent}-${event.sequence || index}-${event.timestamp || index}`} style={{ fontSize: '12px', color: '#155e75' }}>
+                  <div key={buildSubagentEventKey(event, index)} style={{ fontSize: '12px', color: '#155e75' }}>
                     [{event.timestamp || '--:--:--'}] {subagentLabel(event.subagent)}
                     {event.status ? ` -> ${event.status}` : ` -> ${event.trigger || 'started'}`}
                     {event.skills?.length ? ` | ${event.skills.join(', ')}` : ''}

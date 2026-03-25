@@ -11,7 +11,7 @@ import {
   SwapOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import { apiService } from '@/services/api';
+import { cityClient } from '@/services/api';
 import type { CityDetail, CitySummary } from '@/types';
 
 interface CityExplorerProps {
@@ -23,6 +23,14 @@ type QuickFilterKey = 'weekend' | 'budget' | 'family' | 'easywalk' | 'rainy' | '
 interface QuickFilterOption {
   key: QuickFilterKey;
   label: string;
+}
+
+interface CuratedPromptOption {
+  label: string;
+  hint: string;
+  prompt: string;
+  borderColor: string;
+  background: string;
 }
 
 interface DerivedCityProfile {
@@ -49,6 +57,30 @@ const QUICK_FILTERS: QuickFilterOption[] = [
   { key: 'easywalk', label: '少走路' },
   { key: 'rainy', label: '雨天也能玩' },
   { key: 'food', label: '美食优先' },
+];
+
+const CURATED_PROMPTS: CuratedPromptOption[] = [
+  {
+    label: '周末快闪',
+    hint: '低预算，出行轻松。',
+    prompt: '请推荐适合周末两天出发、预算 1500 内、地铁友好的真实城市目的地，并给出选择理由。',
+    borderColor: '#bfdbfe',
+    background: 'linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%)',
+  },
+  {
+    label: '亲子省心',
+    hint: '少走路，雨天也稳。',
+    prompt: '请推荐亲子友好、少走路、下雨也不容易废行程的真实城市，并说明为什么适合。',
+    borderColor: '#c7d2fe',
+    background: 'linear-gradient(180deg, #fbfbff 0%, #f3f4ff 100%)',
+  },
+  {
+    label: '预算吃好',
+    hint: '好吃不贵，节奏轻松。',
+    prompt: '请推荐预算友好、以美食为主、景点不需要太密集的城市，并做简短对比。',
+    borderColor: '#bae6fd',
+    background: 'linear-gradient(180deg, #f8feff 0%, #edf9ff 100%)',
+  },
 ];
 
 function includesAny(source: string[], patterns: string[]): boolean {
@@ -128,7 +160,7 @@ export default function CityExplorer({ onUsePrompt }: CityExplorerProps) {
     async function loadFilterOptions() {
       try {
         setIsFilterLoading(true);
-        const [regionData, tagData] = await Promise.all([apiService.getRegions(), apiService.getTags()]);
+        const [regionData, tagData] = await Promise.all([cityClient.getRegions(), cityClient.getTags()]);
         setRegions(regionData.regions || []);
         setTags(tagData.tags || []);
       } catch (loadError) {
@@ -146,7 +178,7 @@ export default function CityExplorer({ onUsePrompt }: CityExplorerProps) {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await apiService.getCities({ region: selectedRegion, tags: selectedTags });
+        const response = await cityClient.getCities({ region: selectedRegion, tags: selectedTags });
         setCities(response.cities || []);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : '加载城市失败');
@@ -210,7 +242,7 @@ export default function CityExplorer({ onUsePrompt }: CityExplorerProps) {
 
   async function openCityDetail(cityId: string) {
     try {
-      const detail = await apiService.getCityDetail(cityId);
+      const detail = await cityClient.getCityDetail(cityId);
       setActiveCityDetail(detail);
       setIsDetailOpen(true);
     } catch (detailError) {
@@ -436,74 +468,70 @@ export default function CityExplorer({ onUsePrompt }: CityExplorerProps) {
               style={{
                 borderRadius: 20,
                 padding: 20,
-                background:
-                  'radial-gradient(circle at 90% -20%, rgba(125, 211, 252, 0.35), transparent 40%), linear-gradient(130deg, #082f49 0%, #0f4c72 45%, #0f766e 100%)',
-                border: '1px solid rgba(255, 255, 255, 0.22)',
-                boxShadow: '0 18px 34px rgba(8, 47, 73, 0.24)',
-                color: '#f8fafc',
-                minHeight: 180,
-                position: 'relative',
-                overflow: 'hidden',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, #f8fbff 100%)',
+                border: '1px solid #dbe4ee',
+                boxShadow: '0 14px 30px rgba(15, 23, 42, 0.08)',
+                color: '#0f172a',
+                display: 'grid',
+                gap: 16,
+                alignContent: 'start',
               }}
             >
               <div
                 style={{
-                  position: 'absolute',
-                  right: -40,
-                  bottom: -60,
-                  width: 180,
-                  height: 180,
-                  borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(255,255,255,0.24) 0%, transparent 70%)',
-                  pointerEvents: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  width: 'fit-content',
+                  padding: '6px 10px',
+                  borderRadius: 999,
+                  border: '1px solid #dbeafe',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  fontSize: 12,
+                  fontWeight: 700,
                 }}
-              />
-              <div style={{ fontSize: 12, letterSpacing: 1.4, opacity: 0.86, marginBottom: 10, fontWeight: 700 }}>CURATED TRAVEL</div>
-              <div style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.25, marginBottom: 14 }}>
-                先判断城市是否适合你，
-                <br />
-                再决定要不要继续做 AI 行程规划。
+              >
+                <CompassOutlined />
+                灵感起点
               </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <Button
-                  style={{
-                    borderRadius: 999,
-                    border: '1px solid rgba(255,255,255,0.45)',
-                    background: 'rgba(255,255,255,0.14)',
-                    color: '#f8fafc',
-                    fontWeight: 700,
-                    backdropFilter: 'blur(4px)',
-                  }}
-                  onClick={() => onUsePrompt('请推荐适合周末两天出发、预算 1500 内、地铁友好的真实城市目的地，并给出选择理由。')}
-                >
-                  本周末去哪
-                </Button>
-                <Button
-                  style={{
-                    borderRadius: 999,
-                    border: '1px solid rgba(255,255,255,0.45)',
-                    background: 'rgba(255,255,255,0.14)',
-                    color: '#f8fafc',
-                    fontWeight: 700,
-                    backdropFilter: 'blur(4px)',
-                  }}
-                  onClick={() => onUsePrompt('请推荐亲子友好、少走路、下雨也不容易废行程的真实城市，并说明为什么适合。')}
-                >
-                  亲子省心
-                </Button>
-                <Button
-                  style={{
-                    borderRadius: 999,
-                    border: '1px solid rgba(255,255,255,0.45)',
-                    background: 'rgba(255,255,255,0.14)',
-                    color: '#f8fafc',
-                    fontWeight: 700,
-                    backdropFilter: 'blur(4px)',
-                  }}
-                  onClick={() => onUsePrompt('请推荐预算友好、以美食为主、景点不需要太密集的城市，并做简短对比。')}
-                >
-                  预算美食
-                </Button>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.2, color: '#0f172a', maxWidth: 520 }}>
+                  从场景出发，找到对的城市
+                </div>
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                  gap: 10,
+                }}
+              >
+                {CURATED_PROMPTS.map((item) => (
+                  <Button
+                    key={item.label}
+                    block
+                    style={{
+                      height: '100%',
+                      minHeight: 92,
+                      padding: '14px 16px',
+                      borderRadius: 16,
+                      border: `1px solid ${item.borderColor}`,
+                      background: item.background,
+                      color: '#0f172a',
+                      boxShadow: 'none',
+                      whiteSpace: 'normal',
+                    }}
+                    onClick={() => onUsePrompt(item.prompt)}
+                  >
+                    <div style={{ display: 'grid', gap: 6, textAlign: 'left' }}>
+                      <span style={{ fontSize: 16, fontWeight: 700 }}>{item.label}</span>
+                      <span style={{ fontSize: 12, lineHeight: 1.65, color: '#64748b', fontWeight: 500 }}>
+                        {item.hint}
+                      </span>
+                    </div>
+                  </Button>
+                ))}
               </div>
             </div>
 
