@@ -1,183 +1,167 @@
-# Harness Engineering 整体重构优化设计
+# Harness Engineering 重构规划（2026-03 基线）
 
-## 1. 背景与设计视角
+## 1. 设计视角
 
-本文把 `harness engineer` 理解为一类偏平台和执行框架的工程视角:
+本文把 `harness engineering` 理解为一种“为变化而设计执行底座”的工程视角。
 
-- 不只关注“功能能跑”
-- 更关注“主链路是否稳定、边界是否清晰、契约是否收敛、改动是否可验证、上线是否可观测”
+如果你要看项目级长期路线，而不是当前代码基线上的重构优先级，请继续阅读：
 
-moyuan-travel-agent 当前已经具备不错的三层结构雏形:
+- [Harness Engineering 项目演进总方案（2026）](harness-engineering-evolution-roadmap.md)
 
-- `frontend/`: Next.js 交互层
-- `web/moyuan_web/`: FastAPI 服务层
-- `agent/travel_agent/`: Agent 运行时与推理层
+它不只关心功能能不能跑，更关心下面这些问题：
 
-同时，仓库也已经明显进入“从可用走向可维护”的阶段。现阶段最需要的，不是再加一轮零散功能，而是把已有能力整理成一套更稳定的执行底座。
+- 系统主链路是否有清晰的执行骨架
+- 输入输出契约是否能成为单一真相源
+- AI 运行时里的高波动逻辑是否被约束在可替换边界内
+- 观测、回放、评估、发布是否跟运行时同等重要
+- 团队能否在不放大风险的前提下持续迭代
 
-## 2. 现状诊断
+放到 `moyuan-travel-agent` 上，`harness` 不是某一个文件，而是下面几层“约束与执行框架”的总和：
 
-### 2.1 已经做对的部分
+- Contract Harness：REST、SSE、artifact、health、share、session 的统一契约
+- Runtime Harness：`Web API -> Agent Runtime -> Graph/Supervisor -> Tools` 的稳定执行骨架
+- Policy Harness：超时、重试、fallback、可信度、风险提示、预算保护
+- Replay & Eval Harness：回放、benchmark、golden eval、quality gate
+- Release Harness：配置、容器、启动检查、metrics、dashboard、alert、CI
 
-- 系统已经形成 `Frontend -> Web API -> AgentRuntime -> Graph/Subagents` 的主链路。
-- 已有 `startup checks`、`/api/ready`、`/api/metrics`、SSE trace、benchmark、golden eval、quality gate。
-- Agent 侧已经开始从单图演进到 `runtime / supervisor / subagents / skills / artifacts` 的更清晰结构。
-- 文档体系相对完整，`README`、`docs/README.md`、`docs/reference/*`、`docs/architecture/*` 已具备维护基础。
+本轮规划的目标不是重写系统，而是让项目从“已经能用”升级到“可以持续演进”。
 
-### 2.2 主要结构性问题
+## 2. 当前基线快照
 
-#### A. 前端“页面组件化”过强，“领域模块化”不足
+### 2.1 已经完成的收口项
 
-当前几个核心文件已经承担了过多职责:
+过去几轮重构已经把不少基础工作做起来了，这些不是要推倒重来，而是本轮的起点：
 
-- `frontend/src/components/ChatArea.tsx`: 987 行
-- `frontend/src/components/MessageList.tsx`: 1157 行
-- `frontend/src/components/TravelPlanToolkit.tsx`: 930 行
-- `frontend/src/components/CityExplorer.tsx`: 837 行
-- `frontend/src/services/api.ts`: 523 行
+- 项目命名已统一到 `moyuan-travel-agent`
+- `web/shuai_web` 已迁到 `web/moyuan_web`
+- `Web API` 路由契约已开始收口到 `web/moyuan_web/api/schemas`
+- `ChatService` 已拆成 facade + `stream/history/health` mixin
+- `CityService`、`MapService`、`SessionService` 已转成薄 facade + 子模块协作
+- 默认服务注册已收口到 `bootstrap_services.py`
+- `main.py` 与 `startup_checks.py` 已统一走容器初始化入口
+- 路由包和服务包已做 lazy export，导入耦合比以前轻
+- 项目已经有 `ready/health/metrics`、OpenAPI/SSE 快照、observability 资产和一定数量的单测
 
-这些文件同时混合了:
+结论很明确：
+
+- `Web API` 这一层已经开始具备 harness 的形状
+- 真正还没有被收好的，是 `frontend` 和 `agent runtime`
+
+### 2.2 当前复杂度热点
+
+截至当前仓库基线，仍然最需要优先治理的文件如下：
+
+#### Frontend
+
+- `frontend/src/components/MessageList.tsx`：1158 行
+- `frontend/src/components/ChatArea.tsx`：990 行
+- `frontend/src/components/TravelPlanToolkit.tsx`：930 行
+- `frontend/src/components/CityExplorer.tsx`：873 行
+- `frontend/src/services/api.ts`：523 行
+
+这些文件同时混合了：
 
 - 页面状态
-- SSE 流解析
-- 视图逻辑
+- 流式事件解析
 - 交互编排
-- 文本加工
-- 导出分享
-- 运行时日志展示
+- 文本/结构化结果加工
+- 导出与分享
+- 局部 UI 主题与视图细节
 
-结果是:
+这说明当前前端仍然是“大组件驱动”，不是“领域切片驱动”。
 
-- 单文件改动半径大
-- 组件测试粒度偏粗
-- 复用困难
-- 新人理解成本高
+#### Web API
 
-#### B. Web API 仍然偏“胖服务 + 路由内 DTO”
+- `web/moyuan_web/services/chat/stream_mixin.py`：620 行
+- `web/moyuan_web/main.py` 仍负责配置预热、容器初始化、router 装配和 root/openapi 入口
 
-当前关键服务文件体量较大:
+这说明 `Web API` 已经开始变薄，但 `stream` 主链路和应用启动骨架还没有完全独立成 harness。
 
-- `web/moyuan_web/services/chat_service.py`: 1237 行
-- `web/moyuan_web/services/city_service.py`: 617 行
+#### Agent
 
-同时，接口契约大多以内联 `BaseModel` 形式分散在 `routes/*.py` 中。这样会导致:
+- `agent/travel_agent/graph/nodes.py`：3304 行
+- `agent/travel_agent/graph/memory_integration.py`：2688 行
+- `agent/travel_agent/graph/builder.py`：837 行
 
-- 路由层兼顾协议定义和业务编排
-- DTO 复用困难
-- 前后端契约难以集中演进
-- OpenAPI 有了，但“契约成为代码中心”的效果还不够强
+当前 `agent runtime` 已经引入了 `runtime/`、`supervisor/`、`subagents/`、`skills/`，方向是对的，但真正的复杂度仍压在旧的 `graph/*` 主体里。
 
-#### C. Agent 图层承担了过多策略、执行、验证、兜底责任
+换句话说：
 
-当前 Agent 核心文件体量已经超过“可持续维护”的舒适区:
+- “架构名词”已经变好了
+- “执行复杂度”还没真正搬家
 
-- `agent/travel_agent/graph/nodes.py`: 3300 行
-- `agent/travel_agent/graph/memory_integration.py`: 2688 行
-- `agent/travel_agent/graph/builder.py`: 837 行
+### 2.3 隐式耦合与工程治理问题
 
-`nodes.py` 中同时容纳了:
+除了大文件，当前还有几类典型的 harness 缺口：
 
-- intent 识别
-- strategy 决策
-- plan 生成与校验
-- execute 调度
-- tool retry / timeout / circuit
-- verify
-- answer
-- self check
-- tool result ranking / fusion / normalization
-- 高风险保护
+- `web/agent/scripts/tests` 中仍有 39 处 `ensure_project_paths()` / `sys.path` 注入
+- `web/agent/scripts` 中仍有 241 处 `Purpose:` 模板化 docstring
+- 前端契约仍主要靠 `frontend/src/types` 和手写 `api.ts` 维护
+- `agent runtime` 的 artifact、subagent、SSE 事件还没有一个真正统一的事件注册中心
+- CI 与静态检查虽然存在，但还没有围绕“高复杂度文件”建立专项门禁
 
-这会让后续每一次 Agent 迭代都变成高风险手术。
+这几类问题的共同本质是：
 
-#### D. 包边界仍然依赖路径注入，模块自治性不足
-
-当前仓库同时存在:
-
-- 根目录 `requirements.txt` / `requirements-dev.txt`
-- `agent/pyproject.toml`
-- `web/pyproject.toml`
-- `ensure_project_paths()` / `sys.path.insert(...)`
-
-并且多个脚本与服务仍依赖手工路径注入来导入 `agent`、`config`、`web`。这说明当前是“逻辑分层已有，打包边界未收口”的状态。
-
-直接影响是:
-
-- 本地运行依赖隐式路径约定
-- CI/脚本/容器入口容易各自维护一套导入方式
-- 长期不利于模块拆分与复用
-
-#### E. 前后端契约是“手工同步”，不是“单一真相源”
-
-例如:
-
-- 前端类型集中在 `frontend/src/types/index.ts`
-- 后端请求/响应模型散落在 `web/moyuan_web/routes/*.py`
-
-现在契约虽然有快照，但仍然主要靠人工保持一致。随着 `artifact`、`subagent`、`health diagnostics`、`SSE event` 持续扩展，手工同步的成本会越来越高。
-
-#### F. 工程治理存在“覆盖不均匀”的问题
-
-当前治理已经不错，但仍有几个明显缺口:
-
-- `ruff.toml` 直接排除了整个 `frontend`
-- CI 中 `ruff` / `mypy` 只检查显式列出的少量 Python 文件，不包含 `chat_service.py`、`city_service.py`、`graph/nodes.py`、`graph/memory_integration.py`
-- 前端单测目前只有少量核心点，组件层仅见 `MessageList.test.tsx`
-- `frontend/tests/unit/stores/chatStore.test.ts` 的实际内容是 logger 测试，说明测试目录命名已出现漂移
-
-#### G. 可读性被“模板化 docstring”侵蚀
-
-仓库中包含大量重复的 `Purpose:` 风格 docstring:
-
-- `web/` 中约 89 处
-- `agent/` 中约 206 处
-
-而 `scripts/docstring_audit.py` 当前只审查“是否存在 docstring”，不会衡量是否有信息量。这会自然诱导出“为通过审计而补模板”的行为，最终降低代码的有效可读性。
+- 边界是“约定出来的”，不是“系统结构保证的”
 
 ## 3. 重构目标
 
-本轮整体重构的目标不是重写，而是让项目具备以下能力:
+本轮重构的北极星不是“拆文件”，而是建立一套稳定的执行底座。
 
-1. 主链路稳定
-   前端、API、Agent 的调用链有明确边界，改动可控。
-2. 契约单一真相源
-   API 与 SSE 模型不再靠手工双写维护。
-3. Agent 可分段演进
-   intent、planning、execution、verification、answer 可以独立优化。
-4. 工程治理覆盖关键复杂度区域
-   最大文件、核心运行时、SSE 契约、前端大组件全部进入检查范围。
-5. 重构过程渐进可回退
-   优先模块抽离与兼容层，不做一次性大爆破。
+### 3.1 目标能力
+
+1. 契约成为单一真相源  
+   REST、SSE、artifact、health payload 不再靠前后端手写双份维护。
+
+2. 运行时骨架稳定  
+   `Web API -> Agent Runtime -> Graph/Supervisor` 的执行链清晰可测，变更只影响局部。
+
+3. AI 波动逻辑被隔离  
+   intent、planning、execution、verification、answer、memory、policy 各自有明确边界。
+
+4. 前端围绕领域组织  
+   `chat / city-explorer / trip-plan / session / system-status` 成为一等模块，而不是继续堆大组件。
+
+5. 工程治理对准复杂度黑洞  
+   最大文件、流式主链、graph 主体、契约快照、回放和健康检查全部进入门禁。
+
+### 3.2 非目标
+
+这轮不做下面这些事：
+
+- 不更换 `FastAPI / Next.js / LangGraph`
+- 不一次性推翻当前所有 `graph/*` 逻辑
+- 不为了“纯架构美观”牺牲当前可运行链路
+- 不把重构做成大爆炸迁移
 
 ## 4. 设计原则
 
-- 契约优先: 先收口输入输出，再拆内部实现。
-- 运行时优先: 先保护 `chat stream` 主链路，再做局部重构。
-- 分层清晰: Router 不写业务，Service 不堆协议，Runtime 不直接背所有策略细节。
-- 小步迁移: 兼容旧接口，逐步替换内部模块。
-- 观测先行: 每个阶段都必须可测、可追踪、可比较。
+- Contract First：先收口输入输出，再拆内部实现
+- Harness First：先稳定执行骨架，再优化具体能力
+- Runtime First：先保护聊天与 SSE 主链，再扩散到其他模块
+- Slice by Domain：前端按领域切，不按页面大组件切
+- Replace by Adapter：优先加兼容层，不直接推翻调用方
+- Observe Before Rewrite：所有关键迁移都必须能比较、回放、定位
 
 ## 5. 目标架构
 
-### 5.1 总体目标图
-
 ```mermaid
 flowchart LR
-    A["Next.js App"] --> B["Web BFF / API Facade"]
+    A["Next.js Frontend"] --> B["Web API Facade"]
     B --> C["Application Services"]
     C --> D["Agent Runtime Harness"]
-    D --> E["Intent / Planning / Execution / Verification Pipelines"]
-    E --> F["Tools / Providers / Policies"]
+    D --> E["Intent / Planning / Execution / Verification"]
+    E --> F["Tools / Policies / Providers"]
     D --> G["Memory / Session / Checkpoint"]
-    B --> H["Contract Schemas"]
+    B --> H["Contract Registry"]
     A --> H
-    C --> I["Observability / Metrics / Replay / Benchmark"]
+    C --> I["Replay / Eval / Metrics / Alerts"]
     D --> I
 ```
 
-### 5.2 前端目标结构
+### 5.1 Frontend 目标结构
 
-建议从“按组件堆叠”转为“按领域切片”:
+建议从当前的“大组件堆叠”演进为：
 
 ```text
 frontend/src/
@@ -186,10 +170,11 @@ frontend/src/
 │   ├── chat/
 │   │   ├── components/
 │   │   ├── hooks/
+│   │   ├── stream/
 │   │   ├── store/
-│   │   └── stream/
-│   ├── trip-plan/
+│   │   └── contracts/
 │   ├── city-explorer/
+│   ├── trip-plan/
 │   ├── session/
 │   └── system-status/
 ├── shared/
@@ -197,345 +182,390 @@ frontend/src/
 │   ├── contracts/
 │   ├── ui/
 │   └── utils/
-└── types/
+└── generated/
 ```
 
-具体收口建议:
+重点不是目录长什么样，而是职责要变清楚：
 
-- 把 `ChatArea.tsx` 拆成:
-  - `useChatStream`
-  - `useChatComposer`
-  - `ChatRuntimePanel`
-  - `ChatConstraintBar`
-  - `ChatInputBox`
-- 把 `MessageList.tsx` 拆成:
-  - markdown normalize
-  - think block parser
-  - export/share actions
-  - message item renderer
-- 把 `api.ts` 拆成:
-  - `rest-client.ts`
-  - `stream-client.ts`
-  - `trace.ts`
-  - `endpoints/*.ts`
-- 统一 `API_BASE` 解析策略，消除 `AppContext.tsx` 与 `api.ts` 的双轨配置。
+- 组件只负责渲染与交互
+- stream 解析独立成状态机
+- API client 不再承载所有 endpoint 逻辑
+- 类型优先从契约生成，而不是手写散落
 
-状态管理建议:
+### 5.2 Web API 目标结构
 
-- UI 局部状态继续留在组件或 hook
-- 跨页面/跨组件会话状态收敛到 store
-- 流式运行时状态单独建流式 store，不与消息持久态混在一起
-
-### 5.3 Web API 目标结构
-
-建议从当前的 `routes + services + repositories + storage` 演进为更明确的四层:
+`Web API` 应继续朝“薄路由、薄 facade、厚 contract、清晰应用层”演进：
 
 ```text
 web/moyuan_web/
 ├── api/
-│   ├── routes/
 │   ├── schemas/
-│   └── errors/
-├── application/
+│   └── events/
+├── routes/
+├── services/
 │   ├── chat/
-│   ├── session/
 │   ├── city/
-│   ├── share/
-│   └── map/
-├── domain/
-│   ├── session/
-│   ├── share/
-│   └── city/
-├── infrastructure/
-│   ├── repositories/
-│   ├── storage/
-│   ├── config/
-│   └── observability/
-└── bootstrap/
+│   ├── map/
+│   └── session/
+├── application/
+├── bootstrap/
+├── dependencies/
+└── observability/
 ```
 
-拆分重点:
+目标状态：
 
-- `routes/*.py` 只负责 HTTP 协议与错误码映射
-- 所有 `BaseModel` 迁移到 `api/schemas/`
-- `chat_service.py` 拆成:
-  - `chat_stream_service.py`
-  - `chat_history_service.py`
-  - `chat_health_service.py`
-  - `chat_metrics.py`
-- `city_service.py` 拆成:
-  - `city_catalog_service.py`
-  - `city_recommendation_service.py`
-  - `city_mapper.py`
+- Router：只做 HTTP/SSE 映射
+- Application Service：编排 session、runtime、repository、metrics
+- Domain/Integration Service：只做各自子领域逻辑
+- Bootstrap：只做容器、配置、启动顺序
+- Contract Registry：统一定义 REST/SSE/artifact payload
 
-依赖注入建议:
+### 5.3 Agent Runtime 目标结构
 
-- 保留当前轻量容器思路
-- 但把“全局单例 + provider 函数”收敛到 bootstrap 层
-- 业务层不再感知容器
-
-### 5.4 Agent 目标结构
-
-Agent 侧应从“超大节点文件”演进到“编排层 + 阶段模块 + 策略模块”。
-
-建议结构:
+当前 `agent/travel_agent/runtime/agent_runtime.py` 已经是一个不错的兼容外壳，但它还在调用旧的 `graph.builder` 大入口。下一阶段应该把真正的复杂度分解为：
 
 ```text
 agent/travel_agent/
+├── contracts/
+│   ├── events.py
+│   ├── artifacts.py
+│   └── skills.py
 ├── runtime/
 │   ├── agent_runtime.py
-│   ├── stream_adapter.py
-│   └── diagnostics.py
-├── orchestration/
-│   ├── graph_builder.py
-│   ├── stage_router.py
-│   └── event_stream.py
-├── stages/
+│   ├── event_bus.py
+│   ├── artifact_builder.py
+│   ├── policy_engine.py
+│   └── health.py
+├── pipelines/
 │   ├── intent.py
 │   ├── planning.py
 │   ├── execution.py
 │   ├── verification.py
-│   ├── answering.py
-│   └── self_check.py
-├── policies/
-│   ├── tool_policy.py
-│   ├── retry_policy.py
-│   ├── timeout_policy.py
-│   ├── safety_policy.py
-│   └── freshness_policy.py
+│   └── answer.py
 ├── memory/
-│   ├── manager.py
-│   ├── summarizer.py
-│   ├── injector.py
-│   └── checkpoint_store.py
-├── artifacts/
-├── skills/
+│   ├── loader.py
+│   ├── persistence.py
+│   └── conflict_resolution.py
+├── supervisor/
 ├── subagents/
-└── tools/
+└── skills/
 ```
 
-核心思想:
+核心目标：
 
-- `runtime` 负责给 Web 提供稳定入口
-- `orchestration` 负责图构建和事件流兼容
-- `stages` 只负责某一阶段的纯业务逻辑
-- `policies` 抽离重试、超时、熔断、高风险保护等横切逻辑
-- `memory` 从 `graph/memory_integration.py` 中独立出来，避免记忆逻辑继续膨胀
+- `graph/nodes.py` 不再承载所有策略与执行细节
+- `memory_integration.py` 不再同时负责注入、持久化、摘要和冲突处理
+- event、artifact、policy、subagent transition 都有独立落点
 
-这样可以把当前 `nodes.py` 中的复杂度拆散成数个可单测、可替换的模块。
+## 6. 七条重构主线
 
-### 5.5 契约与共享模型
+### 6.1 Contract Spine
 
-建议建立“单一真相源”的契约层，至少覆盖:
+这是第一优先级。
 
-- REST request/response
-- SSE event payload
-- artifact schema
-- health diagnostics schema
+当前进度：
 
-落地方式建议二选一:
+- [已完成 2026-03-26] SSE 事件注册中心已落地
+- [已完成 2026-03-26] artifact 公共契约已落地，SSE 输出与 session 历史 diagnostics 已统一到同一份公共 camelCase 结构
 
-#### 方案 A: 以后端 schema 为源，前端自动生成类型
+目标：
 
-- 后端集中定义 `api/schemas/*`
-- 通过 OpenAPI 或单独的 JSON Schema 导出前端类型
-- 前端 `src/types` 仅保留 UI 组合型类型
+- 建立统一的 REST 契约中心
+- 建立统一的 SSE 事件中心
+- 建立统一的 artifact payload 定义
+- 让前端类型从契约生成或映射，而不是继续手写复制
 
-#### 方案 B: 新建 `shared-contracts/` 模块
+建议动作：
 
-- 对 REST/SSE/artifact 建独立 schema
-- Web 与 Frontend 同时消费
-- AgentRuntime 也直接依赖这套 schema
+- 在 `web/moyuan_web/api/` 下新增 `events/` 或 `contracts/`
+- 把 chat stream 相关事件抽成判别联合模型
+- 为 `plan_preview`、`artifact_patch`、`subagent_start/end`、`done` 建统一 schema
+- 导出前端消费的类型快照或生成代码
 
-对当前项目而言，推荐优先使用方案 A，成本最低，也更贴合已有 OpenAPI/SSE 快照体系。
+验收标准：
 
-### 5.6 配置与打包边界
+- 新增或改动 SSE 事件时，不再需要同时手改多处前后端类型
+- OpenAPI/SSE snapshot 能作为回归门禁
 
-建议把仓库从“逻辑分层”升级为“逻辑分层 + 打包分层”:
+### 6.2 Web Application Harness
 
-- 根目录统一 Python 工程入口
-- `agent` 与 `web` 作为明确子包
-- 逐步移除 `ensure_project_paths()` 与脚本里的 `sys.path.insert(...)`
+目标：
 
-建议目标:
+- 让 `main.py` 只负责应用装配
+- 让 `chat stream` 主链路继续瘦身
+- 让 `service facade` 模式推广到剩余 Web API 领域
 
-- 用单一 `pyproject.toml` 或明确 workspace 管理 Python 依赖
-- `scripts/` 通过标准包导入运行
-- CI、容器、本地命令共享同一套导入模型
+当前进度：
 
-### 5.7 工程治理与质量门禁
+- [已完成 2026-03-26] `stream_mixin.py` 已拆出 `sse_serializer / stream_diagnostics / stream_finalizer` 三个协作器，主 mixin 已进一步退化为编排层
+- [已完成 2026-03-26] `main.py` 已继续下沉，新增 `web/moyuan_web/bootstrap_app.py` 统一收口 `CORS / 依赖预热 / router 注册 / root + openapi metadata`，主入口文件现在主要保留 app 委托与 `uvicorn` 启动逻辑
 
-#### Python
+建议动作：
 
-- `ruff` 和 `mypy` 不再只检查白名单文件，而是覆盖 `agent/`、`web/`、`scripts/`
-- 对复杂模块增加文件级规则:
-  - 单文件建议不超过 500 行
-  - 超过阈值必须拆分或记录 ADR
+- 引入 `ApplicationContext` 或等价的启动装配对象
+- 把 `main.py` 里的预热、容器、route include、health wiring 再收成更清晰的 bootstrap 层
+- 把 `stream_mixin.py` 再拆成 `event_normalizer / sse_serializer / finalizer / diagnostics`
+- 把 repository 与 storage 层边界补清楚
 
-#### Frontend
+验收标准：
 
-- 增加 ESLint
-- 补齐 `ChatArea`、`TravelPlanToolkit`、`CityExplorer`、`api stream client` 的单测
-- 把关键交互补到 Playwright 冒烟里:
-  - 建会话
-  - SSE 流式问答
-  - 分享链接
-  - 城市筛选
+- `main.py` 不再承担业务初始化细节
+- `stream_mixin.py` 继续下降到可维护体量
+- Router 文件都只保留 transport 逻辑
 
-#### 文档治理
+### 6.3 Agent Runtime Harness
 
-- `docstring_audit.py` 从“只看有没有”升级为“只要求公共模块和公开对象”
-- 对内部私有函数取消一刀切要求
-- 减少模板化 `Purpose:` 文本，把设计说明迁回架构文档与模块 README
+这是风险最高、收益也最高的一条线。
 
-## 6. 分阶段实施路线
+目标：
 
-### Phase 0: 基线冻结
+- 把旧 graph 里的复杂度迁到可替换的 pipeline 结构
+- 让 supervisor/subagents 成为真正的执行框架，而不是只停留在包装层
 
-目标: 在开始拆分前先锁定现状。
+当前进度：
 
-- 冻结当前 OpenAPI / SSE / benchmark / golden 基线
-- 记录大文件清单与复杂度清单
-- 为关键重构建立 ADR
+- [已完成 2026-03-26] `planning` 主链已从 `graph/nodes.py` 中抽成独立 `PlanningPipeline`，新增 `agent/travel_agent/pipelines/planning.py` 负责默认计划生成、工具策略补齐、计划标准化、计划校验与阶段输出构建；`AgentNodes.plan_node()` 已退化为委托入口，`graph/nodes.py` 当前已降到 `3093` 行。
+- [已完成 2026-03-26] `memory persistence` 已从 `memory_integration.py` 中抽成独立 `MemoryPersistenceStore`，新增 `agent/travel_agent/memory/persistence.py` 负责主备快照恢复、原子写入与磁盘持久化；`AgentMemoryManager` 现在主要保留会话序列化与语义层逻辑，`memory_integration.py` 当前已降到 `2795` 行。
+- [已完成 2026-03-26] `verification` 主链已从 `graph/nodes.py` 中抽成独立 `VerificationPipeline`，新增 `agent/travel_agent/pipelines/verification.py` 负责高风险 query 判定、required tool 缺失重试、stale refresh 降级与 `VerifyIssue / VerifyResult` 标准化；`AgentNodes.verify_node()` 已退化为委托入口，`graph/nodes.py` 当前已进一步降到 `2968` 行。
 
-产出:
+建议动作：
 
-- 重构任务看板
-- 风险矩阵
-- 回归清单
+- 继续从 `graph/nodes.py` 拆 `intent / strategy / execution / answer`
+- 再从 `memory_integration.py` 拆 `memory_load / memory_write / memory_summary / conflict_resolution`
+- 把 `tool retry / timeout / circuit / risk policy` 独立成 `policy_engine`
+- 把 artifact 生成逻辑从 runtime 和 stream 两边进一步抽成单独 builder
 
-### Phase 1: 契约和入口收口
+验收标准：
 
-目标: 先让边界稳定。
+- `graph/nodes.py` 与 `memory_integration.py` 不再是单点爆炸文件
+- 每条 pipeline 都可以单测、回放和对比输出
 
-- 新增 `web/moyuan_web/api/schemas/`
-- 把 route 内联 `BaseModel` 迁出
-- 统一 `frontend` 的 API base 与 trace headers 入口
-- 明确 `StreamMetadata` / `SubagentEvent` / `ArtifactPatch` 契约来源
+### 6.4 Frontend Feature Harness
 
-验收标准:
+目标：
 
-- 前后端契约定义位置统一
-- OpenAPI/SSE 快照与类型生成链路打通
-- 不改变现有 API 行为
+- 把当前前端从“页面里堆逻辑”转成“功能域驱动”
 
-### Phase 2: Web 服务拆分
+当前进度：
 
-目标: 把胖服务拆成可维护模块。
+- [已完成 2026-03-26] `frontend/src/services/api.ts` 已拆成 `frontend/src/services/api/` 下的分域 client 与 stream parser，新增 `health / session / model / city / map / share / chat` client 和 `chatStreamParser.ts`；`frontend/src/services/api.ts` 现在仅保留 1 行兼容导出，`AppContext / ChatArea / CityExplorer / Sidebar / SystemStatusPanel / TravelPlanToolkit` 已改为直接依赖领域 client，配套测试 `frontend/src/services/api/chatStreamParser.test.ts` 已锁住关键 stream 事件归一化。
 
-- 拆 `chat_service.py`
-- 拆 `city_service.py`
-- 容器注册迁移到 bootstrap
-- 让路由层只做协议映射
+建议动作：
 
-验收标准:
+- `ChatArea.tsx` 拆成 `chat-shell / composer / runtime-panel / constraint-bar`
+- `MessageList.tsx` 拆成 `message-renderer / think-block / export-actions / share-actions`
+- `TravelPlanToolkit.tsx` 拆成 `budget / conflict / compare / checklist / reminders`
+- `CityExplorer.tsx` 拆成 `filters / curated-prompts / shortlist / compare-table / detail-drawer`
+- 把 chat stream runtime 状态再收成 `useChatRuntime` 或等价 feature hook
 
-- `chat_service.py` 不再是单文件入口总控
-- 每个 service 文件职责单一
-- 现有测试继续通过
+验收标准：
 
-### Phase 3: 前端领域化重构
+- 前端 Top 5 大文件不再继续膨胀
+- feature 级单测开始替代整页式测试
 
-目标: 把 UI 大组件拆成领域模块。
+### 6.5 Package Boundary Harness
 
-- 引入 `features/chat`、`features/trip-plan`、`features/city-explorer`
-- 抽离 `useChatStream`
-- 抽离 markdown/导出/分享逻辑
-- 建立流式状态 store
+目标：
 
-验收标准:
+- 减少路径注入
+- 让模块导入依赖安装边界，而不是依赖运行目录
 
-- `ChatArea.tsx`、`MessageList.tsx` 降到 300 行级别
-- 流式解析与 UI 渲染分离
-- 前端关键路径有单测覆盖
+建议动作：
 
-### Phase 4: Agent 可演进化改造
+- 把 `ensure_project_paths()` 逐步限制在兼容层
+- 准备统一 workspace 或更清晰的可编辑安装方式
+- 让 `scripts/` 通过稳定包入口导入 `agent` 和 `web`
 
-目标: 拆解大图节点，保留兼容入口。
+验收标准：
 
-- 拆 `nodes.py` 为 `stages/* + policies/*`
-- 拆 `memory_integration.py` 为 `memory/*`
-- `builder.py` 只负责装配，不再承担策略
-- 保持 `AgentRuntime` 作为对 Web 的稳定 facade
+- `web/agent/scripts/tests` 里的路径注入次数显著下降
+- 本地、CI、容器的导入方式一致
 
-验收标准:
+### 6.6 Observability / Replay / Eval Harness
 
-- intent / planning / execution / verification 独立可测
-- tool policy、retry、timeout、safety 不再混在节点实现中
-- replay、benchmark、diagnostics 可以直接定位到阶段模块
+目标：
 
-### Phase 5: 平台化治理补齐
+- 让重构不是“感觉没坏”，而是“可证明没坏”
 
-目标: 让架构改造形成长期机制。
+当前进度：
 
-- 扩大静态检查覆盖
-- 增加前端 E2E
-- 增加复杂文件阈值检查
-- 增加契约生成和 drift 检查
+- [已完成 2026-03-26] chat stream golden fixture 已固化，新增 `tests/golden/chat_stream_golden_fixture.json` 作为稳定回放基线；`scripts/export_sse_contract_snapshot.py` 已支持导出 replay fixture，`tests/test_export_chat_stream_golden_fixture_script_unit.py` 会校验 `direct / react / plan` 三种模式下的关键事件序列与 `plan_preview / artifact_patch / metadata / done` 载荷。
 
-验收标准:
+建议动作：
 
-- CI 对复杂区域真正有约束力
-- 新增功能不再轻易把复杂度打回单文件
+- 为关键 chat 请求保留 golden stream fixture
+- 为 `plan_preview`、`artifact_patch`、`done` 做 SSE 回放样例
+- 将 benchmark/golden eval 与复杂模块迁移绑定
+- 为 `subagent`、`fallback`、`verification loop` 补充 metrics
 
-## 7. 第一批推荐落地项
+验收标准：
 
-如果只做第一轮，我建议优先做下面 10 项:
+- 每次大迁移都有前后对照样本
+- 回放结果能进入 CI 或至少进入人工变更清单
 
-1. 新增 `web/moyuan_web/api/schemas/`，迁出所有 route DTO。
-2. 统一前端 `API_BASE` 解析逻辑，只保留一套来源。
-3. 把 `frontend/src/services/api.ts` 拆成 REST client 与 SSE client。
-4. 为 `ChatArea` 抽出 `useChatStream`。
-5. 为 `MessageList` 抽出 markdown 预处理与导出模块。
-6. 把 `chat_service.py` 拆为 stream、history、health、metrics 四个服务。
-7. 把 `graph/nodes.py` 先拆出 `execution.py` 与 `verification.py`。
-8. 把 `graph/memory_integration.py` 先拆出 `memory/manager.py`。
-9. 让 `ruff` / `mypy` 覆盖 `chat_service.py` 与 `agent/travel_agent/graph/*`。
-10. 调整 `docstring_audit.py` 规则，减少模板化 docstring。
+### 6.7 Governance Harness
 
-## 8. 关键风险与规避方式
+目标：
 
-### 风险 1: 一次性拆太多导致主链路失稳
+- 让治理规则真正覆盖复杂区域，而不是只覆盖简单区域
 
-规避:
+建议动作：
 
-- 每阶段只动一个主轴
-- 保留兼容 facade
-- SSE 契约优先做快照回归
+- CI 把复杂文件纳入 `ruff` / `mypy` / compile checks
+- 对大文件设立“只减不增”预算
+- 把 `docstring_audit.py` 从“检查是否存在”升级为“检查是否有信息量”
+- 前端测试目录按 feature 重命名，避免目录语义漂移
 
-### 风险 2: 前后端类型在迁移期双轨维护更混乱
+验收标准：
 
-规避:
+- 重构过程中的复杂度下降可以被门禁反映出来
+- 模板化文档逐步减少，不再鼓励低信息量 docstring
 
-- 先定“哪个是源”
-- 在第一阶段就建立生成链路
-- 迁移期禁止再新增第三套类型定义
+## 7. 分阶段路线图
 
-### 风险 3: Agent 重构影响质量评估口径
+### Phase 0：冻结当前基线
 
-规避:
+目标：
 
-- benchmark / golden / replay 三套基线必须先冻结
-- 每次拆分都保留前后对比报表
+- 固化今天的契约、健康、回放和复杂度基准
 
-## 9. 目标衡量指标
+交付：
 
-重构完成后，建议至少达到以下指标:
+- 当前 OpenAPI/SSE snapshot
+- chat stream golden fixture
+- Top 10 大文件清单
+- 关键 metrics 清单
 
-- 前端核心组件文件控制在 300 行级别
-- Python 核心服务和阶段文件控制在 400-500 行级别
-- REST/SSE/artifact 契约有单一真相源
-- 静态检查覆盖 `agent/`、`web/`、`scripts/` 主体代码
-- 前端关键交互具备单测与 E2E 冒烟
-- benchmark / golden / replay 成为 Agent 重构的发布门禁
+### Phase 1：契约与 Web API 主链收口
 
-## 10. 结论
+目标：
 
-这个项目现在最适合走的路线，不是“重写一版更漂亮的架构”，而是:
+- 把 REST/SSE 契约变成单一真相源
+- 把 Web API 启动骨架再薄一层
 
-- 先收口契约
-- 再拆服务与大组件
-- 再拆 Agent 大节点
-- 最后把治理规则补成平台能力
+交付：
 
-从 Harness Engineering 的角度看，moyuan-travel-agent 下一阶段最关键的不是再堆更多功能，而是把已经形成雏形的三层系统，升级成一个真正可持续演进的执行底座。
+- 统一事件注册中心
+- `main.py`/bootstrap 再收口
+- `stream_mixin.py` 再拆
+
+### Phase 2：Agent Runtime 去单点巨石
+
+目标：
+
+- 从旧 `graph/*` 中迁出真正的复杂度
+
+交付：
+
+- pipeline 拆分
+- memory 子模块拆分
+- policy engine 初版
+- artifact builder 收口
+
+### Phase 3：Frontend 按领域切片
+
+目标：
+
+- 让聊天、城市探索、行程工具箱成为一等 feature 模块
+
+交付：
+
+- `chat` feature 目录
+- `city-explorer` feature 目录
+- 拆分后的 API client
+- feature 级测试
+
+### Phase 4：边界、治理与发布闭环
+
+目标：
+
+- 让后续迭代不再重新长回“大文件 + 隐式耦合”
+
+交付：
+
+- 路径注入收缩
+- CI 复杂度门禁
+- richer docstring 审计
+- replay/eval/observability 闭环
+
+## 8. 推荐的首批 12 个动作
+
+下面这些动作适合按顺序推进：
+
+1. [已完成 2026-03-26] 建立 SSE 事件注册中心，并让 `plan_preview / artifact_patch / done / metadata` 进入统一注册表  
+   已落地：`web/moyuan_web/api/events/chat_stream.py`，`stream_mixin.py` 的 SSE 序列化已改为统一校验出口，`sse-contract.snapshot.json` 已升级到注册表基线。
+2. [已完成 2026-03-26] 把前端 stream 类型改为从统一契约消费  
+   已落地：`frontend/src/types/index.ts` 已集中收口 chat stream 事件名与 artifact 类型，`frontend/src/services/api.ts` 已改为从统一契约常量消费事件类型。
+3. [已完成 2026-03-26] 把 `stream_mixin.py` 再拆成 serializer/finalizer/diagnostics  
+   已落地：新增 `web/moyuan_web/services/chat/sse_serializer.py`、`stream_diagnostics.py`、`stream_finalizer.py` 三个协作器，`stream_mixin.py` 已继续退化为主流程编排层。
+4. [已完成 2026-03-26] 把 `main.py` 继续下沉为纯装配层  
+   已落地：新增 `web/moyuan_web/bootstrap_app.py` 承接应用装配逻辑，`main.py` 已不再直接承载 `CORS / 依赖预热 / router include / metadata route` 的细节。
+5. [已完成 2026-03-26] 从 `graph/nodes.py` 拆出 `planning` pipeline  
+   已落地：新增 `agent/travel_agent/pipelines/planning.py`，`plan_node()` 已改为委托 `PlanningPipeline`；配套测试 `tests/test_agent_planning_pipeline_unit.py` 已锁住计划补齐与校验行为。
+6. [已完成 2026-03-26] 从 `graph/nodes.py` 拆出 `verification` pipeline  
+   已落地：新增 `agent/travel_agent/pipelines/verification.py`，`verify_node()` 已改为委托 `VerificationPipeline`；配套测试 `tests/test_agent_verification_pipeline_unit.py` 已覆盖缺失 required tool 重试与 stale refresh 降级行为，`graph/nodes.py` 当前已降到 `2968` 行。
+7. [已完成 2026-03-26] 从 `memory_integration.py` 拆出 `memory persistence`  
+   已落地：新增 `agent/travel_agent/memory/persistence.py`，`AgentMemoryManager` 已改为通过 `MemoryPersistenceStore` 处理主备恢复与原子写入；配套测试 `tests/test_agent_memory_persistence_unit.py` 与 `tests/test_agent_memory_unit.py` 已覆盖恢复行为。
+8. 从 `memory_integration.py` 拆出 `memory conflict resolution`  
+9. [已完成 2026-03-26] 把 `frontend/src/services/api.ts` 拆成 endpoint client  
+   已落地：新增 `frontend/src/services/api/` 目录，`api.ts` 已退化为兼容 facade；`AppContext / ChatArea / CityExplorer / Sidebar / SystemStatusPanel / TravelPlanToolkit` 已改用分域 client，`frontend/src/services/api/chatStreamParser.test.ts` 已覆盖 `plan_preview / done / error` 三类关键 stream 事件。
+10. 把 `MessageList.tsx` 拆成 renderer 与动作层  
+11. 将 `scripts/tests` 的路径注入逐步替换为稳定导入入口  
+12. 把 docstring 审计从“覆盖率”升级到“信息量”规则
+
+## 9. 验收指标
+
+重构不是靠感觉完成，建议至少跟踪下面这些指标：
+
+- Top 10 大文件总行数下降
+- `graph/nodes.py` 与 `memory_integration.py` 明显瘦身
+- `frontend` Top 5 大组件全部进入 feature 目录
+- 路径注入次数下降
+- SSE 契约变更不再需要前后端手工双改
+- 新增 regression fixture 可覆盖 `plan_preview / artifact_patch / done`
+- CI 对复杂模块的检查范围扩大
+
+## 10. 风险与控制
+
+### 风险 1：重构期间聊天主链回归
+
+控制：
+
+- 先固化 golden stream fixture
+- 所有 stream 相关迁移都通过 replay 对照
+
+### 风险 2：Supervisor 架构名义存在，但执行仍回落旧 graph
+
+控制：
+
+- 明确“包装层迁移”与“复杂度迁移”是两件事
+- 优先迁出 planning / verification / memory
+
+### 风险 3：前端拆分后样式和交互被破坏
+
+控制：
+
+- 先拆 stream/state，再拆 view
+- 保留 feature 壳组件作为兼容层
+
+### 风险 4：治理规则变严后影响日常开发速度
+
+控制：
+
+- 先对高复杂度文件建专项门禁
+- 不一次性把全仓严格化
+
+## 11. 结论
+
+从 harness engineering 的角度看，`moyuan-travel-agent` 现在最需要的不是新增一批离散功能，而是把已经存在的能力挂到更稳定的执行框架上。
+
+当前最值得投入的顺序是：
+
+1. 契约脊柱  
+2. Web API 主链收口  
+3. Agent Runtime 去单点巨石  
+4. Frontend 按领域切片  
+5. 边界与治理闭环
+
+只要沿着这五步推进，项目会从“功能很多但变化风险偏高”，逐步变成“功能很多且能稳定演进”的状态。

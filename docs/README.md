@@ -75,7 +75,8 @@
 ### Architecture
 
 - [architecture/system-architecture.md](architecture/system-architecture.md): 整体系统架构与链路说明
-- [architecture/harness-engineering-refactor-design.md](architecture/harness-engineering-refactor-design.md): 基于 Harness Engineering 视角的整体重构优化设计
+- [architecture/harness-engineering-refactor-design.md](architecture/harness-engineering-refactor-design.md): 基于 Harness Engineering 视角的当前基线重构规划与执行方案
+- [architecture/harness-engineering-evolution-roadmap.md](architecture/harness-engineering-evolution-roadmap.md): 符合 Harness Engineering 思路的完整项目演进总方案
 - [architecture/agent-subagent-skills-architecture-roadmap.md](architecture/agent-subagent-skills-architecture-roadmap.md): Agent 应用层与 `Supervisor -> Subagents -> Skills` 演进路线图
 - [architecture/infrastructure-foundations.md](architecture/infrastructure-foundations.md): 运行与部署、配置、readiness、CI、trace、metrics 总览
 - [architecture/data-storage.md](architecture/data-storage.md): 数据落盘与持久化策略
