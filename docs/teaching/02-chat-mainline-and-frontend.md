@@ -444,6 +444,7 @@ sequenceDiagram
 
 - `AppContext.tsx` 是 provider 装配层
 - `useSessionHistoryState.ts` 是 session-history harness
+- `useModelBootstrapState.ts` 是 model bootstrap harness
 - `useChatSessionHydration.ts` 是 chat runtime 的 share/session reset harness
 
 这些状态的共同特点是：
@@ -883,6 +884,7 @@ sequenceDiagram
 阅读时建议对照：
 
 - `frontend/src/context/AppContext.tsx`
+- `frontend/src/context/useModelBootstrapState.ts`
 - `frontend/src/context/useSessionHistoryState.ts`
 - `frontend/src/utils/sessionMessages.ts`
 - `web/moyuan_web/routes/session.py`
