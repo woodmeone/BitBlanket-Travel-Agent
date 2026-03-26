@@ -4,25 +4,22 @@ import React, { useEffect, useRef, useState } from 'react';
 import { App } from 'antd';
 import { useAppContext } from '@/context/AppContext';
 import { chatClient, sessionClient, shareClient, type StreamMetadata } from '@/services/api';
-import type { ArtifactPatch, PlanPreview, StreamStageEvent, SubagentEvent, TripPlanArtifact } from '@/types';
+import type { PlanPreview, StreamStageEvent, SubagentEvent, TripPlanArtifact } from '@/types';
 import { logger } from '@/utils/logger';
 import { mergeTripPlanArtifact } from '@/utils/agentArtifacts';
 import {
-  ANSWER_CHARS_PER_TICK,
   buildEnhancedPrompt,
   MAX_EVENT_LOGS,
   MAX_STAGE_LOGS,
-  MAX_SUBAGENT_EVENTS,
   messageTimestamp,
-  nowLabel,
-  REASONING_CHARS_PER_TICK,
-  STREAM_FLUSH_INTERVAL_MS,
   subagentLabel,
-  takeChars,
   type ActiveView,
   type ComparePlanCount,
   type RuntimeLog,
 } from './shared';
+import { useArtifactRuntimeState } from './useArtifactRuntimeState';
+import { useStreamBuffer } from './useStreamBuffer';
+import { buildCompletionDiagnostics, buildFinalReasoning, buildStoppedDiagnostics } from './runtimeMessageBuilders';
 
 interface UseChatRuntimeResult {
   activeSubagent: string | null;
@@ -94,10 +91,6 @@ export function useChatRuntime(): UseChatRuntimeResult {
   const [stageState, setStageState] = useState<StreamStageEvent | null>(null);
   const [stageHistory, setStageHistory] = useState<StreamStageEvent[]>([]);
   const [runtimeLogs, setRuntimeLogs] = useState<RuntimeLog[]>([]);
-  const [planPreview, setPlanPreview] = useState<PlanPreview | null>(null);
-  const [artifactState, setArtifactState] = useState<TripPlanArtifact | null>(null);
-  const [subagentEvents, setSubagentEvents] = useState<SubagentEvent[]>([]);
-  const [activeSubagent, setActiveSubagent] = useState<string | null>(null);
   const [selectedConstraints, setSelectedConstraints] = useState<string[]>([]);
   const [budgetUpperLimit, setBudgetUpperLimit] = useState<number | null>(null);
   const [compareModeEnabled, setCompareModeEnabled] = useState(false);
@@ -107,147 +100,50 @@ export function useChatRuntime(): UseChatRuntimeResult {
   const stopRef = useRef(false);
   const skipNextSessionResetRef = useRef(false);
   const metadataRef = useRef<StreamMetadata | null>(null);
-  const artifactRef = useRef<TripPlanArtifact | null>(null);
-  const subagentEventsRef = useRef<SubagentEvent[]>([]);
-  const fullResponseRef = useRef('');
-  const fullReasoningRef = useRef('');
-  const reasoningTimestampRef = useRef('');
-  const subagentEventKeyRef = useRef(0);
-  const streamQueueRef = useRef({ answer: '', reasoning: '' });
-  const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const scrollRafRef = useRef<number | null>(null);
   const hasHandledShareRef = useRef(false);
+  const {
+    activeSubagent,
+    artifactRef,
+    artifactState,
+    planPreview,
+    subagentEvents,
+    subagentEventsRef,
+    applyArtifactPatch,
+    recordSubagentEvent,
+    resetArtifactRuntimeState,
+    setPlanPreview,
+  } = useArtifactRuntimeState();
+  const {
+    fullReasoningRef,
+    fullResponseRef,
+    reasoningTimestampRef,
+    streamScrollMarker,
+    clearStreamRuntimeRefs,
+    drainStreamingQueueToRefs,
+    enqueueAnswer,
+    enqueueReasoning,
+    scheduleScrollToBottom,
+    setReasoningTimestamp,
+  } = useStreamBuffer({
+    messagesEndRef,
+    setStreamingMessage,
+    setStreamingReasoning,
+  });
 
   const pushRuntimeLog = (label: string, detail?: string) => {
     const item: RuntimeLog = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       label,
       detail,
-      time: nowLabel(),
+      time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
     };
     setRuntimeLogs((prev) => [...prev.slice(-MAX_EVENT_LOGS + 1), item]);
   };
 
-  const applyArtifactPatch = (patch: ArtifactPatch | TripPlanArtifact | null | undefined) => {
-    const merged = mergeTripPlanArtifact(artifactRef.current, patch);
-    artifactRef.current = merged;
-    setArtifactState(merged);
-  };
-
-  const recordSubagentEvent = (event: SubagentEvent) => {
-    subagentEventKeyRef.current += 1;
-    const stamped: SubagentEvent = {
-      ...event,
-      timestamp: event.timestamp || nowLabel(),
-      clientKey: event.clientKey || `subagent-event-${Date.now()}-${subagentEventKeyRef.current}`,
-    };
-    const nextEvents = [...subagentEventsRef.current.slice(-MAX_SUBAGENT_EVENTS + 1), stamped];
-    subagentEventsRef.current = nextEvents;
-    setSubagentEvents(nextEvents);
-    if (event.status) {
-      setActiveSubagent((current) => (current === event.subagent ? null : current));
-      return;
-    }
-    setActiveSubagent(event.subagent);
-  };
-
-  const scheduleScrollToBottom = () => {
-    if (scrollRafRef.current !== null) return;
-    scrollRafRef.current = window.requestAnimationFrame(() => {
-      scrollRafRef.current = null;
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-    });
-  };
-
-  const stopFlushTimer = () => {
-    if (flushTimerRef.current !== null) {
-      clearInterval(flushTimerRef.current);
-      flushTimerRef.current = null;
-    }
-  };
-
-  const flushStreamingQueue = () => {
-    let didUpdate = false;
-
-    if (streamQueueRef.current.reasoning) {
-      const [chunk, rest] = takeChars(streamQueueRef.current.reasoning, REASONING_CHARS_PER_TICK);
-      streamQueueRef.current.reasoning = rest;
-      if (chunk) {
-        didUpdate = true;
-        setStreamingReasoning((prev) => prev + chunk);
-      }
-    }
-
-    if (streamQueueRef.current.answer) {
-      const [chunk, rest] = takeChars(streamQueueRef.current.answer, ANSWER_CHARS_PER_TICK);
-      streamQueueRef.current.answer = rest;
-      if (chunk) {
-        didUpdate = true;
-        setStreamingMessage((prev) => prev + chunk);
-      }
-    }
-
-    if (didUpdate) scheduleScrollToBottom();
-    if (!streamQueueRef.current.answer && !streamQueueRef.current.reasoning) stopFlushTimer();
-  };
-
-  const startFlushTimer = () => {
-    if (flushTimerRef.current !== null) return;
-    flushTimerRef.current = setInterval(flushStreamingQueue, STREAM_FLUSH_INTERVAL_MS);
-  };
-
-  const enqueueAnswer = (content: string) => {
-    if (!content) return;
-    streamQueueRef.current.answer += content;
-    startFlushTimer();
-  };
-
-  const enqueueReasoning = (content: string) => {
-    if (!content) return;
-    streamQueueRef.current.reasoning += content;
-    startFlushTimer();
-  };
-
-  const drainStreamingQueueToRefs = () => {
-    if (streamQueueRef.current.answer) {
-      fullResponseRef.current += streamQueueRef.current.answer;
-      streamQueueRef.current.answer = '';
-    }
-    if (streamQueueRef.current.reasoning) {
-      fullReasoningRef.current += streamQueueRef.current.reasoning;
-      streamQueueRef.current.reasoning = '';
-    }
-  };
-
-  const clearStreamRuntimeRefs = () => {
-    stopFlushTimer();
-    streamQueueRef.current.answer = '';
-    streamQueueRef.current.reasoning = '';
-    fullResponseRef.current = '';
-    fullReasoningRef.current = '';
-    reasoningTimestampRef.current = '';
-  };
-
   const clearArtifactRuntimeState = () => {
-    artifactRef.current = null;
-    subagentEventsRef.current = [];
-    subagentEventKeyRef.current = 0;
     metadataRef.current = null;
-    setArtifactState(null);
-    setSubagentEvents([]);
-    setActiveSubagent(null);
-    setPlanPreview(null);
+    resetArtifactRuntimeState();
   };
-
-  useEffect(() => {
-    return () => {
-      stopFlushTimer();
-      if (scrollRafRef.current !== null) {
-        window.cancelAnimationFrame(scrollRafRef.current);
-        scrollRafRef.current = null;
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -279,9 +175,6 @@ export function useChatRuntime(): UseChatRuntimeResult {
     loadSharedContent();
   }, [message, setCurrentSessionId, setMessages]);
 
-  const streamScrollMarker = `${Math.floor(streamingMessage.length / 8)}-${Math.floor(
-    streamingReasoning.length / 12
-  )}`;
   useEffect(() => {
     scheduleScrollToBottom();
   }, [messages.length, streamScrollMarker, isThinking, waitingForResponse, currentTool, runtimeLogs.length]);
@@ -411,7 +304,7 @@ export function useChatRuntime(): UseChatRuntimeResult {
           },
           onReasoningStart: () => setIsThinking(true),
           onReasoningTimestamp: (timestamp) => {
-            reasoningTimestampRef.current = timestamp;
+            setReasoningTimestamp(timestamp);
           },
           onReasoningEnd: () => setIsThinking(false),
           onAnswerStart: () => setIsThinking(false),
@@ -446,29 +339,17 @@ export function useChatRuntime(): UseChatRuntimeResult {
             message.destroy();
             drainStreamingQueueToRefs();
 
-            const finalReasoning = reasoningTimestampRef.current
-              ? `[Timestamp: ${reasoningTimestampRef.current}]\n\n${fullReasoningRef.current}`
-              : fullReasoningRef.current;
+            const finalReasoning = buildFinalReasoning(fullReasoningRef.current, reasoningTimestampRef.current);
             const finalContent = fullResponseRef.current;
             const finalMetadata = metadataRef.current;
             const finalArtifact = mergeTripPlanArtifact(artifactRef.current, completion?.artifact);
             const finalSubagentEvents = subagentEventsRef.current;
-            const finalDiagnostics =
-              finalMetadata || finalArtifact || finalSubagentEvents.length > 0
-                ? {
-                    toolsUsed: finalMetadata?.toolsUsed || finalArtifact?.toolsUsed || [],
-                    verificationPassed: finalMetadata?.verificationPassed ?? finalArtifact?.verification.passed ?? null,
-                    staleResultCount: finalMetadata?.staleResultCount ?? finalArtifact?.budget.staleResultCount ?? 0,
-                    fallbackSteps: finalMetadata?.fallbackSteps ?? finalArtifact?.budget.fallbackSteps ?? 0,
-                    planId: finalMetadata?.planId ?? finalArtifact?.itinerary.planId ?? null,
-                    executionStats: finalMetadata?.executionStats ?? finalArtifact?.budget.summary,
-                    artifact: finalArtifact,
-                    subagentEvents: finalSubagentEvents,
-                    runId: completion?.runId || finalMetadata?.runId,
-                    requestId: completion?.requestId || finalMetadata?.requestId,
-                    traceId: completion?.traceId || finalMetadata?.traceId,
-                  }
-                : undefined;
+            const finalDiagnostics = buildCompletionDiagnostics({
+              artifact: finalArtifact,
+              completion,
+              metadata: finalMetadata,
+              subagentEvents: finalSubagentEvents,
+            });
 
             clearStreamRuntimeRefs();
             addMessage({
@@ -532,10 +413,7 @@ export function useChatRuntime(): UseChatRuntimeResult {
         role: 'assistant',
         content: `${stoppedContent || '已停止生成'}\n\n⚠️ 已停止生成`,
         reasoning: stoppedReasoning,
-        diagnostics:
-          stoppedArtifact || stoppedSubagentEvents.length > 0
-            ? { artifact: stoppedArtifact, subagentEvents: stoppedSubagentEvents }
-            : undefined,
+        diagnostics: buildStoppedDiagnostics({ artifact: stoppedArtifact, subagentEvents: stoppedSubagentEvents }),
         timestamp: messageTimestamp(),
       });
     }
