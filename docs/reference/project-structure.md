@@ -77,7 +77,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - `travel_agent/supervisor/`
   - Phase 1 兼容层，先用 supervisor 外壳承接当前单图
 - `travel_agent/subagents/`
-  - Phase 2 最小 subagent 实现与注册表，当前包含 research / planning / verification
+  - Phase 2 到 Phase 3 过渡期的 subagent 实现与注册表，当前包含 research / planning / budget / verification
 - `travel_agent/skills/`
   - skill registry 与领域能力契约映射
 - `travel_agent/artifacts/`
@@ -145,7 +145,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - 场景 prompt、筛选器、shortlist、对比池、城市网格与详情抽屉
   - `sections.tsx` 仅保留兼容导出，真实 section modules 位于 `city-explorer/sections/`
 - `services/api/`
-  - chat / city / map / health / session / share 等分域 client 与 stream parser
+  - chat / city / map / health / session / share / artifact 等分域 client 与 stream parser
 
 ### `config/`
 
@@ -236,7 +236,9 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 
 - [`web/moyuan_web/routes/chat.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)
 - [`web/moyuan_web/routes/health.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/health.py)
+- [`web/moyuan_web/routes/artifact.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/artifact.py)
 - [`web/moyuan_web/services/chat_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)
+- [`web/moyuan_web/services/artifact_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/artifact_service.py)
 - [`web/moyuan_web/services/share_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/share_service.py)
 - [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py)
 - [`web/moyuan_web/startup_checks.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/startup_checks.py)
@@ -249,6 +251,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - [`agent/travel_agent/subagents/registry.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/registry.py)
 - [`agent/travel_agent/subagents/research.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/research.py)
 - [`agent/travel_agent/subagents/planning.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/planning.py)
+- [`agent/travel_agent/subagents/budget.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/budget.py)
 - [`agent/travel_agent/subagents/verification.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/verification.py)
 - [`agent/travel_agent/skills/registry.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/skills/registry.py)
 - [`agent/travel_agent/artifacts/models.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/artifacts/models.py)

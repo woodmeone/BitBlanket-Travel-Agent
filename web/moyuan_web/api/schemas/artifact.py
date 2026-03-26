@@ -223,6 +223,18 @@ class ArtifactPatch(_ArtifactModel):
     metadata: Optional[dict[str, Any]] = None
 
 
+class LatestArtifactResponse(_ArtifactModel):
+    """HTTP response payload for retrieving the latest persisted trip artifact."""
+
+    success: bool = True
+    session_id: str
+    artifact_found: bool = False
+    artifact: Optional[TripPlanArtifact] = None
+    run_id: Optional[str] = None
+    message_timestamp: Optional[str] = None
+    message_index: Optional[int] = None
+
+
 def normalize_trip_plan_artifact(payload: Any) -> dict[str, Any]:
     """Normalize one artifact payload into the public camelCase contract shape."""
 
@@ -243,6 +255,7 @@ __all__ = [
     "ArtifactPatch",
     "BudgetReportArtifact",
     "ItineraryDraftArtifact",
+    "LatestArtifactResponse",
     "ResearchDossierArtifact",
     "ResearchEvidenceArtifact",
     "TripIntentArtifact",

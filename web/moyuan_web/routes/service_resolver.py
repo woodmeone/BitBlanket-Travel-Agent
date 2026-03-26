@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..dependencies.container import get_container
+from ..services.artifact_service import ArtifactService
 from ..services.chat_service import ChatService
 from ..services.city_service import CityService
 from ..services.map_service import MapService
@@ -20,6 +21,11 @@ def resolve_service(name: str) -> Any:
 def get_chat_service() -> ChatService:
     """Resolve the chat service used by streaming and health routes."""
     return resolve_service("ChatService")
+
+
+def get_artifact_service() -> ArtifactService:
+    """Resolve the artifact service used by persisted artifact routes."""
+    return resolve_service("ArtifactService")
 
 
 def get_city_service() -> CityService:

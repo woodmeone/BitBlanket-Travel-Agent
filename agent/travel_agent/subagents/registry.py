@@ -6,6 +6,7 @@ from typing import Iterable, Optional
 
 from ..skills import SkillRegistry
 from .base import BaseSubagent
+from .budget import BudgetSubagent
 from .planning import PlanningSubagent
 from .research import ResearchSubagent
 from .verification import VerificationSubagent
@@ -20,7 +21,7 @@ class SubagentRegistry:
 
     def names(self) -> list[str]:
         """Return enabled subagent names in deterministic order."""
-        return [name for name in ["research", "planning", "verification"] if name in self._subagents]
+        return [name for name in ["research", "planning", "budget", "verification"] if name in self._subagents]
 
     def get(self, name: str) -> Optional[BaseSubagent]:
         """Return one subagent by name."""
@@ -43,12 +44,17 @@ class SubagentRegistry:
             return explicit_subagent
 
         label_text = str(label or "")
-        if "计划" in label_text:
+        lowered = label_text.lower()
+        if "budget" in lowered or "cost" in lowered or "预算" in label_text:
+            return "budget" if "budget" in self._subagents else None
+        if "计划" in label_text or "planning" in lowered:
             return "planning" if "planning" in self._subagents else None
-        if "查询" in label_text:
+        if "查询" in label_text or "research" in lowered:
             return "research" if "research" in self._subagents else None
-        if "验证" in label_text:
+        if "验证" in label_text or "verify" in lowered:
             return "verification" if "verification" in self._subagents else None
+        if stage in {"budget", "costing"} and "budget" in self._subagents:
+            return "budget"
         if stage == "query" and "research" in self._subagents:
             return "research"
         return None
@@ -92,7 +98,7 @@ class SubagentRegistry:
 
 
 def build_default_subagent_registry(skill_registry: SkillRegistry) -> SubagentRegistry:
-    """Build the minimal phase-2 subagent registry."""
+    """Build the minimal phase-3 subagent registry."""
     return SubagentRegistry(
         [
             ResearchSubagent(
@@ -104,6 +110,11 @@ def build_default_subagent_registry(skill_registry: SkillRegistry) -> SubagentRe
                 name="planning",
                 description="Turn intent and evidence into itinerary drafts.",
                 skills=skill_registry.for_subagent("planning"),
+            ),
+            BudgetSubagent(
+                name="budget",
+                description="Estimate cost envelopes and tradeoff ranges.",
+                skills=skill_registry.for_subagent("budget"),
             ),
             VerificationSubagent(
                 name="verification",

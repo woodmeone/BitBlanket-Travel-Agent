@@ -5,12 +5,13 @@ from __future__ import annotations
 from importlib import import_module
 from typing import Any
 
-__all__ = ["ChatService", "SessionService", "CityService", "MapService", "ShareService"]
+__all__ = ["ArtifactService", "ChatService", "SessionService", "CityService", "MapService", "ShareService"]
 
 
 def __getattr__(name: str) -> Any:
     """Resolve service exports lazily to avoid heavy import-time side effects."""
     module_map = {
+        "ArtifactService": ".artifact_service",
         "ChatService": ".chat_service",
         "CityService": ".city_service",
         "MapService": ".map_service",

@@ -184,6 +184,16 @@ export interface SessionMessagesResponse {
   messages: Message[];
 }
 
+export interface LatestArtifactResponse {
+  success: boolean;
+  session_id: string;
+  artifact_found: boolean;
+  artifact: TripPlanArtifact | null;
+  run_id?: string | null;
+  message_timestamp?: string | null;
+  message_index?: number | null;
+}
+
 export interface ModelInfo {
   model_id: string;
   name: string;

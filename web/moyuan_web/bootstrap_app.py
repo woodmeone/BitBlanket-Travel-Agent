@@ -19,6 +19,7 @@ from moyuan_web.config.runtime import get_model_config_manager, get_server_confi
 from moyuan_web.middleware import setup_middleware
 from moyuan_web.routes import (
     api_docs_router,
+    artifact_router,
     chat_router,
     city_router,
     health_router,
@@ -119,6 +120,7 @@ def register_api_routes(app: FastAPI, *, server_config: Any) -> None:
     """Register API routers and optional metrics alias endpoints."""
     app.include_router(health_router, prefix="/api", tags=["health"])
     app.include_router(session_router, prefix="/api", tags=["session"])
+    app.include_router(artifact_router, prefix="/api", tags=["artifact"])
     app.include_router(chat_router, prefix="/api", tags=["chat"])
     app.include_router(model_router, prefix="/api", tags=["model"])
     app.include_router(city_router, prefix="/api", tags=["city"])

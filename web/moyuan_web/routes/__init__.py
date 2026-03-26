@@ -7,6 +7,7 @@ from typing import Any
 
 __all__ = [
     "api_docs_router",
+    "artifact_router",
     "chat_router",
     "city_router",
     "health_router",
@@ -22,6 +23,7 @@ def __getattr__(name: str) -> Any:
     """Resolve route exports lazily so helper imports do not trigger full router initialization."""
     module_map = {
         "api_docs_router": (".api_docs", "router"),
+        "artifact_router": (".artifact", "router"),
         "chat_router": (".chat", "router"),
         "city_router": (".city", "router"),
         "health_router": (".health", "router"),

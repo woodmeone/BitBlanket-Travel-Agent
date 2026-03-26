@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 _storage: Any | None = None
 _repository: Any | None = None
+_artifact_service: Any | None = None
 _session_service: Any | None = None
 _chat_service: Any | None = None
 _city_service: Any | None = None
@@ -51,6 +52,16 @@ def provide_session_service():
 
         _session_service = SessionService(provide_session_repository())
     return _session_service
+
+
+def provide_artifact_service():
+    """Create or reuse the artifact service singleton."""
+    global _artifact_service
+    if _artifact_service is None:
+        from .services.artifact_service import ArtifactService
+
+        _artifact_service = ArtifactService(provide_session_repository())
+    return _artifact_service
 
 
 def provide_chat_service():
@@ -110,6 +121,7 @@ def provide_travel_agent():
 def register_default_services(container: "Container") -> None:
     """Register the default web-service providers on the dependency container."""
     container.register("SessionRepository", provide_session_repository)
+    container.register("ArtifactService", provide_artifact_service)
     container.register("SessionService", provide_session_service)
     container.register("ChatService", provide_chat_service)
     container.register("CityService", provide_city_service)

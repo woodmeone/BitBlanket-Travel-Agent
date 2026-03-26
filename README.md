@@ -295,6 +295,10 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke `
 - `DELETE /api/session/{session_id}`
 - `POST /api/clear?session_id=...`
 
+### Artifacts
+
+- `GET /api/artifacts/{session_id}/latest`
+
 ### City Explorer
 
 - `GET /api/cities`

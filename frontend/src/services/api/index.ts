@@ -1,3 +1,4 @@
+export { artifactClient } from './artifactClient';
 export { API_BASE, API_PREFIX, apiClient, buildTraceHeaders } from './core';
 export { chatClient } from './chatClient';
 export { cityClient } from './cityClient';

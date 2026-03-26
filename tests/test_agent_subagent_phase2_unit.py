@@ -1,4 +1,4 @@
-"""Automated tests for phase-2 subagent runtime behavior."""
+"""Automated tests for phase-3 subagent runtime behavior."""
 
 from __future__ import annotations
 
@@ -14,40 +14,47 @@ def test_default_subagent_registry_resolves_stage_and_tool_mapping():
         for_subagent=lambda name: {
             "research": [SimpleNamespace(name="CityResearchSkill", tool_names=["search_cities"])],
             "planning": [SimpleNamespace(name="PlanSynthesisSkill", tool_names=["plan_itinerary", "query_hotels"])],
-            "verification": [SimpleNamespace(name="BudgetAggregationSkill", tool_names=["calculate_budget"])],
+            "budget": [SimpleNamespace(name="BudgetAggregationSkill", tool_names=["calculate_budget"])],
+            "verification": [SimpleNamespace(name="RiskAuditSkill", tool_names=["get_travel_tips"])],
         }.get(name, [])
     )
 
     registry = build_default_subagent_registry(skill_registry)
 
-    assert registry.names() == ["research", "planning", "verification"]
-    assert registry.resolve_subagent_for_stage(stage="query", label="生成计划", explicit_subagent=None) == "planning"
-    assert registry.resolve_subagent_for_stage(stage="generate", label="验证结果一致性", explicit_subagent=None) == "verification"
+    assert registry.names() == ["research", "planning", "budget", "verification"]
+    assert registry.resolve_subagent_for_stage(stage="query", label="planning", explicit_subagent=None) == "planning"
+    assert registry.resolve_subagent_for_stage(stage="budget", label="budget estimation", explicit_subagent=None) == "budget"
+    assert registry.resolve_subagent_for_stage(stage="generate", label="verify", explicit_subagent=None) == "verification"
     assert registry.resolve_subagent_for_tool("search_cities") == "research"
     assert registry.resolve_subagent_for_tool("plan_itinerary") == "planning"
-    assert registry.resolve_subagent_for_tool("calculate_budget") == "verification"
+    assert registry.resolve_subagent_for_tool("calculate_budget") == "budget"
 
 
-def test_runtime_emits_subagent_events_and_artifact_patches(monkeypatch):
+def test_runtime_emits_budget_subagent_events_and_artifact_patches(monkeypatch):
     runtime = AgentRuntime(
         llm=SimpleNamespace(),
         tools=[
             SimpleNamespace(name="search_cities"),
             SimpleNamespace(name="plan_itinerary"),
             SimpleNamespace(name="calculate_budget"),
+            SimpleNamespace(name="query_hotels"),
+            SimpleNamespace(name="get_travel_tips"),
         ],
         memory_manager=SimpleNamespace(),
     )
 
     async def _fake_stream(**kwargs):
         _ = kwargs
-        yield {"type": "stage", "stage": "query", "label": "生成计划", "subagent": "planning"}
+        yield {"type": "stage", "stage": "query", "label": "planning", "subagent": "planning"}
         yield {"type": "tool_start", "tool": "plan_itinerary"}
         yield {"type": "tool_end", "tool": "plan_itinerary", "result": "ok"}
-        yield {"type": "stage", "stage": "query", "label": "查询数据", "subagent": "research"}
+        yield {"type": "stage", "stage": "query", "label": "research", "subagent": "research"}
         yield {"type": "tool_start", "tool": "search_cities"}
         yield {"type": "tool_end", "tool": "search_cities", "result": "ok"}
-        yield {"type": "stage", "stage": "generate", "label": "验证结果一致性", "subagent": "verification"}
+        yield {"type": "stage", "stage": "budget", "label": "budget estimation", "subagent": "budget"}
+        yield {"type": "tool_start", "tool": "calculate_budget"}
+        yield {"type": "tool_end", "tool": "calculate_budget", "result": "ok"}
+        yield {"type": "stage", "stage": "generate", "label": "verify", "subagent": "verification"}
         yield {
             "type": "done",
             "answer": "hello",
@@ -58,6 +65,7 @@ def test_runtime_emits_subagent_events_and_artifact_patches(monkeypatch):
             "verification_passed": True,
             "stale_result_count": 0,
             "fallback_steps": 0,
+            "execution_budget": {"estimated_total": 2400, "currency": "CNY"},
             "execution_stats": {"steps": []},
         }
 
@@ -84,10 +92,14 @@ def test_runtime_emits_subagent_events_and_artifact_patches(monkeypatch):
     assert event_types[-1] == "done"
 
     planning_start = next(event for event in events if event["type"] == "subagent_start" and event["subagent"] == "planning")
+    budget_patch = next(event for event in events if event["type"] == "artifact_patch" and event["subagent"] == "budget")
     verification_end = next(event for event in events if event["type"] == "subagent_end" and event["subagent"] == "verification")
     done_event = events[-1]
 
     assert "PlanSynthesisSkill" in planning_start["skills"]
+    assert budget_patch["artifact_patch"]["budget"]["executionBudget"]["estimated_total"] == 2400
     assert verification_end["status"] == "completed"
     assert done_event["artifact"]["verification"]["passed"] is True
+    assert done_event["artifact"]["metadata"]["budget_subagent_completed"] is True
+    assert done_event["artifact"]["budget"]["summary"]["sourceTools"] == ["calculate_budget"]
     assert done_event["artifact"]["metadata"]["verification_subagent_completed"] is True

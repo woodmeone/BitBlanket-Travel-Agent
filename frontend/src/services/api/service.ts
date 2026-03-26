@@ -1,3 +1,4 @@
+import { artifactClient } from './artifactClient';
 import { chatClient } from './chatClient';
 import { cityClient } from './cityClient';
 import { healthClient } from './healthClient';
@@ -7,6 +8,7 @@ import { sessionClient } from './sessionClient';
 import { shareClient } from './shareClient';
 
 export class APIService {
+  getLatestArtifact = (sessionId: string) => artifactClient.getLatestArtifact(sessionId);
   checkHealth = () => healthClient.checkHealth();
   checkLLMHealth = () => healthClient.checkLLMHealth();
   checkToolsHealth = () => healthClient.checkToolsHealth();
