@@ -4,37 +4,25 @@ import React from 'react';
 import { Button, Card, Tag } from 'antd';
 import { HeartFilled } from '@ant-design/icons';
 import type { SpotDecisionInfo } from '@/utils/travelPlan';
-import type { QuickRefineAction } from '../shared';
 
 interface ToolkitFavoritesTabProps {
   favoriteSpotList: SpotDecisionInfo[];
-  onContinuePrompt?: (prompt: string) => void;
-  onQuickRefine: (action: QuickRefineAction) => void;
+  canBuildFromFavorites: boolean;
+  onBuildFromFavorites: () => void;
   onToggleFavoriteSpot: (spot: SpotDecisionInfo) => void;
 }
 
 export const ToolkitFavoritesTab: React.FC<ToolkitFavoritesTabProps> = ({
   favoriteSpotList,
-  onContinuePrompt,
-  onQuickRefine,
+  canBuildFromFavorites,
+  onBuildFromFavorites,
   onToggleFavoriteSpot,
 }) => (
   <div style={{ display: 'grid', gap: 10 }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
       <Tag color={favoriteSpotList.length > 0 ? 'gold' : 'default'}>候选景点 {favoriteSpotList.length}</Tag>
-      {favoriteSpotList.length > 0 && onContinuePrompt && (
-        <Button
-          size="small"
-          onClick={() =>
-            onQuickRefine({
-              key: 'favorites-build',
-              label: '根据候选池重做',
-              prompt: `请优先基于以下候选景点重新生成一版更精炼的旅行方案，并保留清晰时间轴：${favoriteSpotList
-                .map((item) => item.name)
-                .join('、')}`,
-            })
-          }
-        >
+      {favoriteSpotList.length > 0 && canBuildFromFavorites && (
+        <Button size="small" onClick={onBuildFromFavorites}>
           用候选池重做方案
         </Button>
       )}

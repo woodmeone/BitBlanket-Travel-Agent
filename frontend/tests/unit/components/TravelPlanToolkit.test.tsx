@@ -206,4 +206,26 @@ describe('TravelPlanToolkit', () => {
       expect(screen.getByText('Final check')).toBeInTheDocument();
     });
   });
+
+  it('builds itinerary again from favorite spots', async () => {
+    const onContinuePrompt = vi.fn();
+    renderWithApp(<TravelPlanToolkit messageId="msg-favorites" content={SAMPLE_CONTENT} onContinuePrompt={onContinuePrompt} />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/收藏 外滩/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByLabelText(/收藏 外滩/i));
+    fireEvent.click(screen.getByRole('tab', { name: /候选池/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/候选景点 1/)).toBeInTheDocument();
+      expect(screen.getByText('用候选池重做方案')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('用候选池重做方案'));
+
+    expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('外滩'));
+    expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('重新生成一版更精炼的旅行方案'));
+  });
 });
