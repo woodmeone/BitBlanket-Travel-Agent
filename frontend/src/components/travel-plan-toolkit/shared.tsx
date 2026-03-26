@@ -207,6 +207,12 @@ export function practicalToneStyle(
   return { background: '#f8fafc', border: '#cbd5e1', color: '#334155' };
 }
 
+export function practicalToneLabel(tone: PracticalInfoCard['tone']): string {
+  if (tone === 'good') return '建议';
+  if (tone === 'warn') return '注意';
+  return '常规';
+}
+
 export function subagentLabel(name: string): string {
   if (name === 'planning') return '规划';
   if (name === 'research') return '研究';

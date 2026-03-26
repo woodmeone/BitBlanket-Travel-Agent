@@ -179,6 +179,9 @@ describe('TravelPlanToolkit', () => {
     await waitFor(() => {
       expect(screen.getByText('天气与穿衣')).toBeInTheDocument();
       expect(screen.getByText('交通建议')).toBeInTheDocument();
+      expect(screen.getAllByText('常规').length).toBeGreaterThan(0);
+      expect(screen.getByText('建议')).toBeInTheDocument();
+      expect(screen.getByText('注意')).toBeInTheDocument();
     });
   });
 });
