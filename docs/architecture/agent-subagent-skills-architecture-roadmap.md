@@ -806,6 +806,14 @@ The first application-layer slice of Phase 3 is now active in code:
   - renders artifact/subagent diagnostics
 - [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
   - consumes structured artifact summary before falling back to text heuristics
+- [`agent/travel_agent/subagents/budget.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/budget.py)
+  - promotes budget estimation into a real domain subagent with dedicated artifact patches
+- [`web/moyuan_web/services/artifact_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/artifact_service.py)
+  - exposes persisted trip artifacts as an application-layer service boundary
+- [`web/moyuan_web/routes/artifact.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/artifact.py)
+  - adds `GET /api/artifacts/{session_id}/latest` as the public artifact retrieval endpoint
+- [`frontend/src/services/api/artifactClient.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api/artifactClient.ts)
+  - synchronizes frontend API clients with the new artifact retrieval contract
 
 Current status:
 
@@ -814,3 +822,6 @@ Current status:
 3. Final assistant messages keep artifact/subagent diagnostics in local UI state.
 4. Toolkit uses structured artifact summary as the primary overview layer.
 5. Detailed day-card generation still falls back to text parsing until richer itinerary artifact schemas land.
+6. Budget estimation is no longer implicit runtime metadata only; it now has a dedicated `BudgetSubagent`.
+7. Application layer now has a stable artifact-read path instead of relying only on session message replay.
+8. The Phase 2 -> Phase 3 transition is effectively complete: runtime emits multi-subagent artifacts, and Web/API exposes persisted artifact state for downstream product surfaces.

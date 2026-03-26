@@ -635,6 +635,9 @@ flowchart LR
 - [已完成 2026-03-26] replay / benchmark / golden 对齐新链路
   已落地：`tests/golden/chat_stream_golden_fixture.json` 已升级到更适合 frontend replay 的 schema，补齐 `answer_chunks / reasoning_chunks / stages`；新增 `scripts/export_frontend_chat_runtime_golden_fixture.py` 与 `tests/golden/frontend_chat_runtime_golden_fixture.json`，把后端 stream fixture 回放成前端最终运行时快照；`frontend/src/components/chat-area/chatRuntimeReplay.ts` 与 `frontend/tests/unit/components/chatRuntimeReplay.test.ts` 会锁住 parser / artifact merge / completion diagnostics 在新 frontend harness 边界上的最终结果。
 
+- [已完成 2026-03-27] Phase 2 -> Phase 3 过渡收口：BudgetSubagent 与 persisted artifact read path 已落地
+  已落地：新增 `agent/travel_agent/subagents/budget.py`，默认 subagent registry 现在正式收口为 `research / planning / budget / verification` 四段；新增 `web/moyuan_web/services/artifact_service.py` 与 `web/moyuan_web/routes/artifact.py`，提供 `GET /api/artifacts/{session_id}/latest` 作为稳定的 artifact 读取入口；前端同步新增 `frontend/src/services/api/artifactClient.ts` 与 `frontend/src/types/index.ts` 的 `LatestArtifactResponse`，让 session 历史里的 persisted artifact 不再只能靠聊天流回放恢复。
+
 ## 14. 结论
 
 符合 harness engineering 思路的项目演进，不是“不断给当前系统堆更多模块”，而是分阶段把：

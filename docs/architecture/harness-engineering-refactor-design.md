@@ -338,6 +338,8 @@ agent/travel_agent/
 - [已完成 2026-03-26] `planning` 主链已从 `graph/nodes.py` 中抽成独立 `PlanningPipeline`，新增 `agent/travel_agent/pipelines/planning.py` 负责默认计划生成、工具策略补齐、计划标准化、计划校验与阶段输出构建；`AgentNodes.plan_node()` 已退化为委托入口，`graph/nodes.py` 当前已降到 `3093` 行。
 - [已完成 2026-03-26] `memory persistence` 已从 `memory_integration.py` 中抽成独立 `MemoryPersistenceStore`，新增 `agent/travel_agent/memory/persistence.py` 负责主备快照恢复、原子写入与磁盘持久化；`AgentMemoryManager` 现在主要保留会话序列化与语义层逻辑，`memory_integration.py` 当前已降到 `2795` 行。
 - [已完成 2026-03-26] `verification` 主链已从 `graph/nodes.py` 中抽成独立 `VerificationPipeline`，新增 `agent/travel_agent/pipelines/verification.py` 负责高风险 query 判定、required tool 缺失重试、stale refresh 降级与 `VerifyIssue / VerifyResult` 标准化；`AgentNodes.verify_node()` 已退化为委托入口，`graph/nodes.py` 当前已进一步降到 `2968` 行。
+- [已完成 2026-03-27] `BudgetSubagent` 已进入默认 runtime 编队，新增 `agent/travel_agent/subagents/budget.py` 并把默认 registry 正式收口为 `research / planning / budget / verification`；`budget` 相关 skill ownership 也已同步收窄到预算链路，不再继续挂在 verification 兜底分支下。
+- [已完成 2026-03-27] persisted artifact 读取链路已从聊天流旁路中抽成正式应用能力，新增 `web/moyuan_web/services/artifact_service.py` 与 `web/moyuan_web/routes/artifact.py`，提供 `GET /api/artifacts/{session_id}/latest` 稳定读取 session 历史中的最终 artifact；前端也已同步 `artifactClient.ts` 和 `LatestArtifactResponse` 契约，为 Phase 3 的 artifact-first UI 继续下沉补齐稳定输入面。
 
 建议动作：
 
