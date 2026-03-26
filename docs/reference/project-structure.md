@@ -319,13 +319,15 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - [`frontend/src/utils/agentArtifacts.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/utils/agentArtifacts.ts)
   - frontend-side artifact merge helpers
 - [`frontend/src/components/chat-area/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area)
-  - `useChatRuntime.ts` 作为主编排 hook，继续委托 `useStreamBuffer.ts / useArtifactRuntimeState.ts / useChatRunState.ts / chatInputPolicy.ts / runtimeMessageBuilders.ts`
+  - `useChatRuntime.ts` 作为主编排 hook，继续委托 `useStreamBuffer.ts / useArtifactRuntimeState.ts / useChatRunState.ts / useChatSessionHydration.ts / chatInputPolicy.ts / runtimeMessageBuilders.ts`
 - [`frontend/src/components/chat-area/useStreamBuffer.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useStreamBuffer.ts)
   - 流缓冲、平滑刷新与滚动同步
 - [`frontend/src/components/chat-area/useArtifactRuntimeState.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useArtifactRuntimeState.ts)
   - artifact / subagent 运行态与 reset 语义
 - [`frontend/src/components/chat-area/useChatRunState.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useChatRunState.ts)
   - waiting / thinking / tool / stage / runtime log 生命周期收口
+- [`frontend/src/components/chat-area/useChatSessionHydration.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useChatSessionHydration.ts)
+  - share query 恢复、session 切换 reset、metadata ref 与 skip-next-session-reset 语义
 - [`frontend/src/components/chat-area/chatInputPolicy.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/chatInputPolicy.ts)
   - 输入校验、增强 prompt、session name 与 stopped message 规则
 - [`frontend/src/components/chat-area/runtimeMessageBuilders.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/runtimeMessageBuilders.ts)
@@ -342,6 +344,8 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - 锁住发送/停止与约束展示边界
 - [`frontend/tests/unit/components/runtimeMessageBuilders.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/runtimeMessageBuilders.test.ts)
   - 锁住 reasoning timestamp 与 completion/stopped diagnostics 语义
+- [`frontend/tests/unit/components/useChatSessionHydration.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/useChatSessionHydration.test.tsx)
+  - 锁住 share 恢复、session 切换 reset 与 skip reset 语义
 - [`frontend/tests/unit/components/useChatRunState.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/useChatRunState.test.ts)
   - 锁住 waiting / thinking / tool / stage runtime lifecycle
 - [`frontend/tests/unit/components/chatInputPolicy.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/chatInputPolicy.test.ts)

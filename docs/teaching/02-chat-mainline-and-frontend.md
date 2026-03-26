@@ -17,17 +17,18 @@
 
 这一章回答的是：一次聊天请求从前端怎么发起、怎么消费 SSE、怎么变成最终消息和结构化旅行结果。
 
-### 必读 9 个文件
+### 必读 10 个文件
 
 1. [ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)
 2. [useChatRuntime.ts](D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useChatRuntime.ts)
 3. [useStreamBuffer.ts](D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useStreamBuffer.ts)
 4. [useArtifactRuntimeState.ts](D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useArtifactRuntimeState.ts)
 5. [useChatRunState.ts](D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useChatRunState.ts)
-6. [chatInputPolicy.ts](D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/chatInputPolicy.ts)
-7. [chatClient.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api/chatClient.ts)
-8. [chatStreamParser.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api/chatStreamParser.ts)
-9. [TravelPlanToolkit.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
+6. [useChatSessionHydration.ts](D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useChatSessionHydration.ts)
+7. [chatInputPolicy.ts](D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/chatInputPolicy.ts)
+8. [chatClient.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api/chatClient.ts)
+9. [chatStreamParser.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api/chatStreamParser.ts)
+10. [TravelPlanToolkit.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
 
 ### 最常见 3 个坑
 
@@ -48,7 +49,7 @@
 1. 一次聊天请求到底从哪个文件发起，最后落到哪个组件上。
 2. 前端为什么要同时维护 `messages`、`streamingMessage`、`streamingReasoning`、`metadata`。
 3. 为什么当前项目采用 SSE，而不是只返回 JSON。
-4. `ChatArea.tsx`、`useChatRuntime.ts`、`useStreamBuffer.ts`、`useArtifactRuntimeState.ts`、`useChatRunState.ts`、`chatInputPolicy.ts`、`chatClient.ts`、`MessageList.tsx`、`TravelPlanToolkit.tsx` 在职责上如何分工。
+4. `ChatArea.tsx`、`useChatRuntime.ts`、`useStreamBuffer.ts`、`useArtifactRuntimeState.ts`、`useChatRunState.ts`、`useChatSessionHydration.ts`、`chatInputPolicy.ts`、`chatClient.ts`、`MessageList.tsx`、`TravelPlanToolkit.tsx` 在职责上如何分工。
 5. 为什么这个项目的前端不是被动展示层，而是结果加工层。
 
 ## 2. 先修要求
@@ -109,7 +110,7 @@ flowchart LR
 | --- | --- | --- |
 | [page.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/app/page.tsx) | `Home` 组件 | 先确认聊天区在整页产品里处于什么位置。 |
 | [ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx) | `ChatArea` 组件本体 | 先确认 chat workspace 现在只剩哪些装配职责。 |
-| [useChatRuntime.ts](D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useChatRuntime.ts) | `handleSend`、`flushStreamingQueue`、`drainStreamingQueueToRefs`、`handleStop` | 这是前端主链最关键的 4 个读点，分别对应“发请求、平滑刷新、最终合并、主动停止”。 |
+| [useChatRuntime.ts](D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useChatRuntime.ts) | `handleSend`、`useChatSessionHydration`、`drainStreamingQueueToRefs`、`handleStop` | 这是前端主链最关键的 4 个读点，分别对应“发请求、恢复与切换、最终合并、主动停止”。 |
 | [chatClient.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api/chatClient.ts) | `fetchStreamChat`、`executeStreamRequest` | 这里回答“请求怎么发、连接怎么保、超时和重连怎么处理”。 |
 | [chatStreamParser.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api/chatStreamParser.ts) | `handleChatStreamLine` | 这里回答“事件怎么解、怎么分发到独立回调通道”。 |
 | [chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py) | `_get_chat_service`、`stream_chat` | 先确认真正的 HTTP / SSE 协议入口有多薄。 |
@@ -126,7 +127,7 @@ fetchStreamChat
 handleSSELine
 onStage
 onMetadata
-flushStreamingQueue
+useChatSessionHydration
 drainStreamingQueueToRefs
 prepareMarkdownContent
 extractThinkBlocks
@@ -202,9 +203,11 @@ runQuickRefine
    负责 artifact patch merge、subagent timeline、active subagent 与 reset 语义。
 3. `useChatRunState.ts`
    负责 waiting / thinking / tool / stage / runtime log 生命周期，以及 complete / fail / stop 的状态收口。
-4. `chatInputPolicy.ts`
+4. `useChatSessionHydration.ts`
+   负责 share query 恢复、session 切换 reset、metadata ref 与 skip-next-session-reset 语义。
+5. `chatInputPolicy.ts`
    负责输入校验、增强 prompt、session bootstrap name 与 stopped message 规则。
-5. `runtimeMessageBuilders.ts`
+6. `runtimeMessageBuilders.ts`
    负责 final reasoning timestamp、completion diagnostics 和 stopped diagnostics 的最终拼装。
 
 ### 6.1 这份文件里最值得注意的状态
@@ -267,8 +270,8 @@ runQuickRefine
 理解用户点击发送后，到底初始化了哪些状态、注册了哪些回调、发起了哪一个 API 调用。
 2. 再读 `onStage / onPlanPreview / onChunk / onReasoning / onMetadata / onComplete`
 理解后端不同事件分别落进了哪条前端状态链。
-3. 再读 `flushStreamingQueue`、`enqueueAnswer`、`enqueueReasoning`
-理解为什么流式文本没有直接一到就 `setState`。
+3. 再读 `useStreamBuffer.ts` 里的 `enqueueAnswer`、`enqueueReasoning`、`drainStreamingQueueToRefs`
+理解为什么流式文本没有直接一到就 `setState`，以及最终怎样从缓冲队列落回正式消息。
 4. 最后读 `drainStreamingQueueToRefs`、`handleStop`
 理解停止、结束、最终合并时怎样把队列里的权威内容落进正式消息。
 

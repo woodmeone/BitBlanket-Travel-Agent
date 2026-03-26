@@ -64,7 +64,7 @@
 - `frontend/src/components/city-explorer/sections/HeroSection.tsx`：254 行
 - `frontend/src/components/city-explorer/sections/GridSection.tsx`：168 行
 - `frontend/src/components/travel-plan-toolkit/sections.tsx`：656 行
-- `frontend/src/components/chat-area/useChatRuntime.ts`：415 行
+- `frontend/src/components/chat-area/useChatRuntime.ts`：388 行
 
 这些文件同时混合了：
 
@@ -75,7 +75,7 @@
 - 导出与分享
 - 局部 UI 主题与视图细节
 
-这说明前端已经从“大页面组件驱动”迈到了“feature 协作器驱动”，并且已经开始把重逻辑从 `sections/*` 和 `useChatRuntime.ts` 往更细的 hook / view-model / section adapter 下沉；其中 `city-explorer/sections.tsx` 已经收口成 `6` 行 facade，chat runtime 这一支也已经先拆出 `useStreamBuffer.ts`、`useArtifactRuntimeState.ts`、`useChatRunState.ts`、`chatInputPolicy.ts` 和 `runtimeMessageBuilders.ts`。
+这说明前端已经从“大页面组件驱动”迈到了“feature 协作器驱动”，并且已经开始把重逻辑从 `sections/*` 和 `useChatRuntime.ts` 往更细的 hook / view-model / section adapter 下沉；其中 `city-explorer/sections.tsx` 已经收口成 `6` 行 facade，chat runtime 这一支也已经先拆出 `useStreamBuffer.ts`、`useArtifactRuntimeState.ts`、`useChatRunState.ts`、`useChatSessionHydration.ts`、`chatInputPolicy.ts` 和 `runtimeMessageBuilders.ts`。
 
 #### Web API
 
@@ -364,11 +364,12 @@ agent/travel_agent/
 - [已完成 2026-03-26] `city-explorer/sections.tsx` 已继续下沉成 `sections/` 目录下的 `HeroSection / FilterBarSection / ComparePanelSection / GridSection / DetailDrawerSection` 五个 section modules；`frontend/src/components/city-explorer/sections.tsx` 当前仅保留 `6` 行兼容导出，顺手清理了城市探索链路里的乱码文案与 prompt，并通过 `aria-label` 收口详情 / 对比 / 规划动作的可访问名称，`frontend/tests/unit/components/CityExplorer.test.tsx` 现已覆盖场景 prompt、详情抽屉和对比 prompt 三条关键边界。
 - [已完成 2026-03-26] `chat-area/useChatRuntime.ts` 已继续下沉成更细的 stream / artifact / finalization helper；新增 `frontend/src/components/chat-area/useStreamBuffer.ts` 负责流缓冲、平滑刷新与滚动同步，`useArtifactRuntimeState.ts` 负责 artifact patch merge、subagent timeline 与 reset 语义，`runtimeMessageBuilders.ts` 负责 final reasoning timestamp、completion diagnostics 与 stopped diagnostics 拼装；`frontend/src/components/chat-area/useChatRuntime.ts` 当前已降到 `449` 行，配套 `frontend/tests/unit/components/runtimeMessageBuilders.test.ts` 已锁住 reasoning timestamp 与 completion/stopped diagnostics 语义，且全量 `pytest` 与前端 `lint / vitest / build` 均已通过。
 - [已完成 2026-03-26] `chat-area/useChatRuntime.ts` 已继续下沉成更细的 input policy / send lifecycle helper；新增 `frontend/src/components/chat-area/useChatRunState.ts` 负责 waiting/thinking/tool/stage/runtime log 生命周期，`chatInputPolicy.ts` 负责输入校验、增强 prompt、session bootstrap 与 stopped message 构造；`frontend/src/components/chat-area/useChatRuntime.ts` 当前已降到 `415` 行，配套 `frontend/tests/unit/components/useChatRunState.test.ts` 与 `chatInputPolicy.test.ts` 已锁住 run lifecycle 与输入策略语义，同时顺手修正了错误分支未及时清理 `isStreaming` 的 UI 边界；前端 `lint / vitest / build` 与后端全量 `pytest` 均已通过。
+- [已完成 2026-03-26] `chat-area/useChatRuntime.ts` 已继续下沉成 share / session hydration helper；新增 `frontend/src/components/chat-area/useChatSessionHydration.ts`，负责 share query 恢复、session 切换时的 transient runtime reset、metadata ref 收口和 skip-next-session-reset 语义；`frontend/src/components/chat-area/useChatRuntime.ts` 当前已降到 `388` 行，配套 `frontend/tests/unit/components/useChatSessionHydration.test.tsx` 已锁住 share 恢复、session 切换 reset 与 skip reset 三条边界，顺手也清理了 `ChatArea / ChatComposer / ChatModeSelector / QuickStartPrompts / ExecutionInsights / chatClient` 的乱码文案，前端 `lint / vitest / build` 与后端全量 `pytest` 均已通过。
 
 建议动作：
 
 - 继续把 `city-explorer/sections/HeroSection.tsx` 中的 curated-prompts / shortlist 再拆成更细的 view 协作器
-- 继续把 `chat-area/useChatRuntime.ts` 中的 share/session hydration 与 history recovery 入口再下沉成独立恢复协作器
+- 继续把 `AppContext.tsx` 中的 session cache / history recovery 从 provider 主体下沉成独立恢复协作器
 
 验收标准：
 
