@@ -24,7 +24,7 @@ const SAMPLE_CONTENT = [
   '上午：外滩 09:00 漫步；10:30 南京路早餐',
   '下午：豫园 13:00；城隍庙 15:00',
   '晚上：陆家嘴夜景 19:00',
-  '预算：800',
+  '预算：900',
   '小贴士：热门餐厅提前取号。',
   '',
   '省钱版',
@@ -38,6 +38,15 @@ const SAMPLE_CONTENT = [
   '上午：武康路',
   '下午：新天地',
   '晚上：徐汇滨江',
+].join('\n');
+
+const CONFLICT_CONTENT = [
+  'Day 1',
+  '上午：博物馆 09:30；外滩 09:00',
+  '下午：新天地 14:00',
+  '晚上：博物馆 19:00',
+  '预算：800',
+  '小贴士：夜间景点先确认开放时间。',
 ].join('\n');
 
 describe('TravelPlanToolkit', () => {
@@ -57,6 +66,29 @@ describe('TravelPlanToolkit', () => {
       expect(screen.getByText('换成更省钱')).toBeInTheDocument();
       expect(screen.getAllByText('真实路线').length).toBeGreaterThan(0);
       expect(screen.getAllByText('一键修复冲突').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('按距离重排').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('renders itinerary decision cards, tips and conflict reminders', async () => {
+    const { rerender } = renderWithApp(<TravelPlanToolkit messageId="msg-1b" content={SAMPLE_CONTENT} />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('景点决策卡').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('小贴士：热门餐厅提前取号。').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/最佳到达：/).length).toBeGreaterThan(0);
+    });
+
+    rerender(
+      <App>
+        <TravelPlanToolkit messageId="msg-1c" content={CONFLICT_CONTENT} />
+      </App>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('本日风险提醒')).toBeInTheDocument();
+      expect(screen.getAllByText(/Morning time conflict/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Potential closing-time risk/).length).toBeGreaterThan(0);
     });
   });
 

@@ -28,12 +28,9 @@ export interface QuickRefineAction {
 
 function normalizeTipText(tip: string): string {
   return tip
-    .replace(/^\s*小贴士[:：]?\s*/i, '')
-    .replace(/^\s*当日小贴士[:：]?\s*/i, '')
-    .replace(/^\s*⚠️?\s*提示[:：]?\s*/i, '')
-    .replace(/^\s*⚠️?\s*注意事项[:：]?\s*/i, '')
-    .replace(/(?<!\d)\s*[:：]{2,}\s*(?!\d)/g, '：')
-    .replace(/(?<!\d)\s*[:：]\s*(?!\d)/g, '：')
+    .replace(/^\s*(?:小贴士|当日小贴士|Tips?|提示|注意事项)[:：]?\s*/i, '')
+    .replace(/(?<!\d)\s*[：:]{2,}\s*(?!\d)/g, '：')
+    .replace(/(?<!\d)\s*[：:]\s*(?!\d)/g, '：')
     .replace(/^[：:\-\s]+/, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -74,12 +71,12 @@ function splitTimelineItems(rawText: string): TimelineItem[] {
   const normalized = rawText
     .replace(/\r\n?/g, '\n')
     .replace(/\s+/g, ' ')
-    .replace(/[；;。]/g, '；')
-    .replace(/\s*(->|→)\s*/g, '；')
+    .replace(/[。]/g, '；')
+    .replace(/\s*(?:->|→)\s*/g, '；')
     .replace(/\|/g, '；');
 
   return normalized
-    .split('；')
+    .split(/[；;]/)
     .map((item) => item.trim())
     .filter(Boolean)
     .filter((item) => !/^(上午|下午|晚上)\b/.test(item))
@@ -184,7 +181,7 @@ export const PeriodTimeline: React.FC<{
       </div>
       {hasMore && (
         <Button size="small" type="link" style={{ padding: 0, marginTop: 6 }} onClick={() => onToggle(key)}>
-          {isExpanded ? '收起' : `展开更多（+${items.length - 3}）`}
+          {isExpanded ? '收起' : `展开更多（${items.length - 3}）`}
         </Button>
       )}
     </div>
