@@ -127,7 +127,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - `ChatArea.tsx`、`MessageList.tsx`、`TravelPlanToolkit.tsx`、`CityExplorer.tsx`
   - 都是薄入口，负责 feature 装配与向后兼容
 - `chat-area/`
-  - 聊天运行时状态、输入区、执行洞察与对话区协作器
+  - 聊天运行时状态、流缓冲、artifact 运行态、输入区、执行洞察与对话区协作器
 - `message-list/`
   - Markdown 归一化、消息区块、诊断区块与复制/导出动作
 - `travel-plan-toolkit/`
@@ -318,7 +318,13 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - [`frontend/src/utils/agentArtifacts.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/utils/agentArtifacts.ts)
   - frontend-side artifact merge helpers
 - [`frontend/src/components/chat-area/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area)
-  - per-run artifact merge、subagent timeline、输入区与执行洞察
+  - `useChatRuntime.ts` 作为主编排 hook，继续委托 `useStreamBuffer.ts / useArtifactRuntimeState.ts / runtimeMessageBuilders.ts`
+- [`frontend/src/components/chat-area/useStreamBuffer.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useStreamBuffer.ts)
+  - 流缓冲、平滑刷新与滚动同步
+- [`frontend/src/components/chat-area/useArtifactRuntimeState.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useArtifactRuntimeState.ts)
+  - artifact / subagent 运行态与 reset 语义
+- [`frontend/src/components/chat-area/runtimeMessageBuilders.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/runtimeMessageBuilders.ts)
+  - completion / stopped diagnostics 与 reasoning timestamp 拼装
 - [`frontend/src/components/message-list/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/message-list)
   - markdown 渲染、思考区块、诊断区块与复制/导出动作
 - [`frontend/src/components/travel-plan-toolkit/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit)
@@ -327,6 +333,8 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - 场景 prompt、筛选器、shortlist、城市网格、对比池与详情抽屉
 - [`frontend/tests/unit/components/ChatComposer.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/ChatComposer.test.tsx)
   - 锁住发送/停止与约束展示边界
+- [`frontend/tests/unit/components/runtimeMessageBuilders.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/runtimeMessageBuilders.test.ts)
+  - 锁住 reasoning timestamp 与 completion/stopped diagnostics 语义
 - [`frontend/tests/unit/components/TravelPlanToolkit.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/TravelPlanToolkit.test.tsx)
   - 锁住 tab 切换、方案对比与 checklist/practical 入口
 - [`frontend/tests/unit/components/CityExplorer.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/CityExplorer.test.tsx)

@@ -6,11 +6,14 @@
 
 1. `frontend/src/components/ChatArea.tsx`
 2. `frontend/src/components/chat-area/useChatRuntime.ts`
-3. `frontend/src/components/MessageList.tsx`
-4. `frontend/src/components/message-list/markdownRenderer.tsx`
-5. `frontend/src/services/api/chatClient.ts`
-6. `frontend/src/services/api/chatStreamParser.ts`
-7. `frontend/src/types/index.ts`
+3. `frontend/src/components/chat-area/useStreamBuffer.ts`
+4. `frontend/src/components/chat-area/useArtifactRuntimeState.ts`
+5. `frontend/src/components/chat-area/runtimeMessageBuilders.ts`
+6. `frontend/src/components/MessageList.tsx`
+7. `frontend/src/components/message-list/markdownRenderer.tsx`
+8. `frontend/src/services/api/chatClient.ts`
+9. `frontend/src/services/api/chatStreamParser.ts`
+10. `frontend/src/types/index.ts`
 
 其中要特别注意：`ChatArea.tsx` 和 `MessageList.tsx` 现在都已经是薄入口，真实的运行时状态、SSE 解析和 Markdown 渲染逻辑分别下沉到了 `chat-area/`、`message-list/` 和 `services/api/`。
 
@@ -20,9 +23,11 @@
 2. `useChatRuntime.ts` 调用 `chatClient.fetchStreamChat(...)` 发起流式请求。
 3. `chatClient.ts` 负责连接状态、超时、中断、重连与 reader 循环。
 4. `chatStreamParser.ts` 逐行解析 SSE，把 `chunk / reasoning / stage / tool / metadata / artifact` 事件分发到独立回调。
-5. `useChatRuntime.ts` 把原始内容先写入 `fullResponseRef/fullReasoningRef`，同时把增量文本推入 `streamQueueRef`（`answer/reasoning`）。
-6. `flushStreamingQueue` 按固定 tick 抽取少量字符更新 UI。
-7. `onComplete` 时把队列剩余内容 `drain` 到 ref 并落盘为正式消息。
+5. `useStreamBuffer.ts` 负责维护 `fullResponseRef/fullReasoningRef`、平滑刷新队列和滚动同步。
+6. `useArtifactRuntimeState.ts` 负责 artifact patch merge、subagent timeline 与 plan preview 生命周期。
+7. `useChatRuntime.ts` 负责把上面这些运行时协作器与 `chatClient.ts` / `chatStreamParser.ts` 编排起来。
+8. `runtimeMessageBuilders.ts` 负责最终 reasoning timestamp、completion diagnostics 和 stopped diagnostics 的拼装。
+9. `onComplete` 时把队列剩余内容 `drain` 到 ref 并落盘为正式消息。
 
 这样做的目的是：
 
