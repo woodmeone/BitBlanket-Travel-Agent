@@ -1,16 +1,22 @@
 import { App } from 'antd';
+import { beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import html2canvas from 'html2canvas';
 import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import TravelPlanToolkit from '@/components/TravelPlanToolkit';
-import { shareClient } from '@/services/api';
+import { artifactClient, shareClient } from '@/services/api';
+
+const artifactClientMock = vi.hoisted(() => ({
+  getArtifactHistory: vi.fn(),
+}));
 
 vi.mock('html2canvas', () => ({
   default: vi.fn(),
 }));
 
 vi.mock('@/services/api', () => ({
+  artifactClient: artifactClientMock,
   mapClient: {
     getRoutePreview: vi.fn(),
   },
@@ -94,6 +100,16 @@ const ARTIFACT_SAMPLE = {
 };
 
 describe('TravelPlanToolkit', () => {
+  beforeEach(() => {
+    vi.mocked(artifactClient.getArtifactHistory).mockReset();
+    vi.mocked(artifactClient.getArtifactHistory).mockResolvedValue({
+      success: true,
+      session_id: 'session-1',
+      count: 0,
+      entries: [],
+    });
+  });
+
   it('renders primary tabs for itinerary planning', () => {
     renderWithApp(<TravelPlanToolkit messageId="msg-1" content={SAMPLE_CONTENT} />);
 
@@ -401,5 +417,73 @@ describe('TravelPlanToolkit', () => {
     expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('计划编号：plan-hz-weekend'));
     expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('目的地：杭州'));
     expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('原方案：'));
+  });
+  it('prefers persisted artifact history for compare tab when session snapshots are available', async () => {
+    vi.mocked(artifactClient.getArtifactHistory).mockResolvedValue({
+      success: true,
+      session_id: 'session-compare',
+      count: 2,
+      entries: [
+        {
+          run_id: 'run-current',
+          message_timestamp: '2026-03-27T10:30:00Z',
+          message_index: 5,
+          artifact: {
+            ...ARTIFACT_SAMPLE,
+            itinerary: {
+              ...ARTIFACT_SAMPLE.itinerary,
+              planId: 'plan-hz-current',
+              steps: [{ tool: 'search_city' }, { tool: 'plan' }],
+            },
+          },
+        },
+        {
+          run_id: 'run-older',
+          message_timestamp: '2026-03-26T08:00:00Z',
+          message_index: 3,
+          artifact: {
+            ...ARTIFACT_SAMPLE,
+            research: {
+              ...ARTIFACT_SAMPLE.research,
+              destinations: ['苏州'],
+              evidence: [{ title: '园林开放' }],
+            },
+            itinerary: {
+              ...ARTIFACT_SAMPLE.itinerary,
+              planId: 'plan-sz-older',
+              steps: [{ tool: 'research' }],
+            },
+            budget: {
+              ...ARTIFACT_SAMPLE.budget,
+              executionBudget: { totalBudget: 1320 },
+            },
+            verification: {
+              ...ARTIFACT_SAMPLE.verification,
+              summary: '需再次校验',
+              passed: false,
+            },
+          },
+        },
+      ],
+    });
+
+    renderWithApp(
+      <TravelPlanToolkit
+        messageId="msg-compare-history"
+        content={SINGLE_PLAN_CONTENT}
+        diagnostics={{ sessionId: 'session-compare', runId: 'run-current' }}
+        artifact={ARTIFACT_SAMPLE}
+        onContinuePrompt={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getAllByRole('tab')[1]);
+
+    await waitFor(() => {
+      expect(screen.getByText(/persisted artifact history/i)).toBeInTheDocument();
+      expect(screen.getAllByRole('row').length).toBeGreaterThan(4);
+      expect(screen.getAllByText(/plan-hz-weekend/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/plan-sz-older/).length).toBeGreaterThan(0);
+    });
   });
 });

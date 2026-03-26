@@ -22,6 +22,7 @@ class ChatStreamDiagnostics:
 
         request_context = get_request_context()
         return {
+            "sessionId": state.resolved_session_id(),
             "toolsUsed": state.tools_used,
             "verificationPassed": state.verification_passed,
             "staleResultCount": state.stale_result_count,
@@ -41,6 +42,7 @@ class ChatStreamDiagnostics:
 
         request_context = get_request_context()
         return {
+            "sessionId": state.resolved_session_id(),
             "artifact": self.public_artifact_contract(state.final_artifact),
             "subagentEvents": state.subagent_events,
             "runId": state.run_id,

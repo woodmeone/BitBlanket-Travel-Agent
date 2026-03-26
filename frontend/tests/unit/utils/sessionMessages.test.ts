@@ -27,6 +27,7 @@ describe('normalizePersistedMessages', () => {
     ]);
 
     expect(messages).toHaveLength(1);
+    expect(messages[0].diagnostics?.sessionId).toBeUndefined();
     expect(messages[0].diagnostics?.planId).toBe('plan-321');
     expect(messages[0].diagnostics?.artifact?.itinerary.planId).toBe('plan-321');
     expect(messages[0].diagnostics?.subagentEvents?.[0]?.subagent).toBe('planning');
@@ -73,6 +74,7 @@ describe('normalizePersistedMessages', () => {
     });
 
     expect(hydrated[1].diagnostics?.planId).toBe('plan-restored');
+    expect(hydrated[1].diagnostics?.sessionId).toBe('session-1');
     expect(hydrated[1].diagnostics?.runId).toBe('run-restored');
     expect(hydrated[1].diagnostics?.artifact?.research.destinations).toEqual(['杭州']);
   });

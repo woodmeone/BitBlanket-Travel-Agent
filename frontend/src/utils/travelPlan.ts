@@ -1,5 +1,7 @@
 ﻿import type { MessageDiagnostics } from '@/types';
 
+import type { TripPlanArtifact } from '@/types';
+
 export interface DayPlanCard {
   dayLabel: string;
   morning: string;
@@ -14,6 +16,10 @@ export interface PlanVariant {
   id: string;
   title: string;
   content: string;
+  artifact?: TripPlanArtifact | null;
+  source?: 'text' | 'artifact-history' | 'artifact-current';
+  runId?: string | null;
+  messageTimestamp?: string | null;
 }
 
 export interface BudgetProjection {

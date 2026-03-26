@@ -37,6 +37,7 @@ describe('runtimeMessageBuilders', () => {
       },
       completion: { runId: 'done-run', requestId: 'done-request', traceId: 'done-trace' },
       metadata: {
+        sessionId: 'session-runtime',
         totalSteps: 5,
         toolsUsed: ['runtime-tool'],
         hasReasoning: true,
@@ -51,10 +52,12 @@ describe('runtimeMessageBuilders', () => {
         requestId: 'runtime-request',
         traceId: 'runtime-trace',
       },
+      sessionId: 'session-fallback',
       subagentEvents: [{ subagent: 'planner', status: 'completed' }],
     });
 
     expect(diagnostics).toMatchObject({
+      sessionId: 'session-runtime',
       toolsUsed: ['runtime-tool'],
       verificationPassed: true,
       staleResultCount: 1,
@@ -73,9 +76,11 @@ describe('runtimeMessageBuilders', () => {
     expect(
       buildStoppedDiagnostics({
         artifact: null,
+        sessionId: 'session-stopped',
         subagentEvents: [{ subagent: 'verifier', status: 'stopped' }],
       })
     ).toEqual({
+      sessionId: 'session-stopped',
       artifact: null,
       subagentEvents: [{ subagent: 'verifier', status: 'stopped' }],
     });

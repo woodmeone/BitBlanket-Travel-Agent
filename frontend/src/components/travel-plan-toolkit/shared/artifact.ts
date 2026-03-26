@@ -1,6 +1,7 @@
 'use client';
 
 import type { SubagentEvent, TripPlanArtifact } from '@/types';
+import type { PlanVariant } from '@/utils/travelPlan';
 import { subagentLabel } from './subagents';
 
 function uniqueStrings(items: string[]): string[] {
@@ -33,6 +34,16 @@ export interface ArtifactOverviewDescriptor {
   metrics: ArtifactOverviewMetric[];
   warnings: string[];
   subagentTrail: string[];
+}
+
+interface BuildArtifactCompareVariantOptions {
+  fallbackContent?: string;
+  fallbackTitle?: string;
+  id: string;
+  messageTimestamp?: string | null;
+  runId?: string | null;
+  source: 'artifact-history' | 'artifact-current';
+  subagentEvents?: SubagentEvent[];
 }
 
 export function artifactDestinations(artifact: TripPlanArtifact | null | undefined): string[] {
@@ -127,6 +138,46 @@ export function buildArtifactOverviewDescriptor(
     metrics: normalizedMetrics,
     warnings,
     subagentTrail,
+  };
+}
+
+export function formatArtifactSnapshotLabel(timestamp: string | null | undefined): string {
+  const value = trimText(timestamp);
+  if (!value) return '-';
+  if (value.includes('T')) {
+    return value.replace('T', ' ').replace('Z', '').slice(0, 16);
+  }
+  return value;
+}
+
+export function buildArtifactCompareVariant(
+  artifact: TripPlanArtifact | null | undefined,
+  {
+    fallbackContent = '',
+    fallbackTitle = '历史方案',
+    id,
+    messageTimestamp = null,
+    runId = null,
+    source,
+    subagentEvents = [],
+  }: BuildArtifactCompareVariantOptions
+): PlanVariant | null {
+  if (!artifact) return null;
+
+  const destinations = artifactDestinations(artifact);
+  const planId = trimText(artifact.itinerary.planId);
+  const snapshotLabel = formatArtifactSnapshotLabel(messageTimestamp);
+  const titleBase = destinations.length > 0 ? destinations.slice(0, 2).join(' / ') : fallbackTitle;
+  const title = planId ? `${titleBase} · ${planId}` : snapshotLabel !== '-' ? `${titleBase} · ${snapshotLabel}` : titleBase;
+
+  return {
+    id,
+    title,
+    content: buildArtifactSharePayload(artifact, subagentEvents, fallbackContent).content,
+    artifact,
+    source,
+    runId,
+    messageTimestamp,
   };
 }
 

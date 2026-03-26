@@ -196,6 +196,7 @@ describe('useSessionHistoryState', () => {
 
     expect(artifactClientMock.getLatestArtifact).toHaveBeenCalledWith('session-1');
     expect(result.current.messages[0]?.diagnostics?.artifact?.itinerary.planId).toBe('plan-restored');
+    expect(result.current.messages[0]?.diagnostics?.sessionId).toBe('session-1');
     expect(result.current.messages[0]?.diagnostics?.runId).toBe('run-1');
   });
 });

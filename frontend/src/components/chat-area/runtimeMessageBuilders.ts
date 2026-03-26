@@ -7,6 +7,7 @@ interface CompletionDiagnosticsArgs {
   artifact: TripPlanArtifact | null;
   completion?: StreamCompletionPayload;
   metadata: StreamMetadata | null;
+  sessionId?: string | null;
   subagentEvents: SubagentEvent[];
 }
 
@@ -19,11 +20,15 @@ export function buildCompletionDiagnostics({
   artifact,
   completion,
   metadata,
+  sessionId,
   subagentEvents,
 }: CompletionDiagnosticsArgs): MessageDiagnostics | undefined {
   if (!metadata && !artifact && subagentEvents.length === 0) return undefined;
 
+  const resolvedSessionId = completion?.sessionId || metadata?.sessionId || sessionId || undefined;
+
   return {
+    ...(resolvedSessionId ? { sessionId: resolvedSessionId } : {}),
     toolsUsed: metadata?.toolsUsed || artifact?.toolsUsed || [],
     verificationPassed: metadata?.verificationPassed ?? artifact?.verification.passed ?? null,
     staleResultCount: metadata?.staleResultCount ?? artifact?.budget.staleResultCount ?? 0,
@@ -40,11 +45,17 @@ export function buildCompletionDiagnostics({
 
 export function buildStoppedDiagnostics({
   artifact,
+  sessionId,
   subagentEvents,
 }: {
   artifact: TripPlanArtifact | null;
+  sessionId?: string | null;
   subagentEvents: SubagentEvent[];
 }): MessageDiagnostics | undefined {
   if (!artifact && subagentEvents.length === 0) return undefined;
-  return { artifact, subagentEvents };
+  return {
+    ...(sessionId ? { sessionId } : {}),
+    artifact,
+    subagentEvents,
+  };
 }

@@ -86,13 +86,24 @@ export function useSessionHistoryState({
     }
   };
 
+  const attachSessionId = (sessionId: string, nextMessages: Message[]): Message[] =>
+    nextMessages.map((message) => ({
+      ...message,
+      diagnostics: message.diagnostics
+        ? {
+            ...message.diagnostics,
+            sessionId: message.diagnostics.sessionId || sessionId,
+          }
+        : undefined,
+    }));
+
   const loadSessionMessages = async (sessionId: string): Promise<Message[]> => {
     if (hasOwnSessionMessages(sessionMessagesRef.current, sessionId)) {
       return sessionMessagesRef.current[sessionId];
     }
 
     const data = await sessionClient.getSessionMessages(sessionId);
-    const normalizedMessages = normalizePersistedMessages(data.messages);
+    const normalizedMessages = attachSessionId(sessionId, normalizePersistedMessages(data.messages));
     const hydratedMessages = await hydratePersistedArtifact(sessionId, normalizedMessages);
     cacheSessionMessages(sessionId, hydratedMessages);
     return hydratedMessages;

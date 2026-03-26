@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   artifactBudgetSummary,
   artifactDestinations,
+  buildArtifactCompareVariant,
   buildArtifactExportDescriptor,
   buildArtifactOverviewDescriptor,
   buildArtifactSharePayload,
+  formatArtifactSnapshotLabel,
   subagentLabel,
 } from '@/components/travel-plan-toolkit/shared';
 import { sliderToMode, modeToSliderValue } from '@/components/travel-plan-toolkit/shared/budget';
@@ -91,6 +93,17 @@ describe('travelPlan shared helpers', () => {
     expect(exportDescriptor.filenameBase).toBe('travel-plan-plan-hz');
     expect(exportDescriptor.summaryLines).toContain('目的地：杭州');
     expect(exportDescriptor.summaryLines).toContain('预算：预算估算约 ¥1680');
+
+    const compareVariant = buildArtifactCompareVariant(artifact, {
+      id: 'variant-1',
+      messageTimestamp: '2026-03-27T10:30:00Z',
+      runId: 'run-1',
+      source: 'artifact-history',
+    });
+
+    expect(compareVariant?.title).toContain('plan-hz');
+    expect(compareVariant?.runId).toBe('run-1');
+    expect(formatArtifactSnapshotLabel('2026-03-27T10:30:00Z')).toBe('2026-03-27 10:30');
 
     const overviewDescriptor = buildArtifactOverviewDescriptor(
       {

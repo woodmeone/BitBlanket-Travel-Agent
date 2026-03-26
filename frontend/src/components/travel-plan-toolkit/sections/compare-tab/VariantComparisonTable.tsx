@@ -5,12 +5,18 @@ import { Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { PlanVariant } from '@/utils/travelPlan';
 import type { CompareRow } from '../../shared';
+import {
+  artifactBudgetSummary,
+  artifactDestinations,
+  artifactVerificationLabel,
+  formatArtifactSnapshotLabel,
+} from '../../shared';
 
 interface VariantComparisonTableProps {
   variants: PlanVariant[];
 }
 
-function buildCompareRows(variants: PlanVariant[]): CompareRow[] {
+function buildTextCompareRows(variants: PlanVariant[]): CompareRow[] {
   return [
     {
       key: 'positioning',
@@ -43,6 +49,62 @@ function buildCompareRows(variants: PlanVariant[]): CompareRow[] {
       ),
     },
   ];
+}
+
+function buildArtifactCompareRows(variants: PlanVariant[]): CompareRow[] {
+  return [
+    {
+      key: 'title',
+      metric: '方案',
+      values: Object.fromEntries(variants.map((variant) => [variant.id, variant.title])),
+    },
+    {
+      key: 'destinations',
+      metric: '目的地',
+      values: Object.fromEntries(
+        variants.map((variant) => [variant.id, artifactDestinations(variant.artifact).join(' / ') || '-'])
+      ),
+    },
+    {
+      key: 'budget',
+      metric: '预算摘要',
+      values: Object.fromEntries(variants.map((variant) => [variant.id, artifactBudgetSummary(variant.artifact) || '-'])),
+    },
+    {
+      key: 'verification',
+      metric: '校验状态',
+      values: Object.fromEntries(
+        variants.map((variant) => [variant.id, artifactVerificationLabel(variant.artifact) || '-'])
+      ),
+    },
+    {
+      key: 'evidence',
+      metric: '证据条目',
+      values: Object.fromEntries(
+        variants.map((variant) => [variant.id, `${variant.artifact?.research.evidence.length ?? 0}`])
+      ),
+    },
+    {
+      key: 'steps',
+      metric: '结构化步骤',
+      values: Object.fromEntries(
+        variants.map((variant) => [variant.id, `${variant.artifact?.itinerary.steps.length ?? 0}`])
+      ),
+    },
+    {
+      key: 'updated',
+      metric: '快照时间',
+      values: Object.fromEntries(
+        variants.map((variant) => [variant.id, formatArtifactSnapshotLabel(variant.messageTimestamp)])
+      ),
+    },
+  ];
+}
+
+function buildCompareRows(variants: PlanVariant[]): CompareRow[] {
+  return variants.some((variant) => Boolean(variant.artifact))
+    ? buildArtifactCompareRows(variants)
+    : buildTextCompareRows(variants);
 }
 
 function buildCompareColumns(variants: PlanVariant[]): ColumnsType<CompareRow> {

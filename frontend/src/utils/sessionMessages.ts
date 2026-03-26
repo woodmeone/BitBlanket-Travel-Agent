@@ -27,6 +27,7 @@ function normalizeDiagnostics(value: unknown): MessageDiagnostics | undefined {
   if (!isRecord(value)) return undefined;
 
   return {
+    sessionId: typeof value.sessionId === 'string' ? value.sessionId : undefined,
     toolsUsed: Array.isArray(value.toolsUsed) ? value.toolsUsed.filter((item): item is string => typeof item === 'string') : [],
     verificationPassed:
       typeof value.verificationPassed === 'boolean' || value.verificationPassed === null
@@ -98,6 +99,7 @@ export function hydrateMessagesWithLatestArtifact(
       diagnostics: {
         ...message.diagnostics,
         artifact,
+        sessionId: latestArtifact.session_id ?? message.diagnostics?.sessionId,
         planId: artifact.itinerary.planId ?? message.diagnostics?.planId ?? null,
         runId: latestArtifact.run_id ?? message.diagnostics?.runId,
       },

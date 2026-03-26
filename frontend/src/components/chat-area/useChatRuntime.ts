@@ -289,6 +289,7 @@ export function useChatRuntime(): UseChatRuntimeResult {
               artifact: finalArtifact,
               completion,
               metadata: finalMetadata,
+              sessionId,
               subagentEvents: finalSubagentEvents,
             });
 
@@ -345,7 +346,11 @@ export function useChatRuntime(): UseChatRuntimeResult {
         role: 'assistant',
         content: buildStoppedMessageContent(stoppedContent),
         reasoning: stoppedReasoning,
-        diagnostics: buildStoppedDiagnostics({ artifact: stoppedArtifact, subagentEvents: stoppedSubagentEvents }),
+        diagnostics: buildStoppedDiagnostics({
+          artifact: stoppedArtifact,
+          sessionId: currentSessionId,
+          subagentEvents: stoppedSubagentEvents,
+        }),
         timestamp: messageTimestamp(),
       });
     }

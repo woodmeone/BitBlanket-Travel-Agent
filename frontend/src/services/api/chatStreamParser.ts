@@ -115,7 +115,7 @@ export function handleChatStreamLine(
     }
 
     if (dataType === CHAT_STREAM_EVENT_TYPES.METADATA) {
-      callbacks.onMetadata({
+      const metadataPayload = {
         totalSteps: Number(data.total_steps || 0),
         toolsUsed: stringArray(data.tools_used),
         hasReasoning: Boolean(data.has_reasoning),
@@ -130,7 +130,9 @@ export function handleChatStreamLine(
         requestId: typeof data.request_id === 'string' ? data.request_id : '',
         traceId: typeof data.trace_id === 'string' ? data.trace_id : '',
         artifact: isRecord(data.artifact) ? (data.artifact as unknown as TripPlanArtifact) : null,
-      });
+        ...(typeof data.session_id === 'string' && data.session_id ? { sessionId: data.session_id } : {}),
+      };
+      callbacks.onMetadata(metadataPayload);
       return false;
     }
 
@@ -183,12 +185,14 @@ export function handleChatStreamLine(
 
     if (dataType === CHAT_STREAM_EVENT_TYPES.DONE) {
       lifecycle.setConnectionStatus(SSEConnectionStatus.IDLE);
-      callbacks.onComplete({
+      const completionPayload = {
         artifact: isRecord(data.artifact) ? (data.artifact as unknown as TripPlanArtifact) : null,
         runId: typeof data.run_id === 'string' ? data.run_id : '',
         requestId: typeof data.request_id === 'string' ? data.request_id : '',
         traceId: typeof data.trace_id === 'string' ? data.trace_id : '',
-      });
+        ...(typeof data.session_id === 'string' && data.session_id ? { sessionId: data.session_id } : {}),
+      };
+      callbacks.onComplete(completionPayload);
       lifecycle.finalizeRequest();
       return true;
     }

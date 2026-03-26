@@ -10,6 +10,7 @@ export enum SSEConnectionStatus {
 }
 
 export interface StreamMetadata {
+  sessionId?: string;
   totalSteps: number;
   toolsUsed: string[];
   hasReasoning: boolean;
@@ -28,6 +29,7 @@ export interface StreamMetadata {
 
 export interface StreamCompletionPayload {
   artifact?: TripPlanArtifact | null;
+  sessionId?: string;
   runId?: string;
   requestId?: string;
   traceId?: string;

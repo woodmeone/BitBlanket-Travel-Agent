@@ -7,6 +7,7 @@ export interface Message {
 }
 
 export interface MessageDiagnostics {
+  sessionId?: string;
   toolsUsed?: string[];
   verificationPassed?: boolean | null;
   staleResultCount?: number;

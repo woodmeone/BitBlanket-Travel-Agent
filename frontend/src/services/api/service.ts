@@ -9,6 +9,7 @@ import { shareClient } from './shareClient';
 
 export class APIService {
   getLatestArtifact = (sessionId: string) => artifactClient.getLatestArtifact(sessionId);
+  getArtifactHistory = (sessionId: string, limit?: number) => artifactClient.getArtifactHistory(sessionId, limit);
   checkHealth = () => healthClient.checkHealth();
   checkLLMHealth = () => healthClient.checkLLMHealth();
   checkToolsHealth = () => healthClient.checkToolsHealth();

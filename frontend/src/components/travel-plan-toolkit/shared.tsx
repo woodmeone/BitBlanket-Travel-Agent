@@ -11,7 +11,9 @@ export { subagentLabel } from './shared/subagents';
 export { looksLikeItineraryContent } from './shared/content';
 export {
   artifactBudgetSummary,
+  buildArtifactCompareVariant,
   artifactDestinations,
+  formatArtifactSnapshotLabel,
   artifactVerificationLabel,
   buildArtifactExportDescriptor,
   buildArtifactOverviewDescriptor,

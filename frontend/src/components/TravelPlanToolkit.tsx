@@ -36,6 +36,7 @@ import {
   ToolkitRemindersTab,
 } from './travel-plan-toolkit/sections';
 import { looksLikeItineraryContent, modeToSliderValue, type BudgetMode } from './travel-plan-toolkit/shared';
+import { useArtifactHistoryCompare } from './travel-plan-toolkit/useArtifactHistoryCompare';
 import { useTravelPlanToolkitActions } from './travel-plan-toolkit/useTravelPlanToolkitActions';
 
 interface TravelPlanToolkitProps {
@@ -68,7 +69,7 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({
   const exportRef = useRef<HTMLDivElement | null>(null);
 
   const baseCards = useMemo(() => parseDayPlanCards(content), [content]);
-  const variants = useMemo(() => parsePlanVariants(content), [content]);
+  const textVariants = useMemo(() => parsePlanVariants(content), [content]);
   const checklist = useMemo(() => buildChecklist(content), [content]);
   const reminders = useMemo(() => buildReminders(), []);
   const confidence = useMemo(() => buildConfidenceSummary(diagnostics), [diagnostics]);
@@ -81,6 +82,16 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({
   const [expandedTips, setExpandedTips] = useState<Record<string, boolean>>({});
 
   const artifactAvailable = hasArtifactData(artifact);
+  const compareSessionId = diagnostics?.sessionId ?? null;
+  const { loading: compareHistoryLoading, variants: artifactHistoryVariants } = useArtifactHistoryCompare({
+    artifact,
+    content,
+    runId: diagnostics?.runId ?? null,
+    sessionId: compareSessionId,
+    subagentEvents,
+  });
+  const compareVariants = artifactHistoryVariants.length >= 2 ? artifactHistoryVariants : textVariants;
+  const compareSource = artifactHistoryVariants.length >= 2 ? 'artifact-history' : 'text';
 
   useEffect(() => {
     setCards(baseCards);
@@ -223,7 +234,14 @@ const TravelPlanToolkit: React.FC<TravelPlanToolkitProps> = ({
       key: 'compare',
       label: '多方案对比',
       icon: <FundOutlined />,
-      children: <ToolkitCompareTab variants={variants} onChooseVariant={handleChooseVariant} />,
+      children: (
+        <ToolkitCompareTab
+          loading={compareHistoryLoading}
+          source={compareSource}
+          variants={compareVariants}
+          onChooseVariant={handleChooseVariant}
+        />
+      ),
     });
 
   if (hasItineraryContent) {
