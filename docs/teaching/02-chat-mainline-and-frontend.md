@@ -530,6 +530,8 @@ sequenceDiagram
 
 `frontend/src/components/TravelPlanToolkit.tsx` 现在主要负责装配，`travel-plan-toolkit/sections.tsx` 也已经退化成 facade，而整组 `travel-plan-toolkit/sections/` 几乎可以单独当成一个小产品来理解。
 
+其中每日行程这一支也已经继续往下拆：`sections/itinerary/ItineraryDayCard.tsx` 现在主要负责单日卡片编排，风险提醒、景点决策卡和 tips 区块已经分别下沉到 `sections/itinerary/day-card/ItineraryConflictSection.tsx / ItinerarySpotDecisionGrid.tsx / ItineraryTipsBlock.tsx`。
+
 从当前实现看，它已经不仅是“把答案卡片化”，而是有比较完整的二次操作能力：
 
 - 解析日程卡 `parseDayPlanCards`

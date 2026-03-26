@@ -132,6 +132,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - Markdown 归一化、消息区块、诊断区块与复制/导出动作
 - `travel-plan-toolkit/`
   - 行程概览、对比、checklist、practical、冲突检测等视图块
+  - `sections/itinerary/day-card/` 继续承接单日行程卡里的风险提醒、景点决策卡与 tips 视图
 - `city-explorer/`
   - 场景 prompt、筛选器、shortlist、对比池、城市网格与详情抽屉
   - `sections.tsx` 仅保留兼容导出，真实 section modules 位于 `city-explorer/sections/`
@@ -348,6 +349,8 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - `ToolkitOverviewPanel / ToolkitItineraryTab / ToolkitCompareTab / ToolkitChecklistTab / ToolkitFavoritesTab / ToolkitPracticalTab / ToolkitRemindersTab / ToolkitConflictsTab` 真实 section adapters
 - [`frontend/src/components/travel-plan-toolkit/sections/itinerary/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/sections/itinerary)
   - `ItineraryBudgetPanel / ItineraryDayCard` 继续承接每日行程里的预算控制与单日卡片
+- [`frontend/src/components/travel-plan-toolkit/sections/itinerary/day-card/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/sections/itinerary/day-card)
+  - `ItineraryConflictSection / ItinerarySpotDecisionGrid / ItineraryTipsBlock` 三个 view adapters，分别承接风险提醒、景点决策卡与 tips 区块
 - [`frontend/src/components/city-explorer/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/city-explorer)
   - 场景 prompt、筛选器、shortlist、城市网格、对比池与详情抽屉
 - [`frontend/src/components/city-explorer/sections/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/city-explorer/sections)
