@@ -70,6 +70,24 @@ describe('TravelPlanToolkit', () => {
     });
   });
 
+  it('renders budget stats, confidence hints and quick refine actions', async () => {
+    const onContinuePrompt = vi.fn();
+    renderWithApp(<TravelPlanToolkit messageId="msg-budget" content={SAMPLE_CONTENT} onContinuePrompt={onContinuePrompt} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('预算档位')).toBeInTheDocument();
+      expect(screen.getByText(/总预算：/)).toBeInTheDocument();
+      expect(screen.getByText('人均预估')).toBeInTheDocument();
+      expect(screen.getByText('结果可信度')).toBeInTheDocument();
+      expect(screen.getByText(/No verification metadata available/)).toBeInTheDocument();
+      expect(screen.getByText('少走路版')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('少走路版'));
+
+    expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('少走路版本'));
+  });
+
   it('renders itinerary decision cards, tips and conflict reminders', async () => {
     const { rerender } = renderWithApp(<TravelPlanToolkit messageId="msg-1b" content={SAMPLE_CONTENT} />);
 
