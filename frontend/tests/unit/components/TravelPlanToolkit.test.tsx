@@ -115,7 +115,14 @@ describe('TravelPlanToolkit', () => {
 
   it('renders budget stats, confidence hints and quick refine actions', async () => {
     const onContinuePrompt = vi.fn();
-    renderWithApp(<TravelPlanToolkit messageId="msg-budget" content={SAMPLE_CONTENT} onContinuePrompt={onContinuePrompt} />);
+    renderWithApp(
+      <TravelPlanToolkit
+        messageId="msg-budget"
+        content={SAMPLE_CONTENT}
+        artifact={ARTIFACT_SAMPLE}
+        onContinuePrompt={onContinuePrompt}
+      />
+    );
 
     await waitFor(() => {
       expect(screen.getByText('预算档位')).toBeInTheDocument();
@@ -129,6 +136,8 @@ describe('TravelPlanToolkit', () => {
     fireEvent.click(screen.getByText('少走路版'));
 
     expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('少走路版本'));
+    expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('计划编号：plan-hz-weekend'));
+    expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('目的地：杭州'));
   });
 
   it('renders itinerary decision cards, tips and conflict reminders', async () => {
@@ -244,7 +253,14 @@ describe('TravelPlanToolkit', () => {
 
   it('builds itinerary again from favorite spots', async () => {
     const onContinuePrompt = vi.fn();
-    renderWithApp(<TravelPlanToolkit messageId="msg-favorites" content={SAMPLE_CONTENT} onContinuePrompt={onContinuePrompt} />);
+    renderWithApp(
+      <TravelPlanToolkit
+        messageId="msg-favorites"
+        content={SAMPLE_CONTENT}
+        artifact={ARTIFACT_SAMPLE}
+        onContinuePrompt={onContinuePrompt}
+      />
+    );
 
     await waitFor(() => {
       expect(screen.getByLabelText(/收藏 外滩/i)).toBeInTheDocument();
@@ -262,6 +278,7 @@ describe('TravelPlanToolkit', () => {
 
     expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('外滩'));
     expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('重新生成一版更精炼的旅行方案'));
+    expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('计划编号：plan-hz-weekend'));
   });
 
   it('prefers artifact data for overview and shared content', async () => {
@@ -312,5 +329,29 @@ describe('TravelPlanToolkit', () => {
       })
     );
     expect(clipboardWriteText).toHaveBeenCalledWith('https://example.com/share-1');
+  });
+
+  it('uses artifact context when continuing from compare variants', async () => {
+    const onContinuePrompt = vi.fn();
+    renderWithApp(
+      <TravelPlanToolkit
+        messageId="msg-variant"
+        content={SAMPLE_CONTENT}
+        artifact={ARTIFACT_SAMPLE}
+        onContinuePrompt={onContinuePrompt}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: /多方案对比/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('选中“省钱版”继续细化')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('选中“省钱版”继续细化'));
+
+    expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('计划编号：plan-hz-weekend'));
+    expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('目的地：杭州'));
+    expect(onContinuePrompt).toHaveBeenCalledWith(expect.stringContaining('原方案：'));
   });
 });

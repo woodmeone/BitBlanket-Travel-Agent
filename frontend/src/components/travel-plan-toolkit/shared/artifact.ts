@@ -62,6 +62,24 @@ export function artifactVerificationLabel(artifact: TripPlanArtifact | null | un
   return '';
 }
 
+export function buildArtifactEditingContext(artifact: TripPlanArtifact | null | undefined): string {
+  if (!artifact) return '';
+
+  const destinations = artifactDestinations(artifact);
+  const budgetLine = artifactBudgetSummary(artifact);
+  const verificationLine = artifactVerificationLabel(artifact);
+  const lines = [
+    artifact.itinerary.planId ? `- 计划编号：${artifact.itinerary.planId}` : '',
+    destinations.length > 0 ? `- 目的地：${destinations.join('、')}` : '',
+    budgetLine ? `- 预算摘要：${budgetLine}` : '',
+    verificationLine ? `- 校验状态：${verificationLine}` : '',
+    trimText(artifact.research.summary) ? `- 研究摘要：${trimText(artifact.research.summary)}` : '',
+  ].filter(Boolean);
+
+  if (lines.length === 0) return '';
+  return `请基于当前结构化旅行方案继续编辑：\n${lines.join('\n')}`;
+}
+
 export function buildArtifactSharePayload(
   artifact: TripPlanArtifact | null | undefined,
   subagentEvents: SubagentEvent[],

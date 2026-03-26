@@ -9,7 +9,7 @@ import { mapClient, shareClient } from '@/services/api';
 import { buildRoutePoints, reorderByDistance } from '@/utils/travelPlan';
 import type { DayPlanCard, PlanVariant, SpotDecisionInfo } from '@/utils/travelPlan';
 import { buildArtifactSharePayload, type QuickRefineAction } from './shared';
-import { buildFavoritesQuickRefineAction, buildVariantContinuePrompt } from './actionPrompts';
+import { buildArtifactAwarePrompt, buildFavoritesQuickRefineAction, buildVariantContinuePrompt } from './actionPrompts';
 
 interface UseTravelPlanToolkitActionsOptions {
   artifact?: TripPlanArtifact | null;
@@ -46,7 +46,7 @@ export function useTravelPlanToolkitActions({
       message.info('当前会话不支持继续优化。');
       return;
     }
-    onContinuePrompt(action.prompt);
+    onContinuePrompt(buildArtifactAwarePrompt(action.prompt, artifact));
     message.success(`已填入“${action.label}”优化指令`);
   };
 
@@ -56,7 +56,7 @@ export function useTravelPlanToolkitActions({
       return;
     }
 
-    onContinuePrompt(buildVariantContinuePrompt(variant));
+    onContinuePrompt(buildVariantContinuePrompt(variant, artifact));
     message.success(`已选择 ${variant.title}，可继续细化`);
   };
 

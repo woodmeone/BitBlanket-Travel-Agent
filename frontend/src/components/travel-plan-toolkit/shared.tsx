@@ -9,4 +9,10 @@ export { reminderPhaseMeta } from './shared/reminders';
 export { checklistStatusMeta } from './shared/checklist';
 export { subagentLabel } from './shared/subagents';
 export { looksLikeItineraryContent } from './shared/content';
-export { artifactBudgetSummary, artifactDestinations, artifactVerificationLabel, buildArtifactSharePayload } from './shared/artifact';
+export {
+  artifactBudgetSummary,
+  artifactDestinations,
+  artifactVerificationLabel,
+  buildArtifactEditingContext,
+  buildArtifactSharePayload,
+} from './shared/artifact';

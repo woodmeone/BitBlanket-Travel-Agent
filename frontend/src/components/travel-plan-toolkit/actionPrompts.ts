@@ -1,13 +1,25 @@
 'use client';
 
+import type { TripPlanArtifact } from '@/types';
 import type { PlanVariant, SpotDecisionInfo } from '@/utils/travelPlan';
 import type { QuickRefineAction } from './shared';
+import { buildArtifactEditingContext } from './shared/artifact';
 
-export function buildVariantContinuePrompt(variant: PlanVariant): string {
-  return `请基于“${variant.title}”继续细化：
+export function buildArtifactAwarePrompt(basePrompt: string, artifact?: TripPlanArtifact | null): string {
+  const context = buildArtifactEditingContext(artifact);
+  if (!context) return basePrompt;
+  return `${context}
+
+任务要求：
+${basePrompt}`;
+}
+
+export function buildVariantContinuePrompt(variant: PlanVariant, artifact?: TripPlanArtifact | null): string {
+  return `${buildArtifactAwarePrompt(`请基于“${variant.title}”继续细化：
 1) 输出每日详细时间轴（含时刻）
 2) 补充交通衔接与预计时长
 3) 补充每段预算与备选方案
+`, artifact)}
 
 原方案：
 ${variant.content}`;
