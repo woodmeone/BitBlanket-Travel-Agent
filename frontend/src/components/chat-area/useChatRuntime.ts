@@ -8,16 +8,15 @@ import type { PlanPreview, StreamStageEvent, SubagentEvent, TripPlanArtifact } f
 import { logger } from '@/utils/logger';
 import { mergeTripPlanArtifact } from '@/utils/agentArtifacts';
 import {
-  buildEnhancedPrompt,
-  MAX_EVENT_LOGS,
-  MAX_STAGE_LOGS,
   messageTimestamp,
   subagentLabel,
   type ActiveView,
   type ComparePlanCount,
   type RuntimeLog,
 } from './shared';
+import { buildStoppedMessageContent, prepareChatInput } from './chatInputPolicy';
 import { useArtifactRuntimeState } from './useArtifactRuntimeState';
+import { useChatRunState } from './useChatRunState';
 import { useStreamBuffer } from './useStreamBuffer';
 import { buildCompletionDiagnostics, buildFinalReasoning, buildStoppedDiagnostics } from './runtimeMessageBuilders';
 
@@ -83,14 +82,7 @@ export function useChatRuntime(): UseChatRuntimeResult {
   const [inputValue, setInputValue] = useState('');
   const [streamingMessage, setStreamingMessage] = useState('');
   const [streamingReasoning, setStreamingReasoning] = useState('');
-  const [waitingForResponse, setWaitingForResponse] = useState(false);
-  const [isThinking, setIsThinking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [reasoningExpanded, setReasoningExpanded] = useState<Record<string, boolean>>({});
-  const [currentTool, setCurrentTool] = useState<string | null>(null);
-  const [stageState, setStageState] = useState<StreamStageEvent | null>(null);
-  const [stageHistory, setStageHistory] = useState<StreamStageEvent[]>([]);
-  const [runtimeLogs, setRuntimeLogs] = useState<RuntimeLog[]>([]);
   const [selectedConstraints, setSelectedConstraints] = useState<string[]>([]);
   const [budgetUpperLimit, setBudgetUpperLimit] = useState<number | null>(null);
   const [compareModeEnabled, setCompareModeEnabled] = useState(false);
@@ -101,6 +93,25 @@ export function useChatRuntime(): UseChatRuntimeResult {
   const skipNextSessionResetRef = useRef(false);
   const metadataRef = useRef<StreamMetadata | null>(null);
   const hasHandledShareRef = useRef(false);
+  const {
+    currentTool,
+    error,
+    isThinking,
+    runtimeLogs,
+    stageHistory,
+    stageState,
+    waitingForResponse,
+    beginRun,
+    completeRun,
+    failRun,
+    pushRuntimeLog,
+    recordStage,
+    recordToolEnd,
+    recordToolStart,
+    resetRunState,
+    setThinking,
+    stopRun,
+  } = useChatRunState();
   const {
     activeSubagent,
     artifactRef,
@@ -129,16 +140,6 @@ export function useChatRuntime(): UseChatRuntimeResult {
     setStreamingMessage,
     setStreamingReasoning,
   });
-
-  const pushRuntimeLog = (label: string, detail?: string) => {
-    const item: RuntimeLog = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      label,
-      detail,
-      time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
-    };
-    setRuntimeLogs((prev) => [...prev.slice(-MAX_EVENT_LOGS + 1), item]);
-  };
 
   const clearArtifactRuntimeState = () => {
     metadataRef.current = null;
@@ -188,18 +189,12 @@ export function useChatRuntime(): UseChatRuntimeResult {
     clearStreamRuntimeRefs();
     setStreamingMessage('');
     setStreamingReasoning('');
-    setWaitingForResponse(false);
-    setIsThinking(false);
-    setError(null);
+    resetRunState();
     setIsStreaming(false);
     setStopStreaming(false);
-    setCurrentTool(null);
-    setStageState(null);
-    setStageHistory([]);
-    setRuntimeLogs([]);
     clearArtifactRuntimeState();
     stopRef.current = false;
-  }, [currentSessionId, setIsStreaming, setStopStreaming]);
+  }, [currentSessionId, resetRunState, setIsStreaming, setStopStreaming]);
 
   const toggleReasoning = (messageId: string) => {
     setReasoningExpanded((prev) => ({ ...prev, [messageId]: !prev[messageId] }));
@@ -209,19 +204,19 @@ export function useChatRuntime(): UseChatRuntimeResult {
     selectedConstraints.length + (budgetUpperLimit && budgetUpperLimit > 0 ? 1 : 0) + (compareModeEnabled ? 1 : 0);
 
   const handleSend = async () => {
-    const trimmed = inputValue.trim();
-    if (!trimmed) {
+    const preparedInput = prepareChatInput(inputValue, {
+      selectedConstraints,
+      budgetUpperLimit,
+      compareModeEnabled,
+      comparePlanCount,
+    });
+    if (!preparedInput) {
       message.warning('请输入内容');
       return;
     }
 
     try {
-      const enrichedPrompt = buildEnhancedPrompt(trimmed, {
-        selectedConstraints,
-        budgetUpperLimit,
-        compareModeEnabled,
-        comparePlanCount,
-      });
+      const { displayMessage, enrichedPrompt, sessionName } = preparedInput;
       const isFirstMessage = !currentSessionId || messages.length === 0;
       let sessionId = currentSessionId;
       if (!sessionId) {
@@ -233,7 +228,7 @@ export function useChatRuntime(): UseChatRuntimeResult {
 
       addMessage({
         role: 'user',
-        content: trimmed,
+        content: displayMessage,
         timestamp: messageTimestamp(),
       });
 
@@ -241,22 +236,14 @@ export function useChatRuntime(): UseChatRuntimeResult {
       setInputValue('');
       setIsStreaming(true);
       setStopStreaming(false);
-      setWaitingForResponse(true);
-      setIsThinking(true);
-      setError(null);
-      setCurrentTool(null);
       setStreamingMessage('');
       setStreamingReasoning('');
-      setStageState(null);
-      setStageHistory([]);
-      setRuntimeLogs([]);
       clearArtifactRuntimeState();
       stopRef.current = false;
-      pushRuntimeLog('开始执行', `模式: ${chatMode.toUpperCase()}`);
+      beginRun(chatMode.toUpperCase());
 
       if (isFirstMessage && sessionId) {
         try {
-          const sessionName = trimmed.slice(0, 15) + (trimmed.length > 15 ? '...' : '');
           await sessionClient.updateSessionName(sessionId, sessionName);
         } catch (err) {
           logger.error('设置会话名称失败:', err);
@@ -264,7 +251,7 @@ export function useChatRuntime(): UseChatRuntimeResult {
       }
 
       await chatClient.fetchStreamChat(
-        { message: enrichedPrompt, display_message: trimmed, session_id: sessionId, mode: chatMode },
+        { message: enrichedPrompt, display_message: displayMessage, session_id: sessionId, mode: chatMode },
         {
           onSessionId: (sid) => {
             if (!currentSessionId) {
@@ -272,11 +259,7 @@ export function useChatRuntime(): UseChatRuntimeResult {
               setCurrentSessionId(sid);
             }
           },
-          onStage: (stage) => {
-            setStageState(stage);
-            setStageHistory((prev) => [...prev, stage].slice(-MAX_STAGE_LOGS));
-            pushRuntimeLog('阶段', stage.label || stage.stage || '阶段更新');
-          },
+          onStage: (stage) => recordStage(stage),
           onPlanPreview: (preview) => {
             setPlanPreview(preview);
             applyArtifactPatch(preview.artifact ?? preview.artifactPatch);
@@ -302,20 +285,14 @@ export function useChatRuntime(): UseChatRuntimeResult {
             fullReasoningRef.current += content;
             enqueueReasoning(content);
           },
-          onReasoningStart: () => setIsThinking(true),
+          onReasoningStart: () => setThinking(true),
           onReasoningTimestamp: (timestamp) => {
             setReasoningTimestamp(timestamp);
           },
-          onReasoningEnd: () => setIsThinking(false),
-          onAnswerStart: () => setIsThinking(false),
-          onToolStart: (toolName) => {
-            setCurrentTool(toolName);
-            pushRuntimeLog('工具启动', toolName);
-          },
-          onToolEnd: (toolName) => {
-            setCurrentTool(null);
-            pushRuntimeLog('工具完成', toolName);
-          },
+          onReasoningEnd: () => setThinking(false),
+          onAnswerStart: () => setThinking(false),
+          onToolStart: (toolName) => recordToolStart(toolName),
+          onToolEnd: (toolName) => recordToolEnd(toolName),
           onMetadata: (data) => {
             metadataRef.current = data;
             applyArtifactPatch(data.artifact);
@@ -325,13 +302,10 @@ export function useChatRuntime(): UseChatRuntimeResult {
             message.destroy();
             message.error(`错误: ${errorMsg}`);
             clearStreamRuntimeRefs();
-            setWaitingForResponse(false);
-            setIsThinking(false);
-            setCurrentTool(null);
-            setError(errorMsg);
-            setStageState(null);
+            setIsStreaming(false);
+            failRun(errorMsg);
             clearArtifactRuntimeState();
-            pushRuntimeLog('执行失败', errorMsg);
+            stopRef.current = false;
             fullResponseRef.current = `抱歉，发生错误：${errorMsg}`;
             setStreamingMessage(fullResponseRef.current);
           },
@@ -362,14 +336,10 @@ export function useChatRuntime(): UseChatRuntimeResult {
 
             setStreamingMessage('');
             setStreamingReasoning('');
-            setWaitingForResponse(false);
             setIsStreaming(false);
-            setIsThinking(false);
-            setCurrentTool(null);
-            setStageState(null);
             stopRef.current = false;
             clearArtifactRuntimeState();
-            pushRuntimeLog('结束', '已生成最终回答');
+            completeRun();
           },
           onStop: () => stopRef.current,
         }
@@ -380,10 +350,10 @@ export function useChatRuntime(): UseChatRuntimeResult {
       message.destroy();
       const errorMsg = err instanceof Error ? err.message : '未知错误';
       message.error(`发送失败: ${errorMsg}`);
-      setWaitingForResponse(false);
-      setIsThinking(false);
-      setCurrentTool(null);
-      setError(errorMsg);
+      setIsStreaming(false);
+      setStreamingMessage('');
+      setStreamingReasoning('');
+      failRun(errorMsg);
       clearArtifactRuntimeState();
       clearStreamRuntimeRefs();
     }
@@ -400,18 +370,13 @@ export function useChatRuntime(): UseChatRuntimeResult {
     const stoppedSubagentEvents = subagentEventsRef.current;
     clearStreamRuntimeRefs();
 
-    setWaitingForResponse(false);
-    setIsThinking(false);
     setIsStreaming(false);
-    setCurrentTool(null);
-    setStageState(null);
-    metadataRef.current = null;
-    pushRuntimeLog('已停止', '用户中断本次生成');
+    stopRun();
 
     if (stoppedContent || stoppedReasoning) {
       addMessage({
         role: 'assistant',
-        content: `${stoppedContent || '已停止生成'}\n\n⚠️ 已停止生成`,
+        content: buildStoppedMessageContent(stoppedContent),
         reasoning: stoppedReasoning,
         diagnostics: buildStoppedDiagnostics({ artifact: stoppedArtifact, subagentEvents: stoppedSubagentEvents }),
         timestamp: messageTimestamp(),
