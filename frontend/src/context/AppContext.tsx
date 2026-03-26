@@ -1,19 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { modelClient } from '@/services/api';
+import React, { createContext, useContext, useState, type ReactNode } from 'react';
 import type { AppConfig, ChatMode, Message, ModelInfo, SessionInfo } from '@/types';
-import { logger } from '@/utils/logger';
+import { useModelBootstrapState } from './useModelBootstrapState';
 import { useSessionHistoryState } from './useSessionHistoryState';
-
-const DEFAULT_MODELS: ModelInfo[] = [
-  {
-    model_id: 'minimax-m2-5',
-    name: 'MiniMax M2.5',
-    provider: 'anthropic',
-    model: 'MiniMax-M2.5',
-  },
-];
 
 const DEFAULT_API_BASE =
   (typeof window !== 'undefined' && window.ENV?.NEXT_PUBLIC_API_BASE) ||
@@ -26,7 +16,7 @@ interface AppState {
 
   availableModels: ModelInfo[];
   currentModelId: string | null;
-  setCurrentModelId: (modelId: string) => void;
+  setCurrentModelId: (modelId: string) => Promise<void>;
   loadingModels: boolean;
 
   chatMode: ChatMode;
@@ -53,9 +43,6 @@ const AppContext = createContext<AppState | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState<AppConfig>({ apiBase: DEFAULT_API_BASE });
-  const [availableModels, setAvailableModels] = useState<ModelInfo[]>(DEFAULT_MODELS);
-  const [currentModelId, setCurrentModelIdState] = useState<string | null>('minimax-m2-5');
-  const [loadingModels] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [stopStreaming, setStopStreaming] = useState(false);
   const [chatMode, setChatModeState] = useState<ChatMode>('react');
@@ -70,48 +57,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     clearMessages,
     setMessages,
   } = useSessionHistoryState({
-    onRecoveredModelId: (modelId) => setCurrentModelIdState(modelId),
+    onRecoveredModelId: (modelId) => recoverModelId(modelId),
   });
-
-  useEffect(() => {
-    const loadModels = async () => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      try {
-        // Keep model bootstrap isolated so shell rendering never depends on it.
-        const data = await modelClient.getAvailableModels({ signal: controller.signal, timeoutMs: 3000 });
-        if (!data.success || !Array.isArray(data.models) || data.models.length === 0) return;
-
-        const modelExists = data.models.some((model: ModelInfo) => model.model_id === currentModelId);
-        setAvailableModels(data.models);
-        setCurrentModelIdState(modelExists ? currentModelId : data.models[0].model_id);
-      } catch {
-        // Keep default models silently.
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    };
-
-    const timer = setTimeout(loadModels, 1000);
-    return () => clearTimeout(timer);
-  }, [currentModelId]);
-
-  const handleSetCurrentModelId = async (modelId: string) => {
-    setCurrentModelIdState(modelId);
-    if (!currentSessionId) return;
-    try {
-      await modelClient.setSessionModel(currentSessionId, modelId);
-    } catch (error) {
-      logger.error('璁剧疆浼氳瘽妯″瀷澶辫触:', error);
-    }
-  };
+  const { availableModels, currentModelId, loadingModels, recoverModelId, setCurrentModelId } =
+    useModelBootstrapState({
+      currentSessionId,
+    });
 
   const value: AppState = {
     config,
     setConfig,
     availableModels,
     currentModelId,
-    setCurrentModelId: handleSetCurrentModelId,
+    setCurrentModelId,
     loadingModels,
     chatMode,
     setChatMode: setChatModeState,

@@ -8,6 +8,7 @@ const sessionClientMock = vi.hoisted(() => ({
 }));
 
 const modelClientMock = vi.hoisted(() => ({
+  getAvailableModels: vi.fn(),
   getSessionModel: vi.fn(),
   setSessionModel: vi.fn(),
 }));
@@ -36,15 +37,10 @@ describe('AppProvider session hydration', () => {
     window.localStorage.clear();
     sessionClientMock.getSessions.mockReset();
     sessionClientMock.getSessionMessages.mockReset();
+    modelClientMock.getAvailableModels.mockReset();
     modelClientMock.getSessionModel.mockReset();
     modelClientMock.setSessionModel.mockReset();
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: false,
-        json: async () => ({ success: false, models: [] }),
-      })
-    );
+    modelClientMock.getAvailableModels.mockResolvedValue({ success: false, models: [] });
   });
 
   afterEach(() => {
