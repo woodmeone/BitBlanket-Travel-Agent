@@ -530,7 +530,7 @@ sequenceDiagram
 
 `frontend/src/components/TravelPlanToolkit.tsx` 现在主要负责装配，`travel-plan-toolkit/sections.tsx` 也已经退化成 facade，而整组 `travel-plan-toolkit/sections/` 几乎可以单独当成一个小产品来理解。
 
-其中每日行程这一支也已经继续往下拆：`sections/itinerary/ItineraryDayCard.tsx` 现在主要负责单日卡片编排，风险提醒、景点决策卡和 tips 区块已经分别下沉到 `sections/itinerary/day-card/ItineraryConflictSection.tsx / ItinerarySpotDecisionGrid.tsx / ItineraryTipsBlock.tsx`；`sections/itinerary/ItineraryBudgetPanel.tsx` 也已经继续下沉到 `sections/itinerary/budget-panel/BudgetModeToolbar.tsx / BudgetStatsSummary.tsx / BudgetQuickRefineBar.tsx / BudgetConfidencePanel.tsx`；多方案对比继续下沉到 `sections/compare-tab/CompareEmptyState.tsx / VariantComparisonTable.tsx / VariantActionBar.tsx`；冲突检测继续下沉到 `sections/conflicts-tab/ConflictSummaryTag.tsx / ConflictCardContent.tsx / DayConflictCard.tsx`；实用信息继续下沉到 `sections/practical-tab/PracticalInfoGrid.tsx / PracticalInfoCardItem.tsx / PracticalToneTag.tsx`；出发提醒继续下沉到 `sections/reminders-tab/RemindersList.tsx / ReminderCardContent.tsx / ReminderPhaseTag.tsx`；执行清单继续下沉到 `sections/checklist-tab/ChecklistList.tsx / ChecklistItemRow.tsx / ChecklistStatusTag.tsx`；而跨领域 helper 也已经继续下沉到 `travel-plan-toolkit/shared/` 目录。
+其中每日行程这一支也已经继续往下拆：`sections/itinerary/ItineraryDayCard.tsx` 现在主要负责单日卡片编排，风险提醒、景点决策卡和 tips 区块已经分别下沉到 `sections/itinerary/day-card/ItineraryConflictSection.tsx / ItinerarySpotDecisionGrid.tsx / ItineraryTipsBlock.tsx`；`sections/itinerary/ItineraryBudgetPanel.tsx` 也已经继续下沉到 `sections/itinerary/budget-panel/BudgetModeToolbar.tsx / BudgetStatsSummary.tsx / BudgetQuickRefineBar.tsx / BudgetConfidencePanel.tsx`；多方案对比继续下沉到 `sections/compare-tab/CompareEmptyState.tsx / VariantComparisonTable.tsx / VariantActionBar.tsx`；冲突检测继续下沉到 `sections/conflicts-tab/ConflictSummaryTag.tsx / ConflictCardContent.tsx / DayConflictCard.tsx`；实用信息继续下沉到 `sections/practical-tab/PracticalInfoGrid.tsx / PracticalInfoCardItem.tsx / PracticalToneTag.tsx`；出发提醒继续下沉到 `sections/reminders-tab/RemindersList.tsx / ReminderCardContent.tsx / ReminderPhaseTag.tsx`；执行清单继续下沉到 `sections/checklist-tab/ChecklistList.tsx / ChecklistItemRow.tsx / ChecklistStatusTag.tsx`；而跨领域 helper 也已经继续下沉到 `travel-plan-toolkit/shared/` 目录，favorites/route/export/share 这类动作编排则继续下沉到 `travel-plan-toolkit/useTravelPlanToolkitActions.ts` 与 `actionPrompts.ts`。
 
 从当前实现看，它已经不仅是“把答案卡片化”，而是有比较完整的二次操作能力：
 
@@ -557,6 +557,8 @@ sequenceDiagram
 5. practical info
 6. 预算投影
 7. 分享与导出
+
+现在还可以再补一个更贴近当前源码边界的观察：`TravelPlanToolkit.tsx` 已经不再自己持有所有动作细节，favorites 池重做方案、variant continue prompt、路线预览、按距离重排、图片导出和分享都已经统一收口到 `useTravelPlanToolkitActions.ts`；这也是 harness engineering 在前端里的典型做法，即把“视图装配”和“动作编排”继续拆开。
 
 ### 12.2 为什么这层很适合在面试里讲
 

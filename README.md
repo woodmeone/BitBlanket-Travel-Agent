@@ -111,7 +111,7 @@ moyuan-travel-agent/
 - `frontend/src/components/chat-area/chatRuntimeReplay.ts` 负责把后端 `chat stream golden fixture` 回放成前端最终运行时快照，作为 frontend harness 的 replay/golden 基线
 - `frontend/src/context/AppContext.tsx` 现在主要保留全局 provider 装配，session cache / history recovery 与 model bootstrap 已分别下沉到 `frontend/src/context/useSessionHistoryState.ts` 和 `frontend/src/context/useModelBootstrapState.ts`
 - `frontend/src/components/MessageList.tsx` 负责消息区装配，渲染与诊断逻辑落在 `frontend/src/components/message-list/`
-- `frontend/src/components/TravelPlanToolkit.tsx` 负责 trip-plan workspace 装配，`travel-plan-toolkit/sections.tsx` 已退化成 facade，真实 itinerary / compare / practical 视图块落在 `frontend/src/components/travel-plan-toolkit/sections/`
+- `frontend/src/components/TravelPlanToolkit.tsx` 负责 trip-plan workspace 装配，`travel-plan-toolkit/sections.tsx` 已退化成 facade，真实 itinerary / compare / practical 视图块落在 `frontend/src/components/travel-plan-toolkit/sections/`，而 export/share/favorites/route 这类动作编排已经下沉到 `travel-plan-toolkit/useTravelPlanToolkitActions.ts`
 - `frontend/src/components/travel-plan-toolkit/sections/itinerary/day-card/` 继续把单日行程卡拆成 `ItineraryConflictSection / ItinerarySpotDecisionGrid / ItineraryTipsBlock` 三个 view adapter，收口风险提醒、景点决策卡和 tips 区块
 - `frontend/src/components/travel-plan-toolkit/sections/itinerary/budget-panel/` 继续把预算面板拆成 `BudgetModeToolbar / BudgetStatsSummary / BudgetQuickRefineBar / BudgetConfidencePanel` 四个 view adapter，收口预算档位、预算统计、quick refine 和 confidence 风险提示
 - `frontend/src/components/travel-plan-toolkit/sections/compare-tab/` 继续把对比视图拆成 `CompareEmptyState / VariantComparisonTable / VariantActionBar` 三个 view adapter，收口空态、对比表和继续细化动作
@@ -120,6 +120,7 @@ moyuan-travel-agent/
 - `frontend/src/components/travel-plan-toolkit/sections/reminders-tab/` 继续把出发提醒视图拆成 `RemindersList / ReminderCardContent / ReminderPhaseTag` 三个 view adapter，收口提醒卡列表、单卡内容和阶段标签
 - `frontend/src/components/travel-plan-toolkit/sections/checklist-tab/` 继续把执行清单视图拆成 `ChecklistList / ChecklistItemRow / ChecklistStatusTag` 三个 view adapter，收口清单列表、单项行和完成状态 affordance
 - `frontend/src/components/travel-plan-toolkit/shared/` 已按领域拆成 `timeline / budget / risk / practical / reminders / checklist / content / subagents / types` helper 模块，`shared.tsx` 现在只保留兼容 facade
+- `frontend/src/components/travel-plan-toolkit/actionPrompts.ts` 与 `useTravelPlanToolkitActions.ts` 已把 variant continue、favorites quick refine、导出分享和路线预览动作从主组件里抽离，配套 `frontend/tests/unit/components/travelPlanActionPrompts.test.ts` 与 `TravelPlanToolkit.test.tsx` 锁住 prompt 构造和候选池重做方案边界
 - `frontend/src/components/CityExplorer.tsx` 负责 city-explorer workspace 装配，筛选、shortlist、对比和详情逻辑落在 `frontend/src/components/city-explorer/`
 - `frontend/src/components/city-explorer/sections.tsx` 现在只保留兼容 facade，Hero / FilterBar / ComparePanel / Grid / DetailDrawer 已拆到 `frontend/src/components/city-explorer/sections/`
 - `frontend/src/components/city-explorer/sections/hero/` 继续把 `HeroSection` 下沉成 `HeroSummaryHeader / CuratedPromptPanel / FavoriteShortlistPanel` 三个 view 协作器，并锁住 shortlist 的“去规划”边界

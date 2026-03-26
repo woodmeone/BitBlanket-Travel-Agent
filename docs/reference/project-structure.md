@@ -132,6 +132,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - Markdown 归一化、消息区块、诊断区块与复制/导出动作
 - `travel-plan-toolkit/`
   - 行程概览、对比、checklist、practical、冲突检测等视图块
+  - `useTravelPlanToolkitActions.ts / actionPrompts.ts` 继续承接 favorites、route、export、share 与 continue prompt 的动作编排
   - `sections/itinerary/day-card/` 继续承接单日行程卡里的风险提醒、景点决策卡与 tips 视图
   - `sections/itinerary/budget-panel/` 继续承接预算档位、预算统计、quick refine 与 confidence 风险提示视图
   - `sections/compare-tab/` 继续承接空态、对比表和继续细化动作视图
@@ -366,6 +367,10 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - `ChecklistList / ChecklistItemRow / ChecklistStatusTag` 三个 view adapters，分别承接清单列表、单项行与完成状态 affordance
 - [`frontend/src/components/travel-plan-toolkit/shared/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/shared)
   - `timeline / budget / risk / practical / reminders / checklist / content / subagents / types` 领域 helper，`shared.tsx` 仅保留兼容 facade
+- [`frontend/src/components/travel-plan-toolkit/useTravelPlanToolkitActions.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/useTravelPlanToolkitActions.ts)
+  - favorites 池重做方案、variant continue、route preview、reorder、图片导出和分享动作编排
+- [`frontend/src/components/travel-plan-toolkit/actionPrompts.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/actionPrompts.ts)
+  - `variant continue` 与 favorites quick refine prompt builder
 - [`frontend/src/components/travel-plan-toolkit/sections/itinerary/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/sections/itinerary)
   - `ItineraryBudgetPanel / ItineraryDayCard` 继续承接每日行程里的预算控制与单日卡片
 - [`frontend/src/components/travel-plan-toolkit/sections/itinerary/budget-panel/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/sections/itinerary/budget-panel)
@@ -394,6 +399,8 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - 锁住 parser / artifact merge / completion diagnostics 的最终态，以及前端 golden fixture 基线
 - [`frontend/tests/unit/components/TravelPlanToolkit.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/TravelPlanToolkit.test.tsx)
   - 锁住 tab 切换、每日行程动作、方案对比与 checklist/practical 入口
+- [`frontend/tests/unit/components/travelPlanActionPrompts.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/travelPlanActionPrompts.test.ts)
+  - 锁住 favorites quick refine prompt 与 variant continue prompt builder
 - [`frontend/tests/unit/components/CityExplorer.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/CityExplorer.test.tsx)
   - 锁住场景 prompt、shortlist 规划、城市卡规划、详情抽屉加载与对比 prompt 边界
 

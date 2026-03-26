@@ -55,7 +55,7 @@
 
 - `frontend/src/components/MessageList.tsx`：71 行
 - `frontend/src/components/ChatArea.tsx`：85 行
-- `frontend/src/components/TravelPlanToolkit.tsx`：353 行
+- `frontend/src/components/TravelPlanToolkit.tsx`：287 行
 - `frontend/src/components/CityExplorer.tsx`：232 行
 - `frontend/src/services/api.ts`：1 行兼容 facade
 
@@ -371,6 +371,7 @@ agent/travel_agent/
 - [已完成 2026-03-26] `travel-plan-toolkit/sections/ToolkitRemindersTab.tsx` 已继续下沉成 `reminders-tab/` 目录下的 view adapters；新增 `frontend/src/components/travel-plan-toolkit/sections/reminders-tab/RemindersList.tsx / ReminderCardContent.tsx / ReminderPhaseTag.tsx`，把提醒卡列表、单卡内容和阶段标签都从主文件中抽离，`frontend/src/components/travel-plan-toolkit/sections/ToolkitRemindersTab.tsx` 当前已降到 `14` 行；同时 `frontend/src/components/travel-plan-toolkit/shared.tsx` 也补上了 `reminderPhaseMeta()` 统一语义，配套 `frontend/tests/unit/components/TravelPlanToolkit.test.tsx` 现已补充 reminder phase 标签与时间轴卡片边界，并通过前端 `lint / vitest / build` 与后端全量 `pytest`。
 - [已完成 2026-03-26] `travel-plan-toolkit/sections/ToolkitChecklistTab.tsx` 已继续下沉成 `checklist-tab/` 目录下的 view adapters；新增 `frontend/src/components/travel-plan-toolkit/sections/checklist-tab/ChecklistList.tsx / ChecklistItemRow.tsx / ChecklistStatusTag.tsx`，把清单列表、单项行和完成状态 affordance 都从主文件中抽离，`frontend/src/components/travel-plan-toolkit/sections/ToolkitChecklistTab.tsx` 当前已降到 `26` 行；同时 `frontend/src/components/travel-plan-toolkit/shared.tsx` 也补上了 `checklistStatusMeta()` 统一语义，配套 `frontend/tests/unit/components/TravelPlanToolkit.test.tsx` 现已补充 checklist 勾选与状态标签边界，并通过前端 `lint / vitest / build` 与后端全量 `pytest`。
 - [已完成 2026-03-26] `travel-plan-toolkit/shared.tsx` 已继续下沉成 `shared/` 目录下的领域 helper；新增 `frontend/src/components/travel-plan-toolkit/shared/timeline.tsx / budget.ts / risk.ts / practical.ts / reminders.ts / checklist.ts / content.ts / subagents.ts / types.ts`，把原来集中在 `shared.tsx` 里的 timeline 渲染、budget 映射、risk 颜色、practical/reminder/checklist 元信息、内容判定和类型定义都拆到按领域分组的模块里；`frontend/src/components/travel-plan-toolkit/shared.tsx` 当前已降到 `11` 行兼容 facade，并新增 `frontend/tests/unit/components/travelPlanShared.test.ts` 锁住 tips 归一化、budget mode 映射和共享元信息 helper 的边界。
+- [已完成 2026-03-26] `TravelPlanToolkit.tsx` 已把 export/share/favorites/route action orchestration 下沉成独立 hook；新增 `frontend/src/components/travel-plan-toolkit/useTravelPlanToolkitActions.ts / actionPrompts.ts`，把 favorites quick refine、variant continue prompt、路线预览、按距离重排、图片导出与分享动作都从主组件中抽离，`ToolkitFavoritesTab.tsx` 也改成只消费 action props；配套 `frontend/tests/unit/components/travelPlanActionPrompts.test.ts` 与 `frontend/tests/unit/components/TravelPlanToolkit.test.tsx` 已锁住 prompt 构造与“用候选池重做方案”边界。
 - [已完成 2026-03-26] `ChatArea.tsx` 已拆成 `chat-area/` 目录下的 `useChatRuntime / ChatComposer / ChatConversationView / ExecutionInsights / shared` 协作器；`frontend/src/components/ChatArea.tsx` 当前已降到 `92` 行，主入口只保留 tabs、view switch 和装配逻辑，原来的流式运行时状态、SSE 处理、约束输入区和执行洞察面板都已分层落位，配套 `frontend/tests/unit/components/ChatComposer.test.tsx` 已锁住发送/停止和约束展示边界，前端 `lint / vitest / build` 均已通过。
 - [已完成 2026-03-26] `CityExplorer.tsx` 已拆成 `city-explorer/` 目录下的 `shared / sections` 协作器；场景 prompt、筛选条、shortlist、对比池、城市网格和详情抽屉都已从主文件中抽离，`frontend/src/components/CityExplorer.tsx` 当前已降到 `232` 行，主入口主要保留数据拉取、筛选状态和 feature 编排，配套 `frontend/tests/unit/components/CityExplorer.test.tsx` 已锁住场景 prompt 触发与详情抽屉加载边界，前端 `lint / vitest / build` 均已通过。
 - [已完成 2026-03-26] `city-explorer/sections.tsx` 已继续下沉成 `sections/` 目录下的 `HeroSection / FilterBarSection / ComparePanelSection / GridSection / DetailDrawerSection` 五个 section modules；`frontend/src/components/city-explorer/sections.tsx` 当前仅保留 `6` 行兼容导出，顺手清理了城市探索链路里的乱码文案与 prompt，并通过 `aria-label` 收口详情 / 对比 / 规划动作的可访问名称，`frontend/tests/unit/components/CityExplorer.test.tsx` 现已覆盖场景 prompt、详情抽屉和对比 prompt 三条关键边界。
@@ -384,7 +385,7 @@ agent/travel_agent/
 
 建议动作：
 
-- 继续把 `TravelPlanToolkit.tsx` 里的 export/share/favorites/route action orchestration 下沉成 hook 或 action coordinator
+- 继续把 `TravelPlanToolkit.tsx` 里的 tab assembly、derived state 和 one-click fix feedback orchestration 下沉成 workspace hook 或 view-model
 
 验收标准：
 
