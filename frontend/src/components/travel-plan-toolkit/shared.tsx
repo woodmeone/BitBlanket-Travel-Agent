@@ -14,6 +14,7 @@ export {
   artifactDestinations,
   artifactVerificationLabel,
   buildArtifactExportDescriptor,
+  buildArtifactOverviewDescriptor,
   buildArtifactEditingContext,
   buildArtifactSharePayload,
 } from './shared/artifact';

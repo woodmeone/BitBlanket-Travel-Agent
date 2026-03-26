@@ -21,6 +21,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+export interface ArtifactOverviewMetric {
+  label: string;
+  value: string;
+  tone?: 'default' | 'success' | 'warning' | 'danger' | 'info';
+}
+
+export interface ArtifactOverviewDescriptor {
+  title: string;
+  summary: string;
+  metrics: ArtifactOverviewMetric[];
+  warnings: string[];
+  subagentTrail: string[];
+}
+
 export function artifactDestinations(artifact: TripPlanArtifact | null | undefined): string[] {
   if (!artifact) return [];
   return uniqueStrings(
@@ -60,6 +74,60 @@ export function artifactVerificationLabel(artifact: TripPlanArtifact | null | un
   if (artifact.verification.passed === false) return '校验未通过';
   if (trimText(artifact.verification.summary)) return trimText(artifact.verification.summary);
   return '';
+}
+
+export function buildArtifactOverviewDescriptor(
+  artifact: TripPlanArtifact | null | undefined,
+  subagentEvents: SubagentEvent[]
+): ArtifactOverviewDescriptor | null {
+  if (!artifact) return null;
+
+  const destinations = artifactDestinations(artifact);
+  const budgetLine = artifactBudgetSummary(artifact);
+  const verificationLine = artifactVerificationLabel(artifact);
+  const planId = trimText(artifact.itinerary.planId);
+  const evidenceCount = artifact.research.evidence.length;
+  const stepCount = artifact.itinerary.steps.length;
+  const toolCount = uniqueStrings([...(artifact.research.sourceTools || []), ...(artifact.toolsUsed || [])]).length;
+  const subagentTrail = uniqueStrings(subagentEvents.map((event) => subagentLabel(trimText(event.subagent))));
+  const summary =
+    trimText(artifact.research.summary) ||
+    trimText(artifact.itinerary.explanation) ||
+    trimText(artifact.verification.summary) ||
+    trimText(artifact.answer);
+  const title = destinations.length > 0 ? `${destinations.slice(0, 2).join(' / ')}旅行方案` : '旅行方案';
+
+  const rawMetrics: Array<ArtifactOverviewMetric | null> = [
+    destinations.length > 0 ? { label: '目的地', value: destinations.join(' / '), tone: 'info' } : null,
+    planId ? { label: '计划编号', value: planId, tone: 'default' } : null,
+    budgetLine ? { label: '预算摘要', value: budgetLine, tone: 'warning' } : null,
+    verificationLine
+      ? {
+          label: '校验状态',
+          value: verificationLine,
+          tone: artifact.verification.passed === false ? 'danger' : artifact.verification.passed ? 'success' : 'default',
+        }
+      : null,
+    stepCount > 0 ? { label: '结构化步骤', value: `${stepCount}`, tone: 'info' } : null,
+    evidenceCount > 0 ? { label: '证据条目', value: `${evidenceCount}`, tone: 'info' } : null,
+    toolCount > 0 ? { label: '工具触达', value: `${toolCount}`, tone: 'default' } : null,
+  ];
+  const normalizedMetrics: ArtifactOverviewMetric[] = rawMetrics.filter((item) => item !== null);
+
+  const warnings = [
+    artifact.verification.issues.length > 0 ? `检测到 ${artifact.verification.issues.length} 个待处理风险` : '',
+    artifact.verification.shouldRetry ? '当前方案建议再次校验' : '',
+    artifact.budget.staleResultCount > 0 ? `预算链路存在 ${artifact.budget.staleResultCount} 条时效结果` : '',
+    artifact.budget.fallbackSteps > 0 ? `预算链路包含 ${artifact.budget.fallbackSteps} 个回退步骤` : '',
+  ].filter(Boolean);
+
+  return {
+    title,
+    summary,
+    metrics: normalizedMetrics,
+    warnings,
+    subagentTrail,
+  };
 }
 
 export function buildArtifactEditingContext(artifact: TripPlanArtifact | null | undefined): string {

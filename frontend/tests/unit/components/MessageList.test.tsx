@@ -137,9 +137,11 @@ describe('MessageList', () => {
       <MessageList messages={messages} reasoningExpanded={{}} onToggleReasoning={vi.fn()} />
     );
 
-    expect(screen.getByText(/Plan #plan-123/)).toBeInTheDocument();
+    expect(screen.getByText(/Shanghai旅行方案/)).toBeInTheDocument();
+    expect(screen.getByText(/计划编号/)).toBeInTheDocument();
+    expect(screen.getAllByText(/plan-123/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Collected destination evidence\./)).toBeInTheDocument();
     expect(screen.getByText(/Artifact 计划ID: plan-123/)).toBeInTheDocument();
-    expect(screen.getByText(/子 Agent 轨迹/)).toBeInTheDocument();
+    expect(screen.getByText(/子 Agent 轨迹：规划 -> 研究 -> 校验/)).toBeInTheDocument();
   });
 });

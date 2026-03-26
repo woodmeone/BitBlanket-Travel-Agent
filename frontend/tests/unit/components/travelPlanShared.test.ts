@@ -3,6 +3,7 @@ import {
   artifactBudgetSummary,
   artifactDestinations,
   buildArtifactExportDescriptor,
+  buildArtifactOverviewDescriptor,
   buildArtifactSharePayload,
   subagentLabel,
 } from '@/components/travel-plan-toolkit/shared';
@@ -90,5 +91,44 @@ describe('travelPlan shared helpers', () => {
     expect(exportDescriptor.filenameBase).toBe('travel-plan-plan-hz');
     expect(exportDescriptor.summaryLines).toContain('目的地：杭州');
     expect(exportDescriptor.summaryLines).toContain('预算：预算估算约 ¥1680');
+
+    const overviewDescriptor = buildArtifactOverviewDescriptor(
+      {
+        ...artifact,
+        research: {
+          ...artifact.research,
+          evidence: [{ title: '西湖开放信息' }, { title: '灵隐寺预约提示' }],
+        },
+        budget: {
+          ...artifact.budget,
+          staleResultCount: 1,
+          fallbackSteps: 2,
+        },
+        verification: {
+          ...artifact.verification,
+          issues: [{ severity: 'medium' }],
+          shouldRetry: true,
+        },
+      },
+      [{ subagent: 'planning' }, { subagent: 'budget' }, { subagent: 'verification' }]
+    );
+
+    expect(overviewDescriptor?.title).toBe('杭州旅行方案');
+    expect(overviewDescriptor?.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: '目的地', value: '杭州' }),
+        expect.objectContaining({ label: '计划编号', value: 'plan-hz' }),
+        expect.objectContaining({ label: '预算摘要', value: '预算估算约 ¥1680' }),
+        expect.objectContaining({ label: '证据条目', value: '2' }),
+      ])
+    );
+    expect(overviewDescriptor?.warnings).toEqual(
+      expect.arrayContaining([
+        '检测到 1 个待处理风险',
+        '当前方案建议再次校验',
+        '预算链路存在 1 条时效结果',
+        '预算链路包含 2 个回退步骤',
+      ])
+    );
   });
 });

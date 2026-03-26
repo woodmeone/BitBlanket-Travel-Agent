@@ -63,7 +63,7 @@ const ARTIFACT_SAMPLE = {
   intent: { name: 'hangzhou-weekend', entities: {}, detail: {} },
   research: {
     summary: '围绕西湖、灵隐寺与河坊街安排周末两日轻松游。',
-    evidence: [],
+    evidence: [{ title: '西湖开放信息' }, { title: '灵隐寺预约提示' }],
     destinations: ['杭州'],
     sourceTools: ['search_city', 'search_attractions'],
   },
@@ -308,9 +308,13 @@ describe('TravelPlanToolkit', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Destinations: 杭州')).toBeInTheDocument();
+      expect(screen.getByText('杭州旅行方案')).toBeInTheDocument();
+      expect(screen.getByText('计划编号')).toBeInTheDocument();
+      expect(screen.getByText('plan-hz-weekend')).toBeInTheDocument();
       expect(screen.getByText('预算估算约 ¥1680')).toBeInTheDocument();
-      expect(screen.getByText('Structured Steps: 1')).toBeInTheDocument();
+      expect(screen.getByText('结构化步骤')).toBeInTheDocument();
+      expect(screen.getByText('证据条目')).toBeInTheDocument();
+      expect(screen.getByText(/子 Agent 轨迹：规划 -> 预算 -> 校验/)).toBeInTheDocument();
       expect(screen.getByText('预算:completed')).toBeInTheDocument();
     });
 
