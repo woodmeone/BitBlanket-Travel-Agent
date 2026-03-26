@@ -340,6 +340,7 @@ agent/travel_agent/
 - [已完成 2026-03-26] `verification` 主链已从 `graph/nodes.py` 中抽成独立 `VerificationPipeline`，新增 `agent/travel_agent/pipelines/verification.py` 负责高风险 query 判定、required tool 缺失重试、stale refresh 降级与 `VerifyIssue / VerifyResult` 标准化；`AgentNodes.verify_node()` 已退化为委托入口，`graph/nodes.py` 当前已进一步降到 `2968` 行。
 - [已完成 2026-03-27] `BudgetSubagent` 已进入默认 runtime 编队，新增 `agent/travel_agent/subagents/budget.py` 并把默认 registry 正式收口为 `research / planning / budget / verification`；`budget` 相关 skill ownership 也已同步收窄到预算链路，不再继续挂在 verification 兜底分支下。
 - [已完成 2026-03-27] persisted artifact 读取链路已从聊天流旁路中抽成正式应用能力，新增 `web/moyuan_web/services/artifact_service.py` 与 `web/moyuan_web/routes/artifact.py`，提供 `GET /api/artifacts/{session_id}/latest` 稳定读取 session 历史中的最终 artifact；前端也已同步 `artifactClient.ts` 和 `LatestArtifactResponse` 契约，为 Phase 3 的 artifact-first UI 继续下沉补齐稳定输入面。
+- [已完成 2026-03-27] persisted artifact 读取面已扩展到 history contract，`ArtifactService` 新增 `get_artifact_history()`，`routes/artifact.py` 新增 `GET /api/artifacts/{session_id}/history`，按 newest-first 暴露多次 artifact 快照；前端同步 `ArtifactHistoryResponse` 和 `artifactClient.getArtifactHistory()`，为 compare/history UI 提供稳定基座，而不必继续直接扫 session messages。
 
 建议动作：
 

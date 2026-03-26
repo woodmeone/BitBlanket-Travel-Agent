@@ -653,6 +653,9 @@ flowchart LR
 - [已完成 2026-03-27] trip-plan overview 已收口成 artifact overview descriptor
   已落地：`frontend/src/components/travel-plan-toolkit/shared/artifact.ts` 新增 `buildArtifactOverviewDescriptor()`，把 overview 面板里分散的目的地、预算、校验、证据、工具触达、风险提示与 subagent trail 汇总成统一 contract；`ToolkitOverviewPanel.tsx` 现在主要负责渲染 descriptor，而不再直接散点读取 artifact 字段；`frontend/tests/unit/components/travelPlanShared.test.ts` 与 `frontend/tests/unit/components/TravelPlanToolkit.test.tsx` 已锁住 descriptor 指标和面板展示边界。
 
+- [已完成 2026-03-27] artifact history contract 已落地，为 compare/history UI 提供稳定输入面
+  已落地：`web/moyuan_web/services/artifact_service.py` 新增 `get_artifact_history()`，`web/moyuan_web/routes/artifact.py` 新增 `GET /api/artifacts/{session_id}/history`，按 newest-first 返回 session 中的 persisted artifact 快照；前端同步 `frontend/src/types/index.ts` 与 `frontend/src/services/api/artifactClient.ts`，提供 `ArtifactHistoryResponse` / `getArtifactHistory()`；`tests/test_artifact_contract_schema_unit.py`、`tests/test_artifact_service_unit.py`、`tests/test_artifact_route_local.py` 已锁住 history contract、limit 和顺序语义。
+
 ## 14. 结论
 
 符合 harness engineering 思路的项目演进，不是“不断给当前系统堆更多模块”，而是分阶段把：

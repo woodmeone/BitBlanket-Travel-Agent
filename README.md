@@ -110,6 +110,7 @@ moyuan-travel-agent/
 - `frontend/src/components/chat-area/useChatRuntime.ts` 已继续下沉，流缓冲、artifact 运行态、run lifecycle、share/session hydration 和 input policy 分别落在 `useStreamBuffer.ts`、`useArtifactRuntimeState.ts`、`useChatRunState.ts`、`useChatSessionHydration.ts`、`chatInputPolicy.ts`、`runtimeMessageBuilders.ts`
 - `frontend/src/components/chat-area/chatRuntimeReplay.ts` 负责把后端 `chat stream golden fixture` 回放成前端最终运行时快照，作为 frontend harness 的 replay/golden 基线
 - `frontend/src/context/AppContext.tsx` 现在主要保留全局 provider 装配，session cache / history recovery 与 model bootstrap 已分别下沉到 `frontend/src/context/useSessionHistoryState.ts` 和 `frontend/src/context/useModelBootstrapState.ts`；其中 `useSessionHistoryState.ts` 会在会话恢复时补调 `artifactClient.getLatestArtifact()`，把缺失的 persisted artifact 回填到最新 assistant message diagnostics
+- `frontend/src/services/api/artifactClient.ts` 现在同时提供 `getLatestArtifact()` 和 `getArtifactHistory()`，为 session restore、artifact compare/history UI 提供稳定数据面
 - `frontend/src/components/MessageList.tsx` 负责消息区装配，渲染与诊断逻辑落在 `frontend/src/components/message-list/`
 - `frontend/src/components/TravelPlanToolkit.tsx` 负责 trip-plan workspace 装配，`travel-plan-toolkit/sections.tsx` 已退化成 facade，真实 itinerary / compare / practical 视图块落在 `frontend/src/components/travel-plan-toolkit/sections/`，而 export/share/favorites/route 这类动作编排已经下沉到 `travel-plan-toolkit/useTravelPlanToolkitActions.ts`
 - `frontend/src/components/travel-plan-toolkit/shared/artifact.ts` 负责 artifact-first 的 overview descriptor、destinations / budget / verification 摘要、分享内容和导出 descriptor 构造；当 `TravelPlanToolkit` 已拿到结构化 artifact 时，overview、分享短链和图片导出都会优先消费 artifact，而不是继续直接依赖原始长文本
@@ -301,6 +302,8 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke `
 
 - `GET /api/artifacts/{session_id}/latest`
   - 前端 session restore 会优先用它补齐 persisted artifact，避免刷新后只能回退到纯文本恢复
+- `GET /api/artifacts/{session_id}/history?limit=10`
+  - 返回当前 session 中 newest-first 的 artifact 快照列表，为后续 compare/history UI 提供稳定输入面
 
 ### City Explorer
 

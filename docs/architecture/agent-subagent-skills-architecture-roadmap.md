@@ -811,9 +811,9 @@ The first application-layer slice of Phase 3 is now active in code:
 - [`web/moyuan_web/services/artifact_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/artifact_service.py)
   - exposes persisted trip artifacts as an application-layer service boundary
 - [`web/moyuan_web/routes/artifact.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/artifact.py)
-  - adds `GET /api/artifacts/{session_id}/latest` as the public artifact retrieval endpoint
+  - adds `GET /api/artifacts/{session_id}/latest` and `GET /api/artifacts/{session_id}/history` as public artifact retrieval endpoints
 - [`frontend/src/services/api/artifactClient.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api/artifactClient.ts)
-  - synchronizes frontend API clients with the new artifact retrieval contract
+  - synchronizes frontend API clients with the latest/history artifact retrieval contract
 
 Current status:
 
@@ -830,3 +830,4 @@ Current status:
 11. The trip-plan continue/edit actions now carry artifact context into refinement prompts, so downstream editing flows can evolve from text-first follow-ups toward artifact-aware product operations.
 12. The trip-plan export action now also consumes artifact-derived title, summary, and filename metadata, so the final image delivery path is aligned with the artifact-first product surface instead of falling back to generic text-first exports.
 13. The trip-plan overview layer now reads from a dedicated artifact overview descriptor instead of scattered field access, which gives the product surface a more stable contract for destinations, budget, verification, evidence, and risk summaries.
+14. The application layer now exposes artifact history in newest-first order, which gives future compare/history UI a stable artifact-native input surface instead of forcing the frontend to scan raw session messages.

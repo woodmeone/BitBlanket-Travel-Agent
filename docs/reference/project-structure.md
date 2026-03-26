@@ -238,8 +238,10 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - [`web/moyuan_web/routes/chat.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)
 - [`web/moyuan_web/routes/health.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/health.py)
 - [`web/moyuan_web/routes/artifact.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/artifact.py)
+  - `GET /api/artifacts/{session_id}/latest` 与 `GET /api/artifacts/{session_id}/history`
 - [`web/moyuan_web/services/chat_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)
 - [`web/moyuan_web/services/artifact_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/artifact_service.py)
+  - persisted artifact latest/history 读取与 camelCase normalize
 - [`web/moyuan_web/services/share_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/share_service.py)
 - [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py)
 - [`web/moyuan_web/startup_checks.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/startup_checks.py)
@@ -419,6 +421,8 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - 现在主要负责 provider 装配与流式全局状态
 - `frontend/src/context/useSessionHistoryState.ts`
   - 负责 session 切换、刷新恢复、当前 session id 的本地持久化、消息缓存回放，以及通过 `artifactClient` 回填最新 persisted artifact
+- `frontend/src/services/api/artifactClient.ts`
+  - latest/history 两类 artifact 读取 client，供 session restore 与 compare/history UI 复用
 - `frontend/src/context/useModelBootstrapState.ts`
   - 负责模型列表 bootstrap、当前模型恢复与 session model 同步
 - `frontend/src/utils/sessionMessages.ts`

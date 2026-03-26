@@ -77,6 +77,8 @@
 - `web/moyuan_web/routes/health.py`
 - `web/moyuan_web/routes/model.py`
 
+现在再补一个贴近当前代码边界的点：`routes/artifact.py` 不再只有 “取 latest artifact” 这一条旁路能力，已经同时提供 `GET /api/artifacts/{session_id}/latest` 和 `GET /api/artifacts/{session_id}/history`。前者主要服务 session restore，后者则把 session message 里的多次 persisted artifact 正式收口成 newest-first 的应用层 contract，给 compare/history UI 留出了稳定输入面。
+
 ### 3.1 Web 分层总图
 
 读这一章时，建议始终带着下面这张图。它能帮助你避免把 route、service、repository、storage 混成同一种代码层。
