@@ -134,6 +134,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - 行程概览、对比、checklist、practical、冲突检测等视图块
 - `city-explorer/`
   - 场景 prompt、筛选器、shortlist、对比池、城市网格与详情抽屉
+  - `sections.tsx` 仅保留兼容导出，真实 section modules 位于 `city-explorer/sections/`
 - `services/api/`
   - chat / city / map / health / session / share 等分域 client 与 stream parser
 
@@ -335,6 +336,8 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - 结构化行程概览、方案对比、checklist、practical、reminders、conflicts
 - [`frontend/src/components/city-explorer/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/city-explorer)
   - 场景 prompt、筛选器、shortlist、城市网格、对比池与详情抽屉
+- [`frontend/src/components/city-explorer/sections/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/city-explorer/sections)
+  - `HeroSection / FilterBarSection / ComparePanelSection / GridSection / DetailDrawerSection` 五个 section modules，`sections.tsx` 只保留 facade
 - [`frontend/tests/unit/components/ChatComposer.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/ChatComposer.test.tsx)
   - 锁住发送/停止与约束展示边界
 - [`frontend/tests/unit/components/runtimeMessageBuilders.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/runtimeMessageBuilders.test.ts)
@@ -346,7 +349,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - [`frontend/tests/unit/components/TravelPlanToolkit.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/TravelPlanToolkit.test.tsx)
   - 锁住 tab 切换、方案对比与 checklist/practical 入口
 - [`frontend/tests/unit/components/CityExplorer.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/CityExplorer.test.tsx)
-  - 锁住场景 prompt 触发与详情抽屉加载边界
+  - 锁住场景 prompt 触发、详情抽屉加载与对比 prompt 边界
 
 ## Session Hydration Additions
 
