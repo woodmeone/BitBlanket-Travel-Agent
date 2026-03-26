@@ -650,6 +650,9 @@ flowchart LR
 - [已完成 2026-03-27] trip-plan export 已切到 artifact-first 交付路径
   已落地：`frontend/src/components/travel-plan-toolkit/shared/artifact.ts` 新增 `buildArtifactExportDescriptor()`，统一承接目的地、预算、校验与 subagent 轨迹的导出标题 / 摘要 / 文件名构造；`useTravelPlanToolkitActions.ts` 的图片导出现在会先拼装 artifact-first 卡头，再导出最终 itinerary 视图；`frontend/tests/unit/components/travelPlanShared.test.ts` 与 `frontend/tests/unit/components/TravelPlanToolkit.test.tsx` 已锁住导出 descriptor 和图片文件名边界。
 
+- [已完成 2026-03-27] trip-plan overview 已收口成 artifact overview descriptor
+  已落地：`frontend/src/components/travel-plan-toolkit/shared/artifact.ts` 新增 `buildArtifactOverviewDescriptor()`，把 overview 面板里分散的目的地、预算、校验、证据、工具触达、风险提示与 subagent trail 汇总成统一 contract；`ToolkitOverviewPanel.tsx` 现在主要负责渲染 descriptor，而不再直接散点读取 artifact 字段；`frontend/tests/unit/components/travelPlanShared.test.ts` 与 `frontend/tests/unit/components/TravelPlanToolkit.test.tsx` 已锁住 descriptor 指标和面板展示边界。
+
 ## 14. 结论
 
 符合 harness engineering 思路的项目演进，不是“不断给当前系统堆更多模块”，而是分阶段把：

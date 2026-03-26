@@ -829,3 +829,4 @@ Current status:
 10. The trip-plan product surface has started to consume artifact summaries directly for overview and sharing, which makes downstream user actions less dependent on raw answer text.
 11. The trip-plan continue/edit actions now carry artifact context into refinement prompts, so downstream editing flows can evolve from text-first follow-ups toward artifact-aware product operations.
 12. The trip-plan export action now also consumes artifact-derived title, summary, and filename metadata, so the final image delivery path is aligned with the artifact-first product surface instead of falling back to generic text-first exports.
+13. The trip-plan overview layer now reads from a dedicated artifact overview descriptor instead of scattered field access, which gives the product surface a more stable contract for destinations, budget, verification, evidence, and risk summaries.

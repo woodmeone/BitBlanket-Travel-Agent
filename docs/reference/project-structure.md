@@ -141,7 +141,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - `sections/reminders-tab/` 继续承接提醒卡列表、单卡内容和阶段标签视图
   - `sections/checklist-tab/` 继续承接清单列表、单项行和完成状态 affordance
 - `shared/` 继续承接 timeline、budget、risk、practical、reminder、checklist、content 和 subagent label helper
-  - `artifact.ts` 继续承接 artifact-first 的 destinations / budget / verification 摘要，以及 share payload / export descriptor 构造
+  - `artifact.ts` 继续承接 artifact-first 的 overview descriptor、destinations / budget / verification 摘要，以及 share payload / export descriptor 构造
 - `city-explorer/`
   - 场景 prompt、筛选器、shortlist、对比池、城市网格与详情抽屉
   - `sections.tsx` 仅保留兼容导出，真实 section modules 位于 `city-explorer/sections/`

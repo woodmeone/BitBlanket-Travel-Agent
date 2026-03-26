@@ -880,6 +880,8 @@ sequenceDiagram
 6. `useTravelPlanToolkitActions.ts` 如何在 export 动作里优先消费 artifact 派生的标题、摘要与文件名，而不是继续导出一个没有上下文的通用长图
 7. `actionPrompts.ts` 如何让 quick refine / favorites / variant continue prompt 也携带 artifact 上下文
 
+再补一个更贴近当前实现的观察：`TravelPlanToolkit` 的 overview 面板现在也不再直接散点读取 `artifact.research / artifact.budget / artifact.verification`，而是先通过 `buildArtifactOverviewDescriptor()` 汇总成统一 descriptor，再由 `ToolkitOverviewPanel.tsx` 负责渲染。这样后面如果 artifact schema 继续扩展，产品面板只需要跟着 descriptor 演进，而不用把读取逻辑散在组件里。
+
 这说明项目已经从“纯文本增强 UI”开始往“artifact-first UI”演进，但还保留了文本解析 fallback，保证兼容老响应和不完整结构化结果。
 
 ## Phase 3 补充：如何用 replay / golden 锁住前端最终态
