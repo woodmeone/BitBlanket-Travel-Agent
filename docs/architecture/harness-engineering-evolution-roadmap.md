@@ -608,7 +608,8 @@ flowchart LR
   已落地：新增 `frontend/src/context/useSessionHistoryState.ts`，统一承接 session 列表过滤、localStorage 恢复、会话消息缓存、切换回放与 model recovery；`frontend/src/context/AppContext.tsx` 当前只保留全局 provider 装配、model bootstrap 和流式全局状态，配套 `frontend/tests/unit/context/useSessionHistoryState.test.tsx` 已锁住 session 去重过滤、share query 下的本地恢复绕过，以及“切走再切回不重复打消息接口”的 cache 边界，现有 `frontend/tests/unit/context/AppContext.test.tsx` 也已继续覆盖 provider 级恢复链路，前端 `lint / vitest` 与后端全量 `pytest` 均已通过。
 - [已完成 2026-03-26] `AppContext.tsx` 继续下沉成 model bootstrap helper
   已落地：新增 `frontend/src/context/useModelBootstrapState.ts`，统一承接模型列表拉取、当前模型恢复、session model 同步与 bootstrap 选型回退；`frontend/src/context/AppContext.tsx` 当前进一步退化成 provider 装配层，`setCurrentModelId` 的上下文签名也已修正为 `Promise<void>`，调用方现在能正确感知 session model 同步失败；配套 `frontend/tests/unit/context/useModelBootstrapState.test.tsx` 已锁住 bootstrap 回退、session model 同步和异常透传三条边界，前端 `lint / vitest` 与后端全量 `pytest` 均已通过。
-- replay / benchmark / golden 对齐新链路
+- [已完成 2026-03-26] replay / benchmark / golden 对齐新链路
+  已落地：`tests/golden/chat_stream_golden_fixture.json` 已升级到更适合 frontend replay 的 schema，补齐 `answer_chunks / reasoning_chunks / stages`；新增 `scripts/export_frontend_chat_runtime_golden_fixture.py` 与 `tests/golden/frontend_chat_runtime_golden_fixture.json`，把后端 stream fixture 回放成前端最终运行时快照；`frontend/src/components/chat-area/chatRuntimeReplay.ts` 与 `frontend/tests/unit/components/chatRuntimeReplay.test.ts` 会锁住 parser / artifact merge / completion diagnostics 在新 frontend harness 边界上的最终结果。
 
 ## 14. 结论
 

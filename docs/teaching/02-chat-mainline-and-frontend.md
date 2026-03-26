@@ -861,9 +861,10 @@ sequenceDiagram
 1. [`frontend/src/services/api/chatClient.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api/chatClient.ts)
 2. [`frontend/src/services/api/chatStreamParser.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api/chatStreamParser.ts)
 3. [`frontend/src/components/chat-area/useChatRuntime.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useChatRuntime.ts)
-4. [`frontend/src/components/MessageList.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)
-5. [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
-6. [`frontend/src/utils/agentArtifacts.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/utils/agentArtifacts.ts)
+4. [`frontend/src/components/chat-area/chatRuntimeReplay.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/chatRuntimeReplay.ts)
+5. [`frontend/src/components/MessageList.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)
+6. [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
+7. [`frontend/src/utils/agentArtifacts.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/utils/agentArtifacts.ts)
 
 新的学习重点是：
 
@@ -873,6 +874,26 @@ sequenceDiagram
 4. `TravelPlanToolkit.tsx` 如何优先展示结构化 artifact 摘要，再回退到长文本 itinerary 解析
 
 这说明项目已经从“纯文本增强 UI”开始往“artifact-first UI”演进，但还保留了文本解析 fallback，保证兼容老响应和不完整结构化结果。
+
+## Phase 3 补充：如何用 replay / golden 锁住前端最终态
+
+现在这条主链还有一层很关键的 harness：不是只验证“事件能不能解析”，而是验证“这些事件最后会不会变成正确的前端运行时结果”。
+
+当前做法是：
+
+1. 后端先通过 `scripts/export_sse_contract_snapshot.py` 导出 [`tests/golden/chat_stream_golden_fixture.json`](/D:/moyuan/moyuan-travel-agent/tests/golden/chat_stream_golden_fixture.json)，把 `direct / react / plan` 三种模式下的关键事件顺序和关键 payload 固化下来。
+2. 前端通过 [`frontend/src/components/chat-area/chatRuntimeReplay.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/chatRuntimeReplay.ts) 复用真实的 `chatStreamParser.ts`、`agentArtifacts.ts` 和 `runtimeMessageBuilders.ts`，把后端 fixture 重新回放成前端最终运行时快照。
+3. `scripts/export_frontend_chat_runtime_golden_fixture.py` 再把这份最终快照导出为 [`tests/golden/frontend_chat_runtime_golden_fixture.json`](/D:/moyuan/moyuan-travel-agent/tests/golden/frontend_chat_runtime_golden_fixture.json)。
+4. [`frontend/tests/unit/components/chatRuntimeReplay.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/chatRuntimeReplay.test.ts) 会校验 replay 结果与 golden 一致，尤其锁住 `plan_preview.validationErrors`、artifact merge、stage history 和 completion diagnostics 的最终态。
+
+这层 harness 很重要，因为很多回归不是“事件名错了”，而是：
+
+1. parser 把结构化字段抹平了
+2. artifact merge 把空 patch 或嵌套字段吞掉了
+3. completion diagnostics 在 `metadata / done` 之间拼装错了
+4. reasoning/stage 最终态和真实流式过程脱节了
+
+所以以后如果你改的是 `chatStreamParser.ts`、`useChatRuntime.ts`、`runtimeMessageBuilders.ts` 或 `agentArtifacts.ts`，不要只看单测是否还绿，也要同步检查这两份 fixture 和 replay 测试。
 ## Phase 3 补充：刷新后如何恢复结构化结果
 
 当前主链已经不是“只要页面刷新，Phase 3 诊断就丢失”的状态。

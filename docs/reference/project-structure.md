@@ -161,6 +161,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - [`tests/test_runtime_data_lifecycle_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_data_lifecycle_unit.py)
 - [`tests/test_export_openapi_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_openapi_snapshot_script_unit.py)
 - [`tests/test_export_sse_contract_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_sse_contract_snapshot_script_unit.py)
+- [`tests/test_export_frontend_chat_runtime_golden_fixture_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_frontend_chat_runtime_golden_fixture_script_unit.py)
 - [`tests/test_export_support_bundle_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_support_bundle_script_unit.py)
 
 ### `docs/`
@@ -191,6 +192,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - benchmark / golden eval / quality gate
 - runtime backup / restore / prune / doctor
 - OpenAPI / SSE contract snapshot export
+- frontend chat runtime replay fixture export
 - release manifest export
 - support bundle export
 - docstring audit
@@ -328,6 +330,8 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - waiting / thinking / tool / stage / runtime log 生命周期收口
 - [`frontend/src/components/chat-area/useChatSessionHydration.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useChatSessionHydration.ts)
   - share query 恢复、session 切换 reset、metadata ref 与 skip-next-session-reset 语义
+- [`frontend/src/components/chat-area/chatRuntimeReplay.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/chatRuntimeReplay.ts)
+  - 复用 `chatStreamParser.ts / runtimeMessageBuilders.ts / agentArtifacts.ts`，把后端 golden fixture 回放成前端最终运行时快照
 - [`frontend/src/context/useSessionHistoryState.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/context/useSessionHistoryState.ts)
   - session 列表过滤、localStorage 恢复、会话消息缓存、切换回放与 model recovery
 - [`frontend/src/context/useModelBootstrapState.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/context/useModelBootstrapState.ts)
@@ -354,6 +358,8 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - 锁住 waiting / thinking / tool / stage runtime lifecycle
 - [`frontend/tests/unit/components/chatInputPolicy.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/chatInputPolicy.test.ts)
   - 锁住输入校验、增强 prompt 与 stopped message 语义
+- [`frontend/tests/unit/components/chatRuntimeReplay.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/chatRuntimeReplay.test.ts)
+  - 锁住 parser / artifact merge / completion diagnostics 的最终态，以及前端 golden fixture 基线
 - [`frontend/tests/unit/components/TravelPlanToolkit.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/TravelPlanToolkit.test.tsx)
   - 锁住 tab 切换、方案对比与 checklist/practical 入口
 - [`frontend/tests/unit/components/CityExplorer.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/CityExplorer.test.tsx)

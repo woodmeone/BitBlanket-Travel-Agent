@@ -370,8 +370,7 @@ agent/travel_agent/
 
 建议动作：
 
-- 继续把 `city-explorer/sections/HeroSection.tsx` 中的 curated-prompts / shortlist 再拆成更细的 view 协作器
-- 继续把 replay / benchmark / golden 基线对齐到新的 frontend harness 边界
+- 继续把 `city-explorer/sections/HeroSection.tsx` 里的 curated prompts / shortlist 再拆成更细的 view 协作器
 
 验收标准：
 
@@ -405,6 +404,7 @@ agent/travel_agent/
 当前进度：
 
 - [已完成 2026-03-26] chat stream golden fixture 已固化，新增 `tests/golden/chat_stream_golden_fixture.json` 作为稳定回放基线；`scripts/export_sse_contract_snapshot.py` 已支持导出 replay fixture，`tests/test_export_chat_stream_golden_fixture_script_unit.py` 会校验 `direct / react / plan` 三种模式下的关键事件序列与 `plan_preview / artifact_patch / metadata / done` 载荷。
+- [已完成 2026-03-26] frontend chat runtime replay fixture 已固化，`tests/golden/chat_stream_golden_fixture.json` 现已补齐 `answer_chunks / reasoning_chunks / stages` 三类前端消费样本；新增 `scripts/export_frontend_chat_runtime_golden_fixture.py`、`tests/golden/frontend_chat_runtime_golden_fixture.json` 与 `frontend/src/components/chat-area/chatRuntimeReplay.ts`，把 SSE fixture 回放成前端最终运行时快照；`frontend/tests/unit/components/chatRuntimeReplay.test.ts` 现在会锁住 parser / artifact merge / completion diagnostics 在新 frontend harness 边界上的最终结果。
 
 建议动作：
 
@@ -539,6 +539,7 @@ agent/travel_agent/
 - 路径注入次数下降
 - SSE 契约变更不再需要前后端手工双改
 - 新增 regression fixture 可覆盖 `plan_preview / artifact_patch / done`
+- frontend replay fixture 可覆盖 parser / artifact merge / completion diagnostics 最终态
 - CI 对复杂模块的检查范围扩大
 
 ## 10. 风险与控制

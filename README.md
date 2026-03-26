@@ -108,6 +108,7 @@ moyuan-travel-agent/
 
 - `frontend/src/components/ChatArea.tsx` 负责 chat workspace 装配，主逻辑落在 `frontend/src/components/chat-area/`
 - `frontend/src/components/chat-area/useChatRuntime.ts` 已继续下沉，流缓冲、artifact 运行态、run lifecycle、share/session hydration 和 input policy 分别落在 `useStreamBuffer.ts`、`useArtifactRuntimeState.ts`、`useChatRunState.ts`、`useChatSessionHydration.ts`、`chatInputPolicy.ts`、`runtimeMessageBuilders.ts`
+- `frontend/src/components/chat-area/chatRuntimeReplay.ts` 负责把后端 `chat stream golden fixture` 回放成前端最终运行时快照，作为 frontend harness 的 replay/golden 基线
 - `frontend/src/context/AppContext.tsx` 现在主要保留全局 provider 装配，session cache / history recovery 与 model bootstrap 已分别下沉到 `frontend/src/context/useSessionHistoryState.ts` 和 `frontend/src/context/useModelBootstrapState.ts`
 - `frontend/src/components/MessageList.tsx` 负责消息区装配，渲染与诊断逻辑落在 `frontend/src/components/message-list/`
 - `frontend/src/components/TravelPlanToolkit.tsx` 负责 trip-plan workspace 装配，视图块落在 `frontend/src/components/travel-plan-toolkit/`
@@ -409,6 +410,7 @@ mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_re
 - `python scripts/runtime_doctor.py --json`
 - `python scripts/export_openapi_snapshot.py`
 - `python scripts/export_sse_contract_snapshot.py`
+- `python scripts/export_frontend_chat_runtime_golden_fixture.py`
 - `python scripts/export_release_manifest.py --git-sha <sha> --git-ref <ref> --owner <owner>`
 - `python scripts/export_support_bundle.py --base-url http://localhost:38000`
 
@@ -416,6 +418,8 @@ mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_re
 
 - OpenAPI snapshot: [docs/reference/openapi.snapshot.json](docs/reference/openapi.snapshot.json)
 - SSE snapshot: [docs/reference/sse-contract.snapshot.json](docs/reference/sse-contract.snapshot.json)
+- Chat stream replay fixture: [tests/golden/chat_stream_golden_fixture.json](/D:/moyuan/moyuan-travel-agent/tests/golden/chat_stream_golden_fixture.json)
+- Frontend chat runtime replay fixture: [tests/golden/frontend_chat_runtime_golden_fixture.json](/D:/moyuan/moyuan-travel-agent/tests/golden/frontend_chat_runtime_golden_fixture.json)
 - CI dependency audit: `pip-audit -r requirements.txt`
 - CI secret scan: Dockerized `gitleaks` with [`.gitleaks.toml`](/D:/moyuan/moyuan-travel-agent/.gitleaks.toml)
 

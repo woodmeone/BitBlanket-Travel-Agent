@@ -11,11 +11,12 @@
 5. `frontend/src/components/chat-area/useChatRunState.ts`
 6. `frontend/src/components/chat-area/chatInputPolicy.ts`
 7. `frontend/src/components/chat-area/runtimeMessageBuilders.ts`
-8. `frontend/src/components/MessageList.tsx`
-9. `frontend/src/components/message-list/markdownRenderer.tsx`
-10. `frontend/src/services/api/chatClient.ts`
-11. `frontend/src/services/api/chatStreamParser.ts`
-12. `frontend/src/types/index.ts`
+8. `frontend/src/components/chat-area/chatRuntimeReplay.ts`
+9. `frontend/src/components/MessageList.tsx`
+10. `frontend/src/components/message-list/markdownRenderer.tsx`
+11. `frontend/src/services/api/chatClient.ts`
+12. `frontend/src/services/api/chatStreamParser.ts`
+13. `frontend/src/types/index.ts`
 
 其中要特别注意：`ChatArea.tsx` 和 `MessageList.tsx` 现在都已经是薄入口，真实的运行时状态、SSE 解析和 Markdown 渲染逻辑分别下沉到了 `chat-area/`、`message-list/` 和 `services/api/`。
 
@@ -38,6 +39,21 @@
 1. 避免每个 token 都触发 React 重渲染。
 2. 保证停止流式时不会丢失尾部字符。
 3. 保持“思考”与“答案”两个通道的节奏可控。
+
+## 2.1 Replay / Golden 基线
+
+现在这条链路不只靠单元测试，还额外用 replay/golden fixture 锁住“最终会落到 UI 上的运行时结果”。
+
+1. `tests/golden/chat_stream_golden_fixture.json` 保存后端导出的 chat stream 基线，覆盖 `direct / react / plan` 三种模式以及 `stage / reasoning / artifact / metadata / done` 关键事件。
+2. `frontend/src/components/chat-area/chatRuntimeReplay.ts` 会复用 `chatStreamParser.ts`、`agentArtifacts.ts` 和 `runtimeMessageBuilders.ts`，把这份后端 fixture 回放成前端最终运行时快照。
+3. `scripts/export_frontend_chat_runtime_golden_fixture.py` 会导出 `tests/golden/frontend_chat_runtime_golden_fixture.json`，作为前端 replay 的权威快照。
+4. `frontend/tests/unit/components/chatRuntimeReplay.test.ts` 会同时校验 replay 结果与 golden fixture 一致，并锁住 `plan_preview.validationErrors`、artifact merge 和 completion diagnostics 的最终态。
+
+如果你改了 `chatStreamParser.ts`、`runtimeMessageBuilders.ts` 或 artifact merge 语义，请同步更新：
+
+1. `tests/golden/chat_stream_golden_fixture.json`
+2. `tests/golden/frontend_chat_runtime_golden_fixture.json`
+3. `frontend/tests/unit/components/chatRuntimeReplay.test.ts`
 
 ## 3. Markdown 清洗链路
 
@@ -104,4 +120,5 @@
 1. `docs/reference/api-reference.md`（如果 SSE 字段变化）
 2. `docs/reference/project-structure.md`（如果模块职责变化）
 3. `docs/teaching/02-chat-mainline-and-frontend.md`（如果主链阅读入口变化）
-4. 本文档（渲染规则变化）
+4. `tests/golden/chat_stream_golden_fixture.json` 与 `tests/golden/frontend_chat_runtime_golden_fixture.json`（如果 replay/golden 基线变化）
+5. 本文档（渲染规则变化）
