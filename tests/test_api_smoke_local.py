@@ -2,17 +2,8 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import httpx
 import pytest
-
-# Ensure `moyuan_web.*` imports resolve exactly like runtime.
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-WEB_DIR = PROJECT_ROOT / "web"
-if str(WEB_DIR) not in sys.path:
-    sys.path.insert(0, str(WEB_DIR))
 
 from moyuan_web.main import create_app  # noqa: E402
 from config import server_config  # noqa: E402

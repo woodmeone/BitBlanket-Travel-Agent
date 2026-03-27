@@ -2,15 +2,6 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-WEB_DIR = PROJECT_ROOT / "web"
-if str(WEB_DIR) not in sys.path:
-    sys.path.insert(0, str(WEB_DIR))
-
 from moyuan_web.api.schemas import (  # noqa: E402
     ArtifactHistoryResponse,
     normalize_artifact_patch,

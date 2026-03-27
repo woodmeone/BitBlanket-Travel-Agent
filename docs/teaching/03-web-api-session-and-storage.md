@@ -160,6 +160,8 @@ Web 层位于前端和 Agent 之间，但它不是简单的透传层。
 
 - 项目根路径与模块导入的稳定性
 
+现在这层 bootstrap 也不只服务 Web 入口本身了：`tests/conftest.py` 会直接复用 `web/moyuan_web/bootstrap.py` 初始化 pytest 的导入边界，而 `scripts/bootstrap_paths.py` 则把 benchmark / replay / runtime / snapshot 脚本的 repo root / `web/` 导入初始化也收口成了共享入口。这样本地脚本、pytest 和 Web 入口终于不再各自维护一份 `sys.path` 补丁。
+
 对于这个项目尤其重要，因为：
 
 - Web 层需要引用 Agent 层

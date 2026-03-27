@@ -12,13 +12,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+try:
+    from .bootstrap_paths import PROJECT_ROOT as ROOT, ensure_project_paths
+except ImportError:  # pragma: no cover - direct script execution path
+    from bootstrap_paths import PROJECT_ROOT as ROOT, ensure_project_paths
 
-ROOT = Path(__file__).resolve().parents[1]
-WEB_DIR = ROOT / "web"
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-if str(WEB_DIR) not in sys.path:
-    sys.path.insert(0, str(WEB_DIR))
+ensure_project_paths()
 
 from scripts.runtime_data_utils import DEFAULT_BACKUP_DIR, parse_utc_iso
 from moyuan_web.storage.session_storage import FileSessionStorage

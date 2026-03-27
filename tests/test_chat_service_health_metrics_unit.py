@@ -5,15 +5,7 @@ The module validates behavior, regressions, and integration contracts.
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import pytest
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-WEB_DIR = PROJECT_ROOT / "web"
-if str(WEB_DIR) not in sys.path:
-    sys.path.insert(0, str(WEB_DIR))
 
 from moyuan_web.services.chat_service import ChatService
 

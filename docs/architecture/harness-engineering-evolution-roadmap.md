@@ -659,6 +659,9 @@ flowchart LR
 - [已完成 2026-03-27] compare/history UI 已切到 persisted artifact history 优先路径
   已落地：`web/moyuan_web/services/chat/stream_diagnostics.py` 现在会把 `sessionId` 带入 completion/failure diagnostics，前端 `frontend/src/components/chat-area/runtimeMessageBuilders.ts`、`frontend/src/context/useSessionHistoryState.ts` 与 `frontend/src/utils/sessionMessages.ts` 也会在流式完成和 session restore 时保留这条 session 维度；新增 `frontend/src/components/travel-plan-toolkit/useArtifactHistoryCompare.ts` 后，`TravelPlanToolkit.tsx` 会优先通过 `artifactClient.getArtifactHistory(sessionId)` 组装 compare variants，`ToolkitCompareTab.tsx / VariantComparisonTable.tsx` 也已支持 artifact-history compare banner、快照时间、预算摘要、校验状态与结构化步骤展示；配套 `tests/test_chat_stream_diagnostics_unit.py`、`frontend/tests/unit/context/useSessionHistoryState.test.tsx`、`frontend/tests/unit/utils/sessionMessages.test.ts` 与 `frontend/tests/unit/components/TravelPlanToolkit.test.tsx` 已锁住 session restore 与 compare tab 边界。
 
+- [已完成 2026-03-27] scripts/tests 路径注入已收口到共享 bootstrap 入口
+  已落地：`web/moyuan_web/bootstrap.py` 现在统一承接 repo root + `web/` 的导入初始化，`tests/conftest.py` 会直接复用它来初始化 pytest 的 fixtures / CI guard / import bootstrap；新增 `scripts/bootstrap_paths.py` 后，`agent_benchmark.py / agent_golden_eval.py / agent_replay.py / runtime_doctor.py / export_openapi_snapshot.py` 等脚本不再各自内联 `sys.path` 注入。当前 `agent/web/scripts/tests` 范围内保留的路径入口已收缩到共享 bootstrap helper 与两份 `pyproject.toml` 的 `pythonpath` 配置。
+
 ## 14. 结论
 
 符合 harness engineering 思路的项目演进，不是“不断给当前系统堆更多模块”，而是分阶段把：

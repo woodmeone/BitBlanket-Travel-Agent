@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import sys
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
@@ -14,12 +13,12 @@ from typing import Any, Iterator
 import httpx
 
 
-ROOT = Path(__file__).resolve().parents[1]
-WEB_DIR = ROOT / "web"
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-if str(WEB_DIR) not in sys.path:
-    sys.path.insert(0, str(WEB_DIR))
+try:
+    from .bootstrap_paths import PROJECT_ROOT as ROOT, ensure_project_paths
+except ImportError:  # pragma: no cover - direct script execution path
+    from bootstrap_paths import PROJECT_ROOT as ROOT, ensure_project_paths
+
+ensure_project_paths()
 
 from moyuan_web.dependencies.container import get_container
 from moyuan_web.api.events import CHAT_STREAM_EVENT_TYPES

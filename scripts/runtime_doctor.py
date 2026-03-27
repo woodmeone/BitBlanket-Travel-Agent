@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 import tempfile
 from collections.abc import Mapping
 from datetime import datetime, timezone
@@ -14,8 +13,12 @@ from typing import Any, cast
 import httpx
 import yaml  # type: ignore[import-untyped]
 
-if __package__ in (None, ""):  # pragma: no cover - direct script execution path
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+try:
+    from .bootstrap_paths import ensure_project_paths
+except ImportError:  # pragma: no cover - direct script execution path
+    from bootstrap_paths import ensure_project_paths
+
+ensure_project_paths()
 
 from scripts.runtime_data_utils import DEFAULT_BACKUP_DIR, ROOT, discover_runtime_files
 

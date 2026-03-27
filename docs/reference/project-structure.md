@@ -173,6 +173,8 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - [`tests/test_export_sse_contract_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_sse_contract_snapshot_script_unit.py)
 - [`tests/test_export_frontend_chat_runtime_golden_fixture_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_frontend_chat_runtime_golden_fixture_script_unit.py)
 - [`tests/test_export_support_bundle_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_support_bundle_script_unit.py)
+- [`tests/conftest.py`](/D:/moyuan/moyuan-travel-agent/tests/conftest.py)
+  - 统一承接 pytest fixtures、CI guard 和 repo root / `web/` 导入 bootstrap，root tests 不再各自写 `sys.path` 补丁
 
 ### `docs/`
 
@@ -206,6 +208,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - release manifest export
 - support bundle export
 - docstring audit
+- `scripts/bootstrap_paths.py` 统一承接 repo root / `web/` 的导入初始化，benchmark、replay、runtime、snapshot 脚本不再各自写 `sys.path` 注入
 
 ### `ops/`
 

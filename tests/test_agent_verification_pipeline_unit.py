@@ -2,15 +2,7 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 from langchain_core.messages import HumanMessage
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 from agent.travel_agent.graph.nodes import VerifyIssue, VerifyResult, VerifyStageOutput  # noqa: E402
 from agent.travel_agent.graph.runtime_config import get_runtime_config  # noqa: E402

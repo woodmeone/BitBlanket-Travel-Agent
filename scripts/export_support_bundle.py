@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,9 +13,12 @@ from typing import Any
 import httpx
 
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+try:
+    from .bootstrap_paths import PROJECT_ROOT as ROOT, ensure_project_paths
+except ImportError:  # pragma: no cover - direct script execution path
+    from bootstrap_paths import PROJECT_ROOT as ROOT, ensure_project_paths
+
+ensure_project_paths()
 
 from scripts.runtime_data_utils import discover_runtime_files, snapshot_timestamp_slug
 from scripts.runtime_doctor import render_text_report, run_runtime_doctor

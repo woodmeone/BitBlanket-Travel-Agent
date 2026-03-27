@@ -2,17 +2,8 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import pytest
 from pydantic import ValidationError
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-WEB_DIR = PROJECT_ROOT / "web"
-if str(WEB_DIR) not in sys.path:
-    sys.path.insert(0, str(WEB_DIR))
 
 from moyuan_web.api.events import CHAT_STREAM_EVENT_TYPES, validate_chat_stream_payload  # noqa: E402
 

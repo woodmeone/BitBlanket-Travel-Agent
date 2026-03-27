@@ -104,7 +104,7 @@
 
 除了大文件，当前还有几类典型的 harness 缺口：
 
-- `web/agent/scripts/tests` 中仍有 39 处 `ensure_project_paths()` / `sys.path` 注入
+- [阶段进展 2026-03-27] `web/agent/scripts/tests` 中原先分散的 `ensure_project_paths()` / `sys.path` 注入已完成第一轮收口；当前 repo root / `web/` 导入入口主要收敛在 `web/moyuan_web/bootstrap.py`、`scripts/bootstrap_paths.py`、`tests/conftest.py` 与两份 `pyproject.toml` 的 `pythonpath` 配置
 - `web/agent/scripts` 中仍有 241 处 `Purpose:` 模板化 docstring
 - 前端契约仍主要靠 `frontend/src/types` 和手写 `api.ts` 维护
 - `agent runtime` 的 artifact、subagent、SSE 事件还没有一个真正统一的事件注册中心
@@ -550,7 +550,8 @@ agent/travel_agent/
    已落地：新增 `frontend/src/services/api/` 目录，`api.ts` 已退化为兼容 facade；`AppContext / ChatArea / CityExplorer / Sidebar / SystemStatusPanel / TravelPlanToolkit` 已改用分域 client，`frontend/src/services/api/chatStreamParser.test.ts` 已覆盖 `plan_preview / done / error` 三类关键 stream 事件。
 10. [已完成 2026-03-26] 把 `MessageList.tsx` 拆成 renderer 与动作层  
    已落地：新增 `frontend/src/components/message-list/` 目录，`MessageList.tsx` 已退化为 `80` 行的薄入口；消息 markdown 归一化、内容渲染、推理/诊断区块和复制/导出动作都已拆到独立协作器，现有 `tests/unit/components/MessageList.test.tsx` 与前端 `lint / vitest / build` 均已通过。
-11. 将 `scripts/tests` 的路径注入逐步替换为稳定导入入口  
+11. [已完成 2026-03-27] 将 `scripts/tests` 的路径注入逐步替换为稳定导入入口  
+   已落地：新增 `scripts/bootstrap_paths.py` 统一承接 repo root / `web/` 导入初始化，`agent_benchmark.py / agent_golden_eval.py / agent_replay.py / runtime_doctor.py / export_openapi_snapshot.py / export_sse_contract_snapshot.py / runtime_backup.py / runtime_prune.py / runtime_restore.py` 等脚本已切到共享 bootstrap；`tests/conftest.py` 也开始复用 `web/moyuan_web/bootstrap.py`，并移除了 root tests 里分散的 `sys.path` 补丁，当前 `agent/web/scripts/tests` 范围内保留的路径入口已收缩到共享 helper 与 `pyproject.toml` 的 `pythonpath` 配置。
 12. 把 docstring 审计从“覆盖率”升级到“信息量”规则
 
 ## 9. 验收指标

@@ -12,10 +12,12 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+try:
+    from .bootstrap_paths import PROJECT_ROOT as ROOT, ensure_project_paths
+except ImportError:  # pragma: no cover - direct script execution path
+    from bootstrap_paths import PROJECT_ROOT as ROOT, ensure_project_paths
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+ensure_project_paths()
 
 from scripts.runtime_backup import create_runtime_backup
 from scripts.runtime_data_utils import DEFAULT_BACKUP_DIR, ensure_relative_path

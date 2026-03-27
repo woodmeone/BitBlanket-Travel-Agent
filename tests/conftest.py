@@ -1,4 +1,4 @@
-"""Shared pytest fixtures and CI guards."""
+"""Shared pytest fixtures, CI guards, and import bootstrap."""
 
 from __future__ import annotations
 
@@ -10,6 +10,9 @@ import httpx
 import pytest
 import pytest_asyncio
 
+from web.moyuan_web.bootstrap import ensure_project_paths
+
+ensure_project_paths()
 
 EXTERNAL_API_TEST_FILES = {
     "test_api_integration.py",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import importlib.util
 import json
 import re
 import sys
@@ -15,9 +16,19 @@ from typing import Any, Iterable
 
 from langchain_core.messages import BaseMessage, HumanMessage
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+if __package__:
+    from .bootstrap_paths import PROJECT_ROOT as ROOT, ensure_project_paths
+else:  # pragma: no cover - direct script execution / spec-loaded module path
+    _bootstrap_path = Path(__file__).with_name("bootstrap_paths.py")
+    _bootstrap_spec = importlib.util.spec_from_file_location("scripts.bootstrap_paths", _bootstrap_path)
+    if _bootstrap_spec is None or _bootstrap_spec.loader is None:
+        raise ImportError(f"Cannot load bootstrap helper from {_bootstrap_path}")
+    _bootstrap_module = importlib.util.module_from_spec(_bootstrap_spec)
+    _bootstrap_spec.loader.exec_module(_bootstrap_module)
+    ROOT = _bootstrap_module.PROJECT_ROOT
+    ensure_project_paths = _bootstrap_module.ensure_project_paths
+
+ensure_project_paths()
 
 from agent.travel_agent.graph.builder import build_travel_agent
 from agent.travel_agent.graph.persistent_checkpointer import PersistentSqliteSaver
