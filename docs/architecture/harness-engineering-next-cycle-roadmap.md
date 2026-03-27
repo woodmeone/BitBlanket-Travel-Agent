@@ -40,9 +40,9 @@
 
 建议动作：
 
-- 为 skills 建立统一 metadata schema，明确 `name / owner / input / output / evidence / freshness / fallback`
+- [已完成 2026-03-27] 为 skills 建立统一 metadata schema，当前 `agent/travel_agent/contracts/skills.py` 与 `agent/travel_agent/skills/registry.py` 已显式收口 `name / owner / input / output / evidence / freshness / fallback / docs / eval`
 - 为 subagent 补齐 skill selection policy，减少 prompt 内联的隐式能力选择
-- 建立 skill onboarding checklist，要求新技能同时补齐 prompt、测试、eval 样本和文档
+- [已完成 2026-03-27] 建立 skill onboarding checklist，当前已新增 [docs/governance/skills-market-onboarding.md](/D:/moyuan/moyuan-travel-agent/docs/governance/skills-market-onboarding.md) 与 [docs/reference/skills-market-catalog.md](/D:/moyuan/moyuan-travel-agent/docs/reference/skills-market-catalog.md)
 
 ### 3.3 Runtime & Eval Harness
 
@@ -66,8 +66,8 @@
 
 ### Phase B：Skills Market 治理
 
-- 建立 skills metadata registry 与 onboarding 模板
-- 补齐技能版本、责任人、证据要求和失败回退字段
+- [已完成 2026-03-27] 建立 skills metadata registry 与 onboarding 模板
+- [已完成 2026-03-27] 补齐技能版本、责任人、证据要求和失败回退字段
 - 让新 skill 接入必须经过 `schema + tests + docs + eval` 四件套
 
 ### Phase C：Runtime Decoupling

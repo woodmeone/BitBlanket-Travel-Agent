@@ -23,6 +23,7 @@ The current implementation goal is intentionally conservative:
 - introduce `Supervisor`, `Subagents`, `Skills`, and `Artifact` layers as real code boundaries
 - preserve current SSE behavior while attaching artifact-first payloads and subagent events for future evolution
 - keep shrinking `memory_integration.py` by migrating conflict handling into dedicated memory collaborators
+- default `SkillRegistry` entries now expose governed `owner / version / input / output / evidence / freshness / fallback / docs / eval` metadata, with onboarding guidance in [docs/governance/skills-market-onboarding.md](/D:/moyuan/moyuan-travel-agent/docs/governance/skills-market-onboarding.md)
 
 这份文档专门回答一个问题：
 

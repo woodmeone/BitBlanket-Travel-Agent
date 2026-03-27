@@ -66,6 +66,8 @@
 - `agent/travel_agent/memory/conflict_resolution.py`
 - `agent/travel_agent/graph/persistent_checkpointer.py`
 - `agent/travel_agent/llm/`
+- `agent/travel_agent/contracts/skills.py`
+- `agent/travel_agent/skills/registry.py`
 
 如果你只能精读 5 个文件，优先级建议是：
 
@@ -74,6 +76,7 @@
 3. `nodes.py`
 4. `memory_integration.py` + `memory/conflict_resolution.py`
 5. `travel_api.py`
+6. `contracts/skills.py` + `skills/registry.py`
 
 ### 3.1 Agent 图总览
 

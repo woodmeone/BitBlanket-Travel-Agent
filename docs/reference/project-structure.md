@@ -80,7 +80,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - `travel_agent/subagents/`
   - Phase 2 到 Phase 3 过渡期的 subagent 实现与注册表，当前包含 research / planning / budget / verification
 - `travel_agent/skills/`
-  - skill registry 与领域能力契约映射
+  - skill registry 与领域能力契约映射；当前默认 catalog 已显式补齐 `owner / version / input / output / evidence / freshness / fallback / docs / eval` 元数据
 - `travel_agent/artifacts/`
   - 结构化行程产物与 artifact builder
 - `travel_agent/contracts/`
@@ -158,6 +158,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 重点路径：
 
 - [`docs/governance/README.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/README.md)
+- [`docs/governance/skills-market-onboarding.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/skills-market-onboarding.md)
 - [`docs/governance/adr/ADR-0001-governance-record-flow.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/adr/ADR-0001-governance-record-flow.md)
 - [`docs/governance/adr/ADR-0000-template.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/adr/ADR-0000-template.md)
 - [`docs/governance/rfcs/RFC-0000-template.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/rfcs/RFC-0000-template.md)
@@ -277,6 +278,9 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - [`agent/travel_agent/subagents/budget.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/budget.py)
 - [`agent/travel_agent/subagents/verification.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/verification.py)
 - [`agent/travel_agent/skills/registry.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/skills/registry.py)
+  - 默认 skills market catalog，包含 owner、版本、输入输出 contract、evidence/freshness/fallback 与 docs/eval 钩子
+- [`docs/reference/skills-market-catalog.md`](/D:/moyuan/moyuan-travel-agent/docs/reference/skills-market-catalog.md)
+  - 当前默认 skills market 的文档化视图
 - [`agent/travel_agent/artifacts/models.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/artifacts/models.py)
 - [`agent/travel_agent/memory/conflict_resolution.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/memory/conflict_resolution.py)
 - [`agent/travel_agent/memory/persistence.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/memory/persistence.py)

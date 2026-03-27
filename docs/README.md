@@ -47,6 +47,8 @@
   优先看 [governance/README.md](governance/README.md)、[architecture/harness-engineering-next-cycle-roadmap.md](architecture/harness-engineering-next-cycle-roadmap.md)
 - `我要做 Agent 架构升级 / agent-subagent-skills 规划`：
   优先看 [architecture/agent-subagent-skills-architecture-roadmap.md](architecture/agent-subagent-skills-architecture-roadmap.md)、[architecture/system-architecture.md](architecture/system-architecture.md)、[teaching/04-agent-core-tools-memory-checkpoint.md](teaching/04-agent-core-tools-memory-checkpoint.md)
+- `我要接新 skill / 看 skills market 规范`：
+  优先看 [reference/skills-market-catalog.md](reference/skills-market-catalog.md)、[governance/skills-market-onboarding.md](governance/skills-market-onboarding.md)、[teaching/04-agent-core-tools-memory-checkpoint.md](teaching/04-agent-core-tools-memory-checkpoint.md)
 - `我要看 release / dashboard / alert`：
   优先看 [architecture/infrastructure-foundations.md](architecture/infrastructure-foundations.md)、[reference/backend-maintainer-playbook.md](reference/backend-maintainer-playbook.md)、[../ops/observability/README.md](../ops/observability/README.md)
 - `面试前 2 小时复习`：
@@ -88,6 +90,7 @@
 ### Governance
 
 - [governance/README.md](governance/README.md): ADR / RFC / Design Review 统一入口与使用规则
+- [governance/skills-market-onboarding.md](governance/skills-market-onboarding.md): 新 skill 接入 `schema + tests + docs + eval` 四件套清单
 - [governance/adr/ADR-0001-governance-record-flow.md](governance/adr/ADR-0001-governance-record-flow.md): 统一治理记录流程的初始 ADR
 - [governance/adr/ADR-0000-template.md](governance/adr/ADR-0000-template.md): ADR 模板
 - [governance/rfcs/RFC-0000-template.md](governance/rfcs/RFC-0000-template.md): RFC 模板
@@ -100,6 +103,7 @@
 - [reference/sse-contract.snapshot.json](reference/sse-contract.snapshot.json): 当前 SSE 契约快照
 - [reference/configuration-reference.md](reference/configuration-reference.md): 配置文件与环境变量
 - [reference/project-structure.md](reference/project-structure.md): 目录结构与关键模块职责
+- [reference/skills-market-catalog.md](reference/skills-market-catalog.md): 当前默认 skills market 的 owner、输入输出与治理字段
 - [reference/naming-conventions.md](reference/naming-conventions.md): 命名约定
 - [reference/backend-maintainer-playbook.md](reference/backend-maintainer-playbook.md): 后端维护与排障手册
 - [reference/frontend-message-rendering.md](reference/frontend-message-rendering.md): 前端消息渲染与 `<think>` 折叠机制

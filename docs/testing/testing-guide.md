@@ -144,7 +144,9 @@ mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_re
 - [`tests/test_agent_runtime_phase1_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_runtime_phase1_unit.py)
   - 保护 phase-1 `AgentRuntime / Skills / Artifact` 兼容层
 - [`tests/test_agent_subagent_phase2_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_subagent_phase2_unit.py)
-  - 保护 phase-2 `Research / Planning / Verification` subagent 映射与事件编排
+  - 保护 phase-2 `Research / Planning / Budget / Verification` subagent 映射与事件编排
+- [`tests/test_skill_registry_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_skill_registry_unit.py)
+  - 保护 skills market metadata schema、默认 catalog 过滤和 runtime diagnostics 暴露
 - [`tests/test_runtime_data_lifecycle_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_data_lifecycle_unit.py)
   - 保护 backup / restore / prune
 - [`tests/test_runtime_doctor_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_doctor_unit.py)
