@@ -415,23 +415,25 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
   - `HeroSummaryHeader / CuratedPromptPanel / FavoriteShortlistPanel` 三个 view 协作器，继续承接 `HeroSection` 的 header、场景卡和 shortlist
 - [`frontend/src/components/city-explorer/sections/grid/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/city-explorer/sections/grid)
   - `GridSummaryBar / CityGridCard / CityGridCardMetrics / CityGridCardActions` 四个 view 协作器，继续承接 `GridSection` 的统计条、城市卡、指标区和操作条
-- [`frontend/tests/unit/components/ChatComposer.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/ChatComposer.test.tsx)
+- [`frontend/tests/features/`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features)
+  - 前端测试当前按 `chat / app-shell / trip-plan / city-explorer / shared` 五类 feature workspace 组织，避免继续按 `components / utils / context` 漂移
+- [`frontend/tests/features/chat/ChatComposer.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/ChatComposer.test.tsx)
   - 锁住发送/停止与约束展示边界
-- [`frontend/tests/unit/components/runtimeMessageBuilders.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/runtimeMessageBuilders.test.ts)
+- [`frontend/tests/features/chat/runtimeMessageBuilders.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/runtimeMessageBuilders.test.ts)
   - 锁住 reasoning timestamp 与 completion/stopped diagnostics 语义
-- [`frontend/tests/unit/components/useChatSessionHydration.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/useChatSessionHydration.test.tsx)
+- [`frontend/tests/features/chat/useChatSessionHydration.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/useChatSessionHydration.test.tsx)
   - 锁住 share 恢复、session 切换 reset 与 skip reset 语义
-- [`frontend/tests/unit/components/useChatRunState.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/useChatRunState.test.ts)
+- [`frontend/tests/features/chat/useChatRunState.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/useChatRunState.test.ts)
   - 锁住 waiting / thinking / tool / stage runtime lifecycle
-- [`frontend/tests/unit/components/chatInputPolicy.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/chatInputPolicy.test.ts)
+- [`frontend/tests/features/chat/chatInputPolicy.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/chatInputPolicy.test.ts)
   - 锁住输入校验、增强 prompt 与 stopped message 语义
-- [`frontend/tests/unit/components/chatRuntimeReplay.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/chatRuntimeReplay.test.ts)
+- [`frontend/tests/features/chat/chatRuntimeReplay.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/chatRuntimeReplay.test.ts)
   - 锁住 parser / artifact merge / completion diagnostics 的最终态，以及前端 golden fixture 基线
-- [`frontend/tests/unit/components/TravelPlanToolkit.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/TravelPlanToolkit.test.tsx)
+- [`frontend/tests/features/trip-plan/TravelPlanToolkit.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/trip-plan/TravelPlanToolkit.test.tsx)
   - 锁住 tab 切换、每日行程动作、方案对比与 checklist/practical 入口
-- [`frontend/tests/unit/components/travelPlanActionPrompts.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/travelPlanActionPrompts.test.ts)
+- [`frontend/tests/features/trip-plan/travelPlanActionPrompts.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/trip-plan/travelPlanActionPrompts.test.ts)
   - 锁住 favorites quick refine prompt 与 variant continue prompt builder
-- [`frontend/tests/unit/components/CityExplorer.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/CityExplorer.test.tsx)
+- [`frontend/tests/features/city-explorer/CityExplorer.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/city-explorer/CityExplorer.test.tsx)
   - 锁住场景 prompt、shortlist 规划、城市卡规划、详情抽屉加载与对比 prompt 边界
 
 ## Session Hydration Additions

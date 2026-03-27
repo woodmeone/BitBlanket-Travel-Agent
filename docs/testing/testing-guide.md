@@ -222,11 +222,13 @@ CI 配置见：[`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.gith
 
 The frontend artifact-first slice is currently covered by:
 
-- [`frontend/tests/unit/components/MessageList.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/MessageList.test.tsx)
+- frontend tests are now grouped by feature under `frontend/tests/features/`, so `chat / app-shell / trip-plan / city-explorer / shared` each keep their own regression boundary
+
+- [`frontend/tests/features/chat/MessageList.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/MessageList.test.tsx)
   - protects assistant rendering, diagnostics, markdown blocks, and artifact-backed toolkit summary
-- [`frontend/tests/unit/utils/agentArtifacts.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/utils/agentArtifacts.test.ts)
+- [`frontend/tests/features/shared/agentArtifacts.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/shared/agentArtifacts.test.ts)
   - protects artifact patch merge semantics
-- [`frontend/tests/unit/utils/travelPlan.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/utils/travelPlan.test.ts)
+- [`frontend/tests/features/trip-plan/travelPlan.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/trip-plan/travelPlan.test.ts)
   - protects free-text itinerary fallback parsing
 
 Recommended local regression after changing artifact/subagent UI behavior:
@@ -245,6 +247,6 @@ npm run build
   - `tests/test_chat_stream_local.py`
   - 验证 SSE 结束后 assistant message 已持久化 `diagnostics.artifact` 与 `diagnostics.subagentEvents`
 - 前端单测
-  - `frontend/tests/unit/context/AppContext.test.tsx`
-  - `frontend/tests/unit/utils/sessionMessages.test.ts`
+  - `frontend/tests/features/app-shell/AppContext.test.tsx`
+  - `frontend/tests/features/app-shell/sessionMessages.test.ts`
   - 验证刷新恢复时 `AppContext` 能重新拉取 session messages，并让 artifact 继续驱动界面

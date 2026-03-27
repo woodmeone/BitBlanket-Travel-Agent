@@ -49,7 +49,7 @@
 | W2-2 | 答案证据化模板强化 | `agent/travel_agent/graph/prompt_templates.py`、`agent/travel_agent/graph/nodes.py`（`answer_node` 证据段渲染） | `POST /api/chat/stream` 最终回答要求显式包含 `source/fetched_at`（高风险场景强制） | 抽样问答中高风险场景证据覆盖率 >= 98% |
 | W2-3 | 安全策略分级与配置化 | `agent/travel_agent/graph/nodes.py`（注入规则分级）、`agent/travel_agent/graph/runtime_config.py`（新增 guardrail 阈值） | 新增环境变量写入 `docs/reference/configuration-reference.md` | 注入样例拦截率上升，且误杀率可控（通过 golden 子集验证） |
 | W2-4 | SSE 元数据补全验证状态 | `web/moyuan_web/services/chat_service.py`（metadata 拼装）、`frontend/src/services/api.ts`（解析元数据）、`frontend/src/types/index.ts`（类型扩展） | SSE `metadata` 增加 `verification_passed`、`stale_result_count`、`fallback_steps` | 前端可展示“是否通过验证”和“是否有过期数据” |
-| W2-5 | 回归测试扩展 | `tests/test_travel_provider_metadata_unit.py`、`tests/test_agent_execution_optimization_integration.py`、`frontend/tests/unit/components/MessageList.test.tsx` | `pytest` + `npm run test:run` | stale 刷新路径和元数据展示路径均有自动化覆盖 |
+| W2-5 | 回归测试扩展 | `tests/test_travel_provider_metadata_unit.py`、`tests/test_agent_execution_optimization_integration.py`、`frontend/tests/features/chat/MessageList.test.tsx` | `pytest` + `npm run test:run` | stale 刷新路径和元数据展示路径均有自动化覆盖 |
 
 **Week 2 交付件**
 - stale 刷新与证据化上线

@@ -893,7 +893,7 @@ sequenceDiagram
 1. 后端先通过 `scripts/export_sse_contract_snapshot.py` 导出 [`tests/golden/chat_stream_golden_fixture.json`](/D:/moyuan/moyuan-travel-agent/tests/golden/chat_stream_golden_fixture.json)，把 `direct / react / plan` 三种模式下的关键事件顺序和关键 payload 固化下来。
 2. 前端通过 [`frontend/src/components/chat-area/chatRuntimeReplay.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/chatRuntimeReplay.ts) 复用真实的 `chatStreamParser.ts`、`agentArtifacts.ts` 和 `runtimeMessageBuilders.ts`，把后端 fixture 重新回放成前端最终运行时快照。
 3. `scripts/export_frontend_chat_runtime_golden_fixture.py` 再把这份最终快照导出为 [`tests/golden/frontend_chat_runtime_golden_fixture.json`](/D:/moyuan/moyuan-travel-agent/tests/golden/frontend_chat_runtime_golden_fixture.json)。
-4. [`frontend/tests/unit/components/chatRuntimeReplay.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/unit/components/chatRuntimeReplay.test.ts) 会校验 replay 结果与 golden 一致，尤其锁住 `plan_preview.validationErrors`、artifact merge、stage history 和 completion diagnostics 的最终态。
+4. [`frontend/tests/features/chat/chatRuntimeReplay.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/chatRuntimeReplay.test.ts) 会校验 replay 结果与 golden 一致，尤其锁住 `plan_preview.validationErrors`、artifact merge、stage history 和 completion diagnostics 的最终态。
 
 这层 harness 很重要，因为很多回归不是“事件名错了”，而是：
 

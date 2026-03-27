@@ -47,13 +47,13 @@
 1. `tests/golden/chat_stream_golden_fixture.json` 保存后端导出的 chat stream 基线，覆盖 `direct / react / plan` 三种模式以及 `stage / reasoning / artifact / metadata / done` 关键事件。
 2. `frontend/src/components/chat-area/chatRuntimeReplay.ts` 会复用 `chatStreamParser.ts`、`agentArtifacts.ts` 和 `runtimeMessageBuilders.ts`，把这份后端 fixture 回放成前端最终运行时快照。
 3. `scripts/export_frontend_chat_runtime_golden_fixture.py` 会导出 `tests/golden/frontend_chat_runtime_golden_fixture.json`，作为前端 replay 的权威快照。
-4. `frontend/tests/unit/components/chatRuntimeReplay.test.ts` 会同时校验 replay 结果与 golden fixture 一致，并锁住 `plan_preview.validationErrors`、artifact merge 和 completion diagnostics 的最终态。
+4. `frontend/tests/features/chat/chatRuntimeReplay.test.ts` 会同时校验 replay 结果与 golden fixture 一致，并锁住 `plan_preview.validationErrors`、artifact merge 和 completion diagnostics 的最终态。
 
 如果你改了 `chatStreamParser.ts`、`runtimeMessageBuilders.ts` 或 artifact merge 语义，请同步更新：
 
 1. `tests/golden/chat_stream_golden_fixture.json`
 2. `tests/golden/frontend_chat_runtime_golden_fixture.json`
-3. `frontend/tests/unit/components/chatRuntimeReplay.test.ts`
+3. `frontend/tests/features/chat/chatRuntimeReplay.test.ts`
 
 ## 3. Markdown 清洗链路
 
