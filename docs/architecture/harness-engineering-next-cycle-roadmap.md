@@ -41,7 +41,7 @@
 建议动作：
 
 - [已完成 2026-03-27] 为 skills 建立统一 metadata schema，当前 `agent/travel_agent/contracts/skills.py` 与 `agent/travel_agent/skills/registry.py` 已显式收口 `name / owner / input / output / evidence / freshness / fallback / docs / eval`
-- 为 subagent 补齐 skill selection policy，减少 prompt 内联的隐式能力选择
+- [已完成 2026-03-27] 为 subagent 补齐 skill selection policy，当前 `agent/travel_agent/subagents/base.py`、`agent/travel_agent/subagents/registry.py` 与 `agent/travel_agent/runtime/agent_runtime.py` 已显式暴露 `selection_policy()`、`selection_plan()` 和 `subagent_skill_policies`
 - [已完成 2026-03-27] 建立 skill onboarding checklist，当前已新增 [docs/governance/skills-market-onboarding.md](/D:/moyuan/moyuan-travel-agent/docs/governance/skills-market-onboarding.md) 与 [docs/reference/skills-market-catalog.md](/D:/moyuan/moyuan-travel-agent/docs/reference/skills-market-catalog.md)
 
 ### 3.3 Runtime & Eval Harness
@@ -53,7 +53,7 @@
 建议动作：
 
 - 继续把 `AgentRuntime` 从旧 `run_travel_agent_streaming_with_memory` 兼容入口中解耦
-- 为 `research / planning / budget / verification` 增加按子 agent 维度的 replay scorecard
+- [已完成 2026-03-27] 为 `research / planning / budget / verification` 增加按子 agent 维度的 replay scorecard，当前 `scripts/agent_subagent_scorecard.py` 已固化 `docs/benchmarks/agent_subagent_scorecard_latest.{json,md}`
 - 把 HTML 交付结果纳入 benchmark，对 `artifact completeness / evidence presence / verification status / export stability` 建立阈值
 
 ## 4. 分阶段执行
@@ -78,7 +78,8 @@
 
 ### Phase D：Eval / Release 闭环
 
-- 对 HTML 成品、artifact 完整度、skill 质量和 subagent 协作质量建立 scorecard
+- [已完成 2026-03-27] 对 subagent 协作质量建立 replay scorecard 基线，当前已覆盖 `research / planning / budget / verification`
+- 对 HTML 成品、artifact 完整度、skill 质量建立 scorecard
 - 将 benchmark 门禁接入 CI / release checklist
 - 在治理文档中固化“新增 agent 能力前先补 contract / eval / docs”的流程
 
@@ -97,4 +98,10 @@
 
 1. [已完成 2026-03-27] 建立 `artifact delivery descriptor`，统一 HTML / share / export 三条交付链
 2. [已完成 2026-03-27] 建立 skills metadata schema 与 onboarding 模板
-3. 为 subagent 结果建立 scorecard 基线，先覆盖 `research / planning / budget / verification`
+3. [已完成 2026-03-27] 为 subagent 结果建立 scorecard 基线，先覆盖 `research / planning / budget / verification`
+
+下一步建议从下面三项开始：
+
+1. 继续把 `AgentRuntime` 从 legacy graph 兼容入口中解耦
+2. 把 HTML 成品、artifact 完整度和 skill 质量纳入 benchmark / release checklist
+3. 让新 skill 接入必须经过 `schema + tests + docs + eval` 四件套，并补齐相应治理门禁

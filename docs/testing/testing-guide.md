@@ -77,6 +77,7 @@ npm run build
 python -m pytest tests/test_runtime_data_lifecycle_unit.py tests/test_runtime_doctor_unit.py tests/test_export_openapi_snapshot_script_unit.py tests/test_export_sse_contract_snapshot_script_unit.py tests/test_export_release_manifest_script_unit.py tests/test_export_support_bundle_script_unit.py tests/test_observability_assets_unit.py -q
 python scripts/export_openapi_snapshot.py
 python scripts/export_sse_contract_snapshot.py
+uv run --offline python scripts/agent_subagent_scorecard.py --output-dir docs/benchmarks
 python scripts/export_release_manifest.py --git-sha local --git-ref refs/heads/main --owner local
 python scripts/runtime_doctor.py --json
 python scripts/export_support_bundle.py
@@ -111,6 +112,7 @@ python scripts/export_sse_contract_snapshot.py
 
 - [`docs/reference/openapi.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/openapi.snapshot.json)
 - [`docs/reference/sse-contract.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/sse-contract.snapshot.json)
+- [`docs/benchmarks/agent_subagent_scorecard_latest.md`](/D:/moyuan/moyuan-travel-agent/docs/benchmarks/agent_subagent_scorecard_latest.md)
 
 ## 4. 运行维护脚本
 
@@ -144,9 +146,11 @@ mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_re
 - [`tests/test_agent_runtime_phase1_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_runtime_phase1_unit.py)
   - 保护 phase-1 `AgentRuntime / Skills / Artifact` 兼容层
 - [`tests/test_agent_subagent_phase2_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_subagent_phase2_unit.py)
-  - 保护 phase-2 `Research / Planning / Budget / Verification` subagent 映射与事件编排
+  - 保护 phase-2 `Research / Planning / Budget / Verification` subagent 映射、事件编排和 skill selection policy 计划
+- [`tests/test_agent_subagent_scorecard_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_subagent_scorecard_script_unit.py)
+  - 保护 replay-backed subagent scorecard 的聚合逻辑和报告输出
 - [`tests/test_skill_registry_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_skill_registry_unit.py)
-  - 保护 skills market metadata schema、默认 catalog 过滤和 runtime diagnostics 暴露
+  - 保护 skills market metadata schema、selection policy、默认 catalog 过滤和 runtime diagnostics 暴露
 - [`tests/test_runtime_data_lifecycle_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_data_lifecycle_unit.py)
   - 保护 backup / restore / prune
 - [`tests/test_runtime_doctor_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_doctor_unit.py)

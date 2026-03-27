@@ -114,7 +114,7 @@ moyuan-travel-agent/
 - `web/moyuan_web/bootstrap.py` 现在统一收口 repo root + `web/` 的导入入口，`tests/conftest.py` 会直接复用它来初始化 pytest 的导入边界，避免 root tests 继续各自写 `sys.path` 补丁
 - `scripts/bootstrap_paths.py` 现在统一承接 benchmark / replay / runtime / snapshot 脚本的导入入口，`agent_benchmark.py`、`agent_replay.py`、`runtime_doctor.py`、`export_openapi_snapshot.py` 等脚本不再各自内联 repo root / `web/` 注入
 - `agent/travel_agent/memory/conflict_resolution.py` 现在统一承接 memory 冲突检测、澄清提示排序、显式覆盖闭环、resolved 审计日志和 persisted conflict schema 归一化，`agent/travel_agent/graph/memory_integration.py` 已进一步退化为会话 memory 编排层
-- `agent/travel_agent/contracts/skills.py` 与 `agent/travel_agent/skills/registry.py` 现在开始把 `skills market` 收口成显式 schema：默认 skill 会带 `owner / version / input / output / evidence / freshness / fallback / docs / eval` 元数据，不再只是散落在运行时里的工具映射；配套 onboarding 清单见 [docs/governance/skills-market-onboarding.md](docs/governance/skills-market-onboarding.md)，catalog 见 [docs/reference/skills-market-catalog.md](docs/reference/skills-market-catalog.md)
+- `agent/travel_agent/contracts/skills.py`、`agent/travel_agent/skills/registry.py` 与 `agent/travel_agent/subagents/registry.py` 现在把 `skills market` 收口成显式 schema + selection policy：默认 skill 会带 `owner / version / input / output / evidence / freshness / fallback / docs / eval` 元数据，以及 `priority / intent_signals / preferred_context` 选择规则；`AgentRuntime` diagnostics 也会暴露 `subagent_skill_policies`，不再把能力选择继续藏在 prompt 里；配套 onboarding 清单见 [docs/governance/skills-market-onboarding.md](docs/governance/skills-market-onboarding.md)，catalog 见 [docs/reference/skills-market-catalog.md](docs/reference/skills-market-catalog.md)
 - `scripts/docstring_audit.py` 现在不只检查 docstring 是否存在，还会识别低信息量模板文档，并用 `docs/reference/docstring-audit.low-info-baseline.json` 记录存量基线；`--strict` 会同时拦截新增缺失项和新增低信息量项
 - `scripts/complexity_budget.py` 现在会对高复杂度热点文件执行“只减不增”的行数预算门禁，并用 `docs/reference/complexity-budget.json` 记录当前预算基线；`--strict` 会拦截热点文件无序膨胀
 - `docs/governance/` 现在统一承接 `ADR / RFC / Design Review` 流程，配套 `scripts/decision_record_audit.py` 会检查记录模板和必填章节，避免跨层设计决策再次漂回口头约定
@@ -439,6 +439,7 @@ mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_re
 ### Agent 质量脚本
 
 - `python scripts/agent_benchmark.py --output-dir docs/benchmarks`
+- `uv run --offline python scripts/agent_subagent_scorecard.py --output-dir docs/benchmarks`
 - `python scripts/agent_golden_eval.py --dataset tests/golden/agent_react_golden.json --report docs/benchmarks/agent_golden_eval_latest.json --min-pass-rate 0.0`
 - `python scripts/agent_quality_gate.py --golden-report ... --benchmark-report ... --baseline-benchmark-report ...`
 
@@ -460,6 +461,7 @@ mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_re
 - SSE snapshot: [docs/reference/sse-contract.snapshot.json](docs/reference/sse-contract.snapshot.json)
 - Chat stream replay fixture: [tests/golden/chat_stream_golden_fixture.json](/D:/moyuan/moyuan-travel-agent/tests/golden/chat_stream_golden_fixture.json)
 - Frontend chat runtime replay fixture: [tests/golden/frontend_chat_runtime_golden_fixture.json](/D:/moyuan/moyuan-travel-agent/tests/golden/frontend_chat_runtime_golden_fixture.json)
+- Subagent scorecard report: [docs/benchmarks/agent_subagent_scorecard_latest.md](docs/benchmarks/agent_subagent_scorecard_latest.md)
 - CI dependency audit: `pip-audit -r requirements.txt`
 - CI secret scan: Dockerized `gitleaks` with [`.gitleaks.toml`](/D:/moyuan/moyuan-travel-agent/.gitleaks.toml)
 

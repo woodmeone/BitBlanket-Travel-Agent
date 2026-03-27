@@ -273,14 +273,17 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - [`agent/travel_agent/supervisor/builder.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/supervisor/builder.py)
 - [`agent/travel_agent/supervisor/nodes.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/supervisor/nodes.py)
 - [`agent/travel_agent/subagents/registry.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/registry.py)
+  - subagent 到 skill 的拥有关系、tool 映射，以及 `selection_policy / selection_plan`
 - [`agent/travel_agent/subagents/research.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/research.py)
 - [`agent/travel_agent/subagents/planning.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/planning.py)
 - [`agent/travel_agent/subagents/budget.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/budget.py)
 - [`agent/travel_agent/subagents/verification.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/verification.py)
 - [`agent/travel_agent/skills/registry.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/skills/registry.py)
-  - 默认 skills market catalog，包含 owner、版本、输入输出 contract、evidence/freshness/fallback 与 docs/eval 钩子
+  - 默认 skills market catalog，包含 owner、版本、输入输出 contract、selection policy、evidence/freshness/fallback 与 docs/eval 钩子
 - [`docs/reference/skills-market-catalog.md`](/D:/moyuan/moyuan-travel-agent/docs/reference/skills-market-catalog.md)
   - 当前默认 skills market 的文档化视图
+- [`scripts/agent_subagent_scorecard.py`](/D:/moyuan/moyuan-travel-agent/scripts/agent_subagent_scorecard.py)
+  - 基于 replay fixture 生成 `research / planning / budget / verification` 的协作覆盖 scorecard 基线
 - [`agent/travel_agent/artifacts/models.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/artifacts/models.py)
 - [`agent/travel_agent/memory/conflict_resolution.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/memory/conflict_resolution.py)
 - [`agent/travel_agent/memory/persistence.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/memory/persistence.py)

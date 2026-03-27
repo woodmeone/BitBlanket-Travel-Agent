@@ -27,9 +27,10 @@
      - `freshness_policy`
      - `fallback_policy`
      - `market_metadata.owner / version / docs_path / prompt_asset / eval_fixture`
+     - `selection_policy.priority / intent_signals / preferred_context / notes`
 2. `tests`
    - 至少补一条 registry 级单测，落在 [tests/test_skill_registry_unit.py](/D:/moyuan/moyuan-travel-agent/tests/test_skill_registry_unit.py)
-   - 如果 skill 会影响 subagent 路由、artifact patch 或 diagnostics，再补对应 runtime / stream 测试
+   - 如果 skill 会影响 subagent 路由、selection policy、artifact patch 或 diagnostics，再补对应 runtime / stream 测试
 3. `docs`
    - 更新 [docs/reference/skills-market-catalog.md](/D:/moyuan/moyuan-travel-agent/docs/reference/skills-market-catalog.md)
    - 如果会改变架构边界，再同步 [docs/architecture/agent-subagent-skills-architecture-roadmap.md](/D:/moyuan/moyuan-travel-agent/docs/architecture/agent-subagent-skills-architecture-roadmap.md)
@@ -40,10 +41,11 @@
 ## 推荐接入步骤
 
 1. 在 [agent/travel_agent/skills/registry.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/skills/registry.py) 注册新 skill，并补齐元数据。
-2. 如果需要新增 tool provider 或更换 evidence/fallback 逻辑，先补对应 contract，再改 subagent 消费方。
+2. 如果需要新增 tool provider、改 selection policy，或更换 evidence/fallback 逻辑，先补对应 contract，再改 subagent 消费方。
 3. 把 skill 写入 [docs/reference/skills-market-catalog.md](/D:/moyuan/moyuan-travel-agent/docs/reference/skills-market-catalog.md)，说明 owner、输入输出、证据要求和失败回退。
 4. 运行最小回归：
    - `uv run --offline --with pytest --with pytest-asyncio python -m pytest tests/test_skill_registry_unit.py -q`
+   - `uv run --offline --with pytest --with pytest-asyncio python -m pytest tests/test_agent_subagent_phase2_unit.py -q`
    - `python scripts/docstring_audit.py --strict`
    - `python scripts/complexity_budget.py --strict`
 
@@ -53,6 +55,7 @@
 - 输入上下文是否足够窄，避免让 prompt 隐式推断太多前提
 - 输出 artifact 是否能被前端或 runtime 直接消费
 - evidence / freshness / fallback 是否写成了稳定 contract，而不是散落在 prompt 里
+- selection policy 是否足够显式，避免 subagent 继续靠 prompt 猜测该优先用哪个 skill
 - `owner`、`docs_path`、`eval_fixture` 是否可追溯
 
 ## 当前基线

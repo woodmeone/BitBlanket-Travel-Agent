@@ -103,7 +103,7 @@
 - [reference/sse-contract.snapshot.json](reference/sse-contract.snapshot.json): 当前 SSE 契约快照
 - [reference/configuration-reference.md](reference/configuration-reference.md): 配置文件与环境变量
 - [reference/project-structure.md](reference/project-structure.md): 目录结构与关键模块职责
-- [reference/skills-market-catalog.md](reference/skills-market-catalog.md): 当前默认 skills market 的 owner、输入输出与治理字段
+- [reference/skills-market-catalog.md](reference/skills-market-catalog.md): 当前默认 skills market 的 owner、输入输出、selection policy 与治理字段
 - [reference/naming-conventions.md](reference/naming-conventions.md): 命名约定
 - [reference/backend-maintainer-playbook.md](reference/backend-maintainer-playbook.md): 后端维护与排障手册
 - [reference/frontend-message-rendering.md](reference/frontend-message-rendering.md): 前端消息渲染与 `<think>` 折叠机制
@@ -123,6 +123,7 @@
 - `dev.ps1`: 本地开发、测试、infra 检查、compose 校验统一入口
 - `scripts/docstring_audit.py`: Python docstring 覆盖率 + 低信息量治理审计脚本
 - `frontend/tests/features/trip-plan/travelPlanDeliverySnapshot.test.ts`: 复用 frontend runtime golden fixture 回放最终 HTML 交付结果
+- `scripts/agent_subagent_scorecard.py`: 生成 `research / planning / budget / verification` 的 replay scorecard 基线
 - `reference/docstring-audit.low-info-baseline.json`: 当前低信息量 docstring 存量基线
 - `scripts/complexity_budget.py`: 热点文件“只减不增”复杂度门禁脚本
 - `reference/complexity-budget.json`: 当前热点文件复杂度预算基线
@@ -130,6 +131,7 @@
 - `compose.yaml` / `Dockerfile*`: 支持通过 `PYTHON_BASE_IMAGE`、`NODE_BASE_IMAGE` 切换基础镜像
 - [benchmarks/agent_benchmark_latest.md](benchmarks/agent_benchmark_latest.md): 最新 benchmark 报告
 - [benchmarks/agent_benchmark_trend_latest.md](benchmarks/agent_benchmark_trend_latest.md): benchmark 趋势报告
+- [benchmarks/agent_subagent_scorecard_latest.md](benchmarks/agent_subagent_scorecard_latest.md): 子 agent 协作覆盖 scorecard
 - [benchmarks/agent_golden_eval_latest.json](benchmarks/agent_golden_eval_latest.json): golden eval 原始结果
 
 ## 文档维护建议

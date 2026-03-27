@@ -30,6 +30,10 @@
 - `market_metadata.prompt_asset`
 - `market_metadata.eval_fixture`
 - `market_metadata.onboarding_requirements`
+- `selection_policy.priority`
+- `selection_policy.intent_signals`
+- `selection_policy.preferred_context`
+- `selection_policy.notes`
 
 ## 当前默认 catalog
 
@@ -43,6 +47,25 @@
 | `PlanSynthesisSkill` | `planning-subagent` | `planning` | `plan_itinerary` | `ItineraryDraft` | No | `best_effort` | `graceful_degrade` |
 | `TravelTipsSkill` | `verification-subagent` | `research / verification` | `get_travel_tips` | `ResearchDossier` | No | `best_effort` | `graceful_degrade` |
 
+## 当前 subagent selection policy 基线
+
+- `research`
+  - `CityResearchSkill` 优先建立候选城市，再按 `AttractionResearchSkill` 补齐 POI 证据，天气与提示类能力交给 `WeatherLookupSkill / TravelTipsSkill` 作为条件补充
+- `planning`
+  - `PlanSynthesisSkill` 是默认主技能；当上下文中出现住宿预算或路线约束时，再把 `HotelQuoteSkill / WeatherLookupSkill` 作为补强技能加入
+- `budget`
+  - `HotelQuoteSkill` 先补齐 quote 级输入，`BudgetAggregationSkill` 再汇总 `hotel_quotes / transport_estimates / activity_estimates`
+- `verification`
+  - `TravelTipsSkill` 当前作为提醒与政策检查技能，只有在目的地上下文已满足且意图需要补充提醒时才进入 `ready`
+
+这层 policy 现在已经从 subagent prompt 里抽成代码契约，可通过：
+
+- [agent/travel_agent/subagents/base.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/base.py)
+- [agent/travel_agent/subagents/registry.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/registry.py)
+- [agent/travel_agent/runtime/agent_runtime.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/runtime/agent_runtime.py)
+
+读取 `selection_policy()`、`selection_plan()` 和 `subagent_skill_policies` diagnostics。
+
 ## 当前配套入口
 
 - Registry 代码：[agent/travel_agent/skills/registry.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/skills/registry.py)
@@ -52,10 +75,9 @@
 
 ## 当前限制
 
-这轮先解决的是“有稳定 schema、ownership 和 onboarding 入口”。
+这轮先解决的是“有稳定 schema、ownership、selection policy 和 onboarding 入口”。
 
 还没有完全做完的部分：
 
-- skill selection policy 还没有从 subagent prompt 中进一步抽离
 - `research / planning / budget / verification` 的 scorecard 还没有按 skill 维度稳定落地
 - 还没有单独的 skill benchmark 数据集
