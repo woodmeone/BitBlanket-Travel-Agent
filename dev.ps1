@@ -53,6 +53,7 @@ Tasks:
   ruff                   Run local Ruff checks on infra/runtime targets.
   mypy                   Run local mypy checks on infra/runtime targets.
   docstring              Run Python docstring audit.
+  complexity             Run hotspot complexity budget gate.
   snapshots              Export OpenAPI and SSE contract snapshots.
   release-manifest       Export a local release manifest.
   support-bundle         Export a runtime support bundle.
@@ -113,6 +114,10 @@ function Run-Mypy {
 
 function Run-Docstring {
     & $python scripts/docstring_audit.py --strict
+}
+
+function Run-Complexity {
+    & $python scripts/complexity_budget.py --strict
 }
 
 function Run-Snapshots {
@@ -205,6 +210,7 @@ switch ($Task.ToLowerInvariant()) {
     "ruff" { Run-Ruff }
     "mypy" { Run-Mypy }
     "docstring" { Run-Docstring }
+    "complexity" { Run-Complexity }
     "snapshots" { Run-Snapshots }
     "release-manifest" { Run-ReleaseManifest }
     "support-bundle" { Run-SupportBundle }
@@ -212,6 +218,7 @@ switch ($Task.ToLowerInvariant()) {
         Run-Ruff
         Run-Mypy
         Run-Docstring
+        Run-Complexity
         & $python scripts/runtime_doctor.py --json
         Run-Snapshots
         Run-ReleaseManifest
