@@ -232,14 +232,17 @@ MOYUAN_FAIL_FAST_STARTUP_VALIDATION=true
 3. Docstring audit
    - `python scripts/docstring_audit.py --strict`
    - 同时检查缺失 docstring 与新增低信息量模板 docstring，历史存量由 `docs/reference/docstring-audit.low-info-baseline.json` 管理
-4. Benchmark
-5. Golden eval
-6. Benchmark trend
-7. Quality gate
-8. Frontend lint / test / build
-9. `pip-audit`
-10. Dockerized `gitleaks`
-11. OpenAPI / SSE snapshot verification
+4. Complexity budget gate
+   - `python scripts/complexity_budget.py --strict`
+   - 同时检查 Agent / Web API / Frontend 热点文件是否突破“只减不增”预算，预算基线保存在 `docs/reference/complexity-budget.json`
+5. Benchmark
+6. Golden eval
+7. Benchmark trend
+8. Quality gate
+9. Frontend lint / test / build
+10. `pip-audit`
+11. Dockerized `gitleaks`
+12. OpenAPI / SSE snapshot verification
 
 ### 4.3 CI 产物
 

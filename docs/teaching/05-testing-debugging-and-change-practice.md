@@ -418,6 +418,7 @@ npm run build
 ```bash
 python -m pytest tests -q
 python scripts/docstring_audit.py --strict
+python scripts/complexity_budget.py --strict
 python scripts/agent_benchmark.py --output-dir docs/benchmarks
 python scripts/agent_golden_eval.py --dataset tests/golden/agent_react_golden.json --report docs/benchmarks/agent_golden_eval_latest.json --min-pass-rate 0.0
 python scripts/agent_quality_gate.py --golden-report docs/benchmarks/agent_golden_eval_latest.json --benchmark-report docs/benchmarks/agent_benchmark_latest.json --baseline-benchmark-report docs/benchmarks/agent_benchmark_baseline.json
@@ -427,7 +428,7 @@ npm run test:run
 npm run build
 ```
 
-这里的 `docstring_audit --strict` 现在已经不是“补空文档字符串”这么简单了，它会同时拦截新增的低信息量模板 docstring，所以它更接近一个“工程可读性门禁”，而不只是覆盖率检查。
+这里的 `docstring_audit --strict` 现在已经不是“补空文档字符串”这么简单了，它会同时拦截新增的低信息量模板 docstring，所以它更接近一个“工程可读性门禁”，而不只是覆盖率检查；而 `complexity_budget --strict` 则负责卡住热点复杂文件的“只减不增”预算。
 
 ### 8.4 发版前建议
 

@@ -53,6 +53,7 @@ moyuan-travel-agent/
 - `ruff`
 - `mypy`
 - docstring 覆盖率与低信息量审计
+- 热点文件复杂度预算门禁
 - OpenAPI / SSE 快照导出
 - release manifest
 - support bundle

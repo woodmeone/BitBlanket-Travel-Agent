@@ -110,6 +110,8 @@
 - `dev.ps1`: 本地开发、测试、infra 检查、compose 校验统一入口
 - `scripts/docstring_audit.py`: Python docstring 覆盖率 + 低信息量治理审计脚本
 - `reference/docstring-audit.low-info-baseline.json`: 当前低信息量 docstring 存量基线
+- `scripts/complexity_budget.py`: 热点文件“只减不增”复杂度门禁脚本
+- `reference/complexity-budget.json`: 当前热点文件复杂度预算基线
 - `compose.yaml` / `Dockerfile*`: 支持通过 `PYTHON_BASE_IMAGE`、`NODE_BASE_IMAGE` 切换基础镜像
 - [benchmarks/agent_benchmark_latest.md](benchmarks/agent_benchmark_latest.md): 最新 benchmark 报告
 - [benchmarks/agent_benchmark_trend_latest.md](benchmarks/agent_benchmark_trend_latest.md): benchmark 趋势报告
