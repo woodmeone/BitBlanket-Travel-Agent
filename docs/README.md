@@ -122,6 +122,7 @@
 - `scripts/export_support_bundle.py`: 运行态支持包导出
 - `dev.ps1`: 本地开发、测试、infra 检查、compose 校验统一入口
 - `scripts/docstring_audit.py`: Python docstring 覆盖率 + 低信息量治理审计脚本
+- `frontend/tests/features/trip-plan/travelPlanDeliverySnapshot.test.ts`: 复用 frontend runtime golden fixture 回放最终 HTML 交付结果
 - `reference/docstring-audit.low-info-baseline.json`: 当前低信息量 docstring 存量基线
 - `scripts/complexity_budget.py`: 热点文件“只减不增”复杂度门禁脚本
 - `reference/complexity-budget.json`: 当前热点文件复杂度预算基线

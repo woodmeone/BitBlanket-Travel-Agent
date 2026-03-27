@@ -30,7 +30,7 @@
 
 - [已完成 2026-03-27] 建立统一的 `artifact delivery descriptor`，当前 `frontend/src/components/travel-plan-toolkit/shared/artifact.ts` 已统一收口 HTML 标题、摘要、卡片区块、分享文本、导出文件名与 overview 指标
 - [已完成 2026-03-27] 把导出图片、分享短链、详情页 HTML 三条链路统一到同一份 descriptor，当前 `useTravelPlanToolkitActions.ts` 已让 share/export 直接消费统一 descriptor，share link 也已开始持久化 `html_content`
-- 为 HTML 结果建立 golden snapshot，避免模板改动引起结构或字段回退
+- [已完成 2026-03-27] 为 HTML 结果建立 golden snapshot，当前 `frontend/tests/features/trip-plan/travelPlanDeliverySnapshot.test.ts` 已基于 `tests/golden/frontend_chat_runtime_golden_fixture.json` 回放并固化 `frontend/tests/features/trip-plan/__snapshots__/travelPlanDeliverySnapshot.test.ts.snap`
 
 ### 3.2 Skills Market Harness
 
@@ -61,8 +61,8 @@
 ### Phase A：Artifact Delivery 收口
 
 - [已完成 2026-03-27] 统一 `trip-plan` 的 HTML / share / export descriptor
-- 为最终交付页建立 snapshot fixture 与回放测试
-- 让前端和导出链路都只消费 artifact delivery contract
+- [已完成 2026-03-27] 为最终交付页建立 snapshot fixture 与回放测试
+- [已完成 2026-03-27] 让前端和导出链路都只消费 artifact delivery contract
 
 ### Phase B：Skills Market 治理
 
@@ -95,6 +95,6 @@
 
 建议从下面三项开始：
 
-1. 建立 `artifact delivery descriptor`，统一 HTML / share / export 三条交付链
-2. 建立 skills metadata schema 与 onboarding 模板
+1. [已完成 2026-03-27] 建立 `artifact delivery descriptor`，统一 HTML / share / export 三条交付链
+2. [已完成 2026-03-27] 建立 skills metadata schema 与 onboarding 模板
 3. 为 subagent 结果建立 scorecard 基线，先覆盖 `research / planning / budget / verification`
