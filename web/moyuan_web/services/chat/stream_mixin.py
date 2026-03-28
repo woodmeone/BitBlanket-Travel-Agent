@@ -18,7 +18,6 @@ ensure_project_paths()
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass(slots=True)
 class _StreamRunState:
     """Mutable state accumulated during one streamed chat run."""
@@ -37,6 +36,7 @@ class _StreamRunState:
     fallback_steps: int = 0
     final_artifact: dict[str, Any] = field(default_factory=dict)
     subagent_events: list[dict[str, Any]] = field(default_factory=list)
+    execution_receipt: dict[str, Any] = field(default_factory=dict)
     answer_started: bool = False
     reasoning_ended: bool = False
     memory_user_written: bool = False
@@ -44,7 +44,6 @@ class _StreamRunState:
     def resolved_session_id(self) -> str:
         """Return the best available session identifier for persistence and logging."""
         return self.session_id or self.requested_session_id or "unknown"
-
 
 class ChatStreamMixin:
     """Streaming and SSE serialization methods for chat orchestration."""
@@ -197,7 +196,6 @@ class ChatStreamMixin:
             logger=logger,
             diagnostics=self._build_stream_diagnostics(),
         )
-
     def _normalize_runtime_event(
         self,
         state: _StreamRunState,
@@ -374,6 +372,8 @@ class ChatStreamMixin:
 
         if isinstance(event.get("artifact"), dict):
             state.final_artifact = merge_artifact_payload(state.final_artifact, event.get("artifact"))
+        if isinstance(event.get("execution_receipt"), dict):
+            state.execution_receipt = dict(event.get("execution_receipt"))
 
         stream_tools = event.get("tools_used", [])
         if stream_tools:

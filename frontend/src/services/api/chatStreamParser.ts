@@ -1,4 +1,4 @@
-import type { ArtifactPatch, ChatStreamEventType, TripPlanArtifact } from '@/types';
+import type { ArtifactPatch, ChatStreamEventType, ExecutionReceipt, TripPlanArtifact } from '@/types';
 import { CHAT_STREAM_EVENT_TYPES } from '@/types';
 import { SSEConnectionStatus, type StreamCallbacks } from './chatStreamTypes';
 
@@ -130,6 +130,9 @@ export function handleChatStreamLine(
         requestId: typeof data.request_id === 'string' ? data.request_id : '',
         traceId: typeof data.trace_id === 'string' ? data.trace_id : '',
         artifact: isRecord(data.artifact) ? (data.artifact as unknown as TripPlanArtifact) : null,
+        executionReceipt: isRecord(data.execution_receipt)
+          ? (data.execution_receipt as unknown as ExecutionReceipt)
+          : null,
         ...(typeof data.session_id === 'string' && data.session_id ? { sessionId: data.session_id } : {}),
       };
       callbacks.onMetadata(metadataPayload);
@@ -190,6 +193,9 @@ export function handleChatStreamLine(
         runId: typeof data.run_id === 'string' ? data.run_id : '',
         requestId: typeof data.request_id === 'string' ? data.request_id : '',
         traceId: typeof data.trace_id === 'string' ? data.trace_id : '',
+        executionReceipt: isRecord(data.execution_receipt)
+          ? (data.execution_receipt as unknown as ExecutionReceipt)
+          : null,
         ...(typeof data.session_id === 'string' && data.session_id ? { sessionId: data.session_id } : {}),
       };
       callbacks.onComplete(completionPayload);

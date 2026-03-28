@@ -5,6 +5,7 @@ from __future__ import annotations
 from moyuan_web.api.schemas import (  # noqa: E402
     ArtifactHistoryResponse,
     normalize_artifact_patch,
+    normalize_execution_receipt,
     normalize_trip_plan_artifact,
 )
 
@@ -100,3 +101,31 @@ def test_artifact_history_response_normalizes_nested_artifacts():
 
     assert response["entries"][0]["artifact"]["itinerary"]["planId"] == "plan-123"
     assert response["entries"][0]["artifact"]["budget"]["fallbackSteps"] == 2
+
+
+def test_normalize_execution_receipt_converts_nested_aliases():
+    receipt = normalize_execution_receipt(
+        {
+            "session_id": "session-1",
+            "run_id": "run-1",
+            "chat_mode": "react",
+            "subagent_order": ["research", "planning"],
+            "tools_used": ["search_cities", "plan_itinerary"],
+            "artifact_patch_subagents": ["planning"],
+            "segments": [
+                {
+                    "subagent": "planning",
+                    "sequence": 2,
+                    "tool_names": ["plan_itinerary"],
+                    "tools_used": ["plan_itinerary"],
+                    "artifact_patch_sections": ["itinerary", "metadata"],
+                }
+            ],
+        }
+    )
+
+    assert receipt["sessionId"] == "session-1"
+    assert receipt["chatMode"] == "react"
+    assert receipt["subagentOrder"] == ["research", "planning"]
+    assert receipt["segments"][0]["toolNames"] == ["plan_itinerary"]
+    assert receipt["segments"][0]["artifactPatchSections"] == ["itinerary", "metadata"]

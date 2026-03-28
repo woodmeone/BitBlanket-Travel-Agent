@@ -82,6 +82,12 @@ describe('handleChatStreamLine', () => {
         run_id: 'run-1',
         request_id: 'req-1',
         trace_id: 'trace-1',
+        execution_receipt: {
+          session_id: 'session-1',
+          run_id: 'run-1',
+          subagent_order: ['planning'],
+          segments: [{ subagent: 'planning', sequence: 1, tool_names: ['plan_itinerary'] }],
+        },
       })}`,
       callbacks,
       lifecycle
@@ -95,7 +101,61 @@ describe('handleChatStreamLine', () => {
       runId: 'run-1',
       requestId: 'req-1',
       traceId: 'trace-1',
+      executionReceipt: {
+        session_id: 'session-1',
+        run_id: 'run-1',
+        subagent_order: ['planning'],
+        segments: [{ subagent: 'planning', sequence: 1, tool_names: ['plan_itinerary'] }],
+      },
     });
+  });
+
+  it('normalizes metadata payloads with execution receipt', () => {
+    const callbacks = createCallbacks();
+    const lifecycle = {
+      finalizeRequest: vi.fn(),
+      setConnectionStatus: vi.fn(),
+    };
+
+    const terminal = handleChatStreamLine(
+      `data: ${JSON.stringify({
+        type: CHAT_STREAM_EVENT_TYPES.METADATA,
+        run_id: 'run-1',
+        total_steps: 2,
+        tools_used: ['search_cities'],
+        has_reasoning: true,
+        reasoning_length: 10,
+        answer_length: 20,
+        execution_stats: {},
+        verification_passed: true,
+        stale_result_count: 0,
+        fallback_steps: 0,
+        artifact: { title: 'trip' },
+        execution_receipt: {
+          session_id: 'session-1',
+          run_id: 'run-1',
+          subagent_order: ['research'],
+          tools_used: ['search_cities'],
+          segments: [{ subagent: 'research', sequence: 1, tools_used: ['search_cities'] }],
+        },
+      })}`,
+      callbacks,
+      lifecycle
+    );
+
+    expect(terminal).toBe(false);
+    expect(callbacks.onMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: 'run-1',
+        executionReceipt: {
+          session_id: 'session-1',
+          run_id: 'run-1',
+          subagent_order: ['research'],
+          tools_used: ['search_cities'],
+          segments: [{ subagent: 'research', sequence: 1, tools_used: ['search_cities'] }],
+        },
+      })
+    );
   });
 
   it('treats error payloads as terminal failures', () => {

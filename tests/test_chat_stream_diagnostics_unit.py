@@ -18,6 +18,14 @@ class _StateStub:
         self.execution_stats = {"latencyMs": 1200}
         self.final_artifact = {"itinerary": {"plan_id": "plan-123"}}
         self.subagent_events = [{"subagent": "planning", "status": "completed"}]
+        self.execution_receipt = {
+            "sessionId": "session-123",
+            "runId": "run-123",
+            "subagentOrder": ["planning"],
+            "toolsUsed": ["search_city"],
+            "artifactPatchSubagents": ["planning"],
+            "segments": [{"subagent": "planning", "sequence": 1, "toolNames": ["search_city"]}],
+        }
         self.run_id = "run-123"
 
     def resolved_session_id(self) -> str:
@@ -38,3 +46,4 @@ def test_chat_stream_diagnostics_include_session_id(monkeypatch: pytest.MonkeyPa
     assert diagnostics["runId"] == "run-123"
     assert diagnostics["requestId"] == "request-123"
     assert diagnostics["traceId"] == "trace-123"
+    assert diagnostics["executionReceipt"]["subagentOrder"] == ["planning"]

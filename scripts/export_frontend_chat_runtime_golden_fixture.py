@@ -130,6 +130,7 @@ def _build_completion_diagnostics(
         "executionStats": metadata.get("executionStats") if metadata and metadata.get("executionStats") is not None else artifact_budget.get("summary"),
         "artifact": artifact,
         "subagentEvents": subagent_events,
+        "executionReceipt": (completion or {}).get("executionReceipt") or (metadata or {}).get("executionReceipt"),
         "runId": (completion or {}).get("runId") or (metadata or {}).get("runId"),
         "requestId": (completion or {}).get("requestId") or (metadata or {}).get("requestId"),
         "traceId": (completion or {}).get("traceId") or (metadata or {}).get("traceId"),
@@ -149,6 +150,11 @@ def _record_array(value: Any) -> list[dict[str, Any]]:
 def _unknown_array(value: Any) -> list[Any]:
     """Normalize array payloads while preserving item types."""
     return list(value) if isinstance(value, list) else []
+
+
+def _normalize_execution_receipt(value: Any) -> dict[str, Any] | None:
+    """Normalize execution receipt payloads into record form."""
+    return _clone_payload(value) if isinstance(value, dict) else None
 
 
 def _normalize_plan_preview(payload: dict[str, Any]) -> dict[str, Any]:
@@ -216,6 +222,7 @@ def _normalize_metadata(payload: dict[str, Any]) -> dict[str, Any]:
         "requestId": payload.get("request_id") if isinstance(payload.get("request_id"), str) else "",
         "traceId": payload.get("trace_id") if isinstance(payload.get("trace_id"), str) else "",
         "artifact": payload.get("artifact") if isinstance(payload.get("artifact"), dict) else None,
+        "executionReceipt": _normalize_execution_receipt(payload.get("execution_receipt")),
     }
 
 
@@ -226,6 +233,7 @@ def _normalize_completion(payload: dict[str, Any]) -> dict[str, Any]:
         "runId": payload.get("run_id") if isinstance(payload.get("run_id"), str) else "",
         "requestId": payload.get("request_id") if isinstance(payload.get("request_id"), str) else "",
         "traceId": payload.get("trace_id") if isinstance(payload.get("trace_id"), str) else "",
+        "executionReceipt": _normalize_execution_receipt(payload.get("execution_receipt")),
     }
 
 

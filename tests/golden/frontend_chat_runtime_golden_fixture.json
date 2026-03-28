@@ -43,6 +43,7 @@
               "summary": ""
             }
           },
+          "executionReceipt": {},
           "executionStats": {},
           "fallbackSteps": 0,
           "planId": null,
@@ -111,6 +112,7 @@
         "metadata": {
           "answerLength": 12,
           "artifact": {},
+          "executionReceipt": {},
           "executionStats": {},
           "fallbackSteps": 0,
           "hasReasoning": false,
@@ -172,6 +174,7 @@
               "summary": ""
             }
           },
+          "executionReceipt": {},
           "executionStats": {
             "steps": [
               {
@@ -353,6 +356,7 @@
               "summary": ""
             }
           },
+          "executionReceipt": {},
           "executionStats": {
             "steps": [
               {
@@ -568,6 +572,7 @@
               "summary": ""
             }
           },
+          "executionReceipt": {},
           "executionStats": {
             "steps": [
               {
@@ -733,6 +738,7 @@
               "summary": ""
             }
           },
+          "executionReceipt": {},
           "executionStats": {
             "steps": [
               {

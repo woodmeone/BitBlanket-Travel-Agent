@@ -136,11 +136,13 @@ class ChatStreamFinalizer:
                 "fallback_steps": state.fallback_steps,
                 "failure_clusters": self._service._extract_failure_clusters(state.execution_stats),
                 "artifact": state.final_artifact,
+                "execution_receipt": state.execution_receipt,
             },
             {
                 "type": "done",
                 "run_id": state.run_id,
                 "artifact": state.final_artifact,
+                "execution_receipt": state.execution_receipt,
             },
         ]
 

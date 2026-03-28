@@ -148,10 +148,21 @@ def npm_environment() -> dict[str, str]:
     return env
 
 
+def resolve_npm_command() -> str:
+    """Resolve a cross-platform npm executable path."""
+
+    candidates = ("npm.cmd", "npm", "npm.exe")
+    for candidate in candidates:
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+    raise SystemExit("npm executable not found. Install Node.js/npm and ensure it is on PATH.")
+
+
 def run_frontend_command(arguments: Sequence[str]) -> None:
     """Run an npm command from the frontend workspace."""
 
-    run_command(["npm", *arguments], cwd=FRONTEND_ROOT, env=npm_environment())
+    run_command([resolve_npm_command(), *arguments], cwd=FRONTEND_ROOT, env=npm_environment())
 
 
 def docker_available() -> bool:

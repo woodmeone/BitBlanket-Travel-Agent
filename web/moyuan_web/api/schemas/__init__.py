@@ -25,6 +25,12 @@ from .city import (
     RegionListResponse,
     TagListResponse,
 )
+from .execution_receipt import (
+    ExecutionReceipt,
+    ExecutionReceiptStage,
+    SubagentExecutionReceipt,
+    normalize_execution_receipt,
+)
 from .health import (
     HealthResponse,
     LLMHealthResponse,
@@ -49,6 +55,8 @@ __all__ = [
     "CityDetail",
     "CityListResponse",
     "CitySummary",
+    "ExecutionReceipt",
+    "ExecutionReceiptStage",
     "HealthResponse",
     "ItineraryDraftArtifact",
     "LLMHealthResponse",
@@ -66,6 +74,7 @@ __all__ = [
     "ShareCreateResponse",
     "ShareDetailResponse",
     "SimpleStatusResponse",
+    "SubagentExecutionReceipt",
     "TagListResponse",
     "ToolHealthResponse",
     "ToolIntentHealthResponse",
@@ -74,5 +83,6 @@ __all__ = [
     "UpdateNameRequest",
     "VerificationReportArtifact",
     "normalize_artifact_patch",
+    "normalize_execution_receipt",
     "normalize_trip_plan_artifact",
 ]

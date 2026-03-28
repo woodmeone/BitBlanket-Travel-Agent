@@ -65,3 +65,35 @@ def test_validate_chat_stream_payload_normalizes_artifact_aliases():
     assert payload["artifact_patch"]["itinerary"]["planId"] == "plan-123"
     assert payload["artifact_patch"]["itinerary"]["validationStatus"] == "warn"
     assert payload["artifact_patch"]["budget"]["fallbackSteps"] == 1
+
+
+def test_validate_chat_stream_payload_normalizes_execution_receipt_aliases():
+    payload = validate_chat_stream_payload(
+        {
+            "type": "done",
+            "run_id": "run-123",
+            "artifact": {},
+            "execution_receipt": {
+                "session_id": "session-123",
+                "run_id": "run-123",
+                "chat_mode": "plan",
+                "subagent_order": ["planning"],
+                "tools_used": ["plan_itinerary"],
+                "artifact_patch_subagents": ["planning"],
+                "segments": [
+                    {
+                        "subagent": "planning",
+                        "sequence": 1,
+                        "tool_names": ["plan_itinerary"],
+                        "tools_used": ["plan_itinerary"],
+                        "artifact_patch_sections": ["itinerary"],
+                    }
+                ],
+            },
+        }
+    )
+
+    assert payload["execution_receipt"]["sessionId"] == "session-123"
+    assert payload["execution_receipt"]["subagentOrder"] == ["planning"]
+    assert payload["execution_receipt"]["segments"][0]["toolNames"] == ["plan_itinerary"]
+    assert payload["execution_receipt"]["segments"][0]["artifactPatchSections"] == ["itinerary"]

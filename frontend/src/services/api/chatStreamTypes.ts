@@ -1,4 +1,11 @@
-import type { ArtifactPatch, PlanPreview, StreamStageEvent, SubagentEvent, TripPlanArtifact } from '@/types';
+import type {
+  ArtifactPatch,
+  ExecutionReceipt,
+  PlanPreview,
+  StreamStageEvent,
+  SubagentEvent,
+  TripPlanArtifact,
+} from '@/types';
 
 export enum SSEConnectionStatus {
   IDLE = 'idle',
@@ -25,6 +32,7 @@ export interface StreamMetadata {
   requestId?: string;
   traceId?: string;
   artifact?: TripPlanArtifact | null;
+  executionReceipt?: ExecutionReceipt | null;
 }
 
 export interface StreamCompletionPayload {
@@ -33,6 +41,7 @@ export interface StreamCompletionPayload {
   runId?: string;
   requestId?: string;
   traceId?: string;
+  executionReceipt?: ExecutionReceipt | null;
 }
 
 export interface StreamCallbacks {

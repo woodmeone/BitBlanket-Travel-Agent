@@ -1,6 +1,79 @@
 {
   "components": {
     "schemas": {
+      "ArtifactHistoryEntry": {
+        "additionalProperties": true,
+        "description": "One persisted artifact snapshot discovered in session message history.",
+        "properties": {
+          "artifact": {
+            "$ref": "#/components/schemas/TripPlanArtifact"
+          },
+          "message_index": {
+            "title": "Message Index",
+            "type": "integer"
+          },
+          "message_timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Timestamp"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          }
+        },
+        "required": [
+          "artifact",
+          "message_index"
+        ],
+        "title": "ArtifactHistoryEntry",
+        "type": "object"
+      },
+      "ArtifactHistoryResponse": {
+        "additionalProperties": true,
+        "description": "HTTP response payload for retrieving persisted artifact history for one session.",
+        "properties": {
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ArtifactHistoryEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "ArtifactHistoryResponse",
+        "type": "object"
+      },
       "Attraction": {
         "description": "Simplified attraction payload exposed by city endpoints.",
         "properties": {
@@ -52,9 +125,48 @@
         "title": "Attraction",
         "type": "object"
       },
-      "ChatRequest": {
-        "description": "Request payload for streaming chat endpoint.",
+      "BudgetReportArtifact": {
+        "additionalProperties": true,
+        "description": "Budget and runtime-cost summary attached to the artifact payload.",
         "properties": {
+          "executionBudget": {
+            "additionalProperties": true,
+            "title": "Executionbudget",
+            "type": "object"
+          },
+          "fallbackSteps": {
+            "default": 0,
+            "title": "Fallbacksteps",
+            "type": "integer"
+          },
+          "staleResultCount": {
+            "default": 0,
+            "title": "Staleresultcount",
+            "type": "integer"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "title": "Summary",
+            "type": "object"
+          }
+        },
+        "title": "BudgetReportArtifact",
+        "type": "object"
+      },
+      "ChatRequest": {
+        "description": "Request payload for the streaming chat endpoint.",
+        "properties": {
+          "display_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Message"
+          },
           "message": {
             "title": "Message",
             "type": "string"
@@ -379,6 +491,48 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "ItineraryDraftArtifact": {
+        "additionalProperties": true,
+        "description": "Draft plan steps and validation details for the itinerary stage.",
+        "properties": {
+          "explanation": {
+            "default": "",
+            "title": "Explanation",
+            "type": "string"
+          },
+          "planId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planid"
+          },
+          "steps": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "validationErrors": {
+            "items": {},
+            "title": "Validationerrors",
+            "type": "array"
+          },
+          "validationStatus": {
+            "default": "pass",
+            "title": "Validationstatus",
+            "type": "string"
+          }
+        },
+        "title": "ItineraryDraftArtifact",
+        "type": "object"
+      },
       "LLMHealthResponse": {
         "description": "LLM runtime and tool initialization status snapshot.",
         "properties": {
@@ -412,12 +566,79 @@
         "title": "LLMHealthResponse",
         "type": "object"
       },
+      "LatestArtifactResponse": {
+        "additionalProperties": true,
+        "description": "HTTP response payload for retrieving the latest persisted trip artifact.",
+        "properties": {
+          "artifact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TripPlanArtifact"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "artifact_found": {
+            "default": false,
+            "title": "Artifact Found",
+            "type": "boolean"
+          },
+          "message_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Index"
+          },
+          "message_timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Timestamp"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "LatestArtifactResponse",
+        "type": "object"
+      },
       "ReadinessCheckResponse": {
         "description": "Per-check readiness detail returned by `/ready`.",
         "properties": {
           "details": {
             "additionalProperties": true,
-            "default": {},
             "title": "Details",
             "type": "object"
           },
@@ -500,6 +721,81 @@
           "regions"
         ],
         "title": "RegionListResponse",
+        "type": "object"
+      },
+      "ResearchDossierArtifact": {
+        "additionalProperties": true,
+        "description": "Research summary and evidence bundle surfaced to the client.",
+        "properties": {
+          "destinations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Destinations",
+            "type": "array"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchEvidenceArtifact"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "sourceTools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sourcetools",
+            "type": "array"
+          },
+          "summary": {
+            "default": "",
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "title": "ResearchDossierArtifact",
+        "type": "object"
+      },
+      "ResearchEvidenceArtifact": {
+        "additionalProperties": true,
+        "description": "One evidence item collected during research-oriented tool calls.",
+        "properties": {
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "tool": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool"
+          }
+        },
+        "title": "ResearchEvidenceArtifact",
         "type": "object"
       },
       "RoutePointItem": {
@@ -666,6 +962,18 @@
             "title": "Content",
             "type": "string"
           },
+          "html_content": {
+            "anyOf": [
+              {
+                "maxLength": 200000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Html Content"
+          },
           "title": {
             "anyOf": [
               {
@@ -719,6 +1027,17 @@
           "created_at": {
             "title": "Created At",
             "type": "string"
+          },
+          "html_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Html Content"
           },
           "share_id": {
             "title": "Share Id",
@@ -876,6 +1195,77 @@
         "title": "ToolIntentHealthResponse",
         "type": "object"
       },
+      "TripIntentArtifact": {
+        "additionalProperties": true,
+        "description": "Structured intent summary captured for one trip-planning run.",
+        "properties": {
+          "confidence": {
+            "title": "Confidence"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "title": "Detail",
+            "type": "object"
+          },
+          "entities": {
+            "additionalProperties": true,
+            "title": "Entities",
+            "type": "object"
+          },
+          "name": {
+            "default": "general",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "title": "TripIntentArtifact",
+        "type": "object"
+      },
+      "TripPlanArtifact": {
+        "additionalProperties": true,
+        "description": "Top-level artifact envelope shared across stream and history payloads.",
+        "properties": {
+          "answer": {
+            "default": "",
+            "title": "Answer",
+            "type": "string"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/BudgetReportArtifact"
+          },
+          "intent": {
+            "$ref": "#/components/schemas/TripIntentArtifact"
+          },
+          "itinerary": {
+            "$ref": "#/components/schemas/ItineraryDraftArtifact"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "reasoning": {
+            "default": "",
+            "title": "Reasoning",
+            "type": "string"
+          },
+          "research": {
+            "$ref": "#/components/schemas/ResearchDossierArtifact"
+          },
+          "toolsUsed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Toolsused",
+            "type": "array"
+          },
+          "verification": {
+            "$ref": "#/components/schemas/VerificationReportArtifact"
+          }
+        },
+        "title": "TripPlanArtifact",
+        "type": "object"
+      },
       "UpdateNameRequest": {
         "description": "Payload for updating session display name.",
         "properties": {
@@ -929,6 +1319,47 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VerificationReportArtifact": {
+        "additionalProperties": true,
+        "description": "Verification outcome, retry hints, and issue list for one run.",
+        "properties": {
+          "issues": {
+            "items": {},
+            "title": "Issues",
+            "type": "array"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "refreshTargets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Refreshtargets",
+            "type": "array"
+          },
+          "shouldRetry": {
+            "default": false,
+            "title": "Shouldretry",
+            "type": "boolean"
+          },
+          "summary": {
+            "default": "",
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "title": "VerificationReportArtifact",
+        "type": "object"
       }
     }
   },
@@ -941,7 +1372,7 @@
   "paths": {
     "/": {
       "get": {
-        "description": "Return root endpoint metadata and docs links.\n\nPurpose:\n    Document service/API behavior, side effects, and integration expectations for maintainers.\n\nReturns:\n    dict: Structured dictionary result for upstream callers.",
+        "description": "Return root metadata links for quick service introspection.",
         "operationId": "root__get",
         "responses": {
           "200": {
@@ -958,6 +1389,104 @@
           }
         },
         "summary": "Root"
+      }
+    },
+    "/api/artifacts/{session_id}/history": {
+      "get": {
+        "description": "Return persisted artifact snapshots for one session in newest-first order.",
+        "operationId": "get_artifact_history_api_artifacts__session_id__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtifactHistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Artifact History",
+        "tags": [
+          "artifact"
+        ]
+      }
+    },
+    "/api/artifacts/{session_id}/latest": {
+      "get": {
+        "description": "Return the latest persisted trip artifact for one session.",
+        "operationId": "get_latest_artifact_api_artifacts__session_id__latest_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LatestArtifactResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Latest Artifact",
+        "tags": [
+          "artifact"
+        ]
       }
     },
     "/api/chat/stream": {
@@ -1581,6 +2110,47 @@
           }
         },
         "summary": "Delete Session",
+        "tags": [
+          "session"
+        ]
+      }
+    },
+    "/api/session/{session_id}/messages": {
+      "get": {
+        "description": "Return persisted public messages for one session.",
+        "operationId": "get_session_messages_api_session__session_id__messages_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Session Messages",
         "tags": [
           "session"
         ]

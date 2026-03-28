@@ -1,6 +1,6 @@
 # Release Harness Scorecard
 
-- generated_at: `2026-03-27T18:02:44.816802+00:00`
+- generated_at: `2026-03-28T07:17:43.879202+00:00`
 - status: `warn`
 - errors: `0`
 - warnings: `2`

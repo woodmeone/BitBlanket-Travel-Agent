@@ -16,6 +16,7 @@ export interface MessageDiagnostics {
   executionStats?: Record<string, unknown>;
   artifact?: TripPlanArtifact | null;
   subagentEvents?: SubagentEvent[];
+  executionReceipt?: ExecutionReceipt;
   runId?: string;
   requestId?: string;
   traceId?: string;
@@ -150,6 +151,35 @@ export interface SubagentEvent {
   summary?: string | null;
   timestamp?: string;
   clientKey?: string;
+}
+
+export interface ExecutionReceiptStage {
+  stage?: string | null;
+  label?: string | null;
+}
+
+export interface ExecutionReceiptSegment {
+  subagent: string;
+  sequence: number;
+  trigger?: string | null;
+  description?: string | null;
+  skills?: string[];
+  toolNames?: string[];
+  toolsUsed?: string[];
+  stages?: ExecutionReceiptStage[];
+  artifactPatchSections?: string[];
+  status?: string | null;
+  summary?: string | null;
+}
+
+export interface ExecutionReceipt {
+  sessionId: string;
+  runId?: string | null;
+  chatMode?: string | null;
+  subagentOrder?: string[];
+  toolsUsed?: string[];
+  artifactPatchSubagents?: string[];
+  segments?: ExecutionReceiptSegment[];
 }
 
 export interface SessionInfo {

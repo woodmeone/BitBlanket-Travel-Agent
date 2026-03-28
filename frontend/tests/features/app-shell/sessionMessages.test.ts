@@ -22,6 +22,12 @@ describe('normalizePersistedMessages', () => {
             metadata: {},
           },
           subagentEvents: [{ subagent: 'planning', status: 'completed', timestamp: '10:00:01' }],
+          executionReceipt: {
+            sessionId: 'session-1',
+            runId: 'run-1',
+            subagentOrder: ['planning'],
+            segments: [{ subagent: 'planning', sequence: 1, toolNames: ['plan_itinerary'] }],
+          },
         },
       },
     ]);
@@ -31,6 +37,7 @@ describe('normalizePersistedMessages', () => {
     expect(messages[0].diagnostics?.planId).toBe('plan-321');
     expect(messages[0].diagnostics?.artifact?.itinerary.planId).toBe('plan-321');
     expect(messages[0].diagnostics?.subagentEvents?.[0]?.subagent).toBe('planning');
+    expect(messages[0].diagnostics?.executionReceipt?.segments?.[0]?.toolNames).toEqual(['plan_itinerary']);
   });
 
   it('hydrates the latest assistant message from persisted artifact payloads', () => {

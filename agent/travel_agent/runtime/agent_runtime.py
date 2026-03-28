@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Optional
 
 from langchain_core.runnables import Runnable
@@ -11,6 +12,7 @@ from ..artifacts import (
     build_trip_plan_artifact_from_plan_preview,
     build_trip_plan_artifact_from_stream_event,
 )
+from ..contracts import ExecutionReceipt, ExecutionReceiptStage, SubagentExecutionReceipt
 from ..graph.builder import (
     generate_plan_preview_with_memory,
     get_tool_health_diagnostics,
@@ -96,6 +98,11 @@ class AgentRuntime:
                 if next_subagent:
                     event = dict(event)
                     event["subagent"] = next_subagent
+                tracker.note_stage(
+                    stage=_coerce_optional_str(event.get("stage")),
+                    label=_coerce_optional_str(event.get("label")),
+                    subagent=_coerce_optional_str(event.get("subagent")),
+                )
 
             if event.get("type") == "tool_start":
                 tool_name = _coerce_optional_str(event.get("tool")) or ""
@@ -105,6 +112,7 @@ class AgentRuntime:
                 if next_subagent:
                     event = dict(event)
                     event["subagent"] = next_subagent
+                tracker.note_tool(tool_name, subagent=_coerce_optional_str(event.get("subagent")))
 
             if event.get("type") == "tool_end":
                 tool_name = _coerce_optional_str(event.get("tool")) or ""
@@ -112,6 +120,7 @@ class AgentRuntime:
                 if subagent_name:
                     event = dict(event)
                     event["subagent"] = subagent_name
+                tracker.note_tool(tool_name, subagent=_coerce_optional_str(event.get("subagent")))
 
             if event.get("type") == "done":
                 enriched_event = dict(event)
@@ -130,6 +139,7 @@ class AgentRuntime:
                 merged_artifact = _merge_artifact_patches(artifact, subagent_patches.values())
                 enriched_event["artifact"] = merged_artifact
                 for subagent_name, patch in subagent_patches.items():
+                    tracker.note_artifact_patch(subagent_name, patch)
                     yield {
                         "type": "artifact_patch",
                         "subagent": subagent_name,
@@ -139,6 +149,7 @@ class AgentRuntime:
                     }
                 for transition_event in tracker.finish():
                     yield transition_event
+                enriched_event["execution_receipt"] = tracker.build_execution_receipt()
                 yield enriched_event
                 continue
             yield event
@@ -207,6 +218,8 @@ class _SubagentTracker:
         self.chat_mode = chat_mode
         self.active: Optional[str] = None
         self.sequence = 0
+        self.segments: list[SubagentExecutionReceipt] = []
+        self._active_segment: Optional[SubagentExecutionReceipt] = None
 
     def transition(self, next_subagent: Optional[str], *, trigger: str) -> list[dict[str, Any]]:
         """Emit start/end events when the active subagent changes."""
@@ -217,6 +230,10 @@ class _SubagentTracker:
         if self.active:
             active_subagent = self.registry.get(self.active)
             if active_subagent is not None:
+                self._finalize_active_segment(
+                    status="completed",
+                    summary=f"{self.active} segment completed",
+                )
                 events.append(
                     active_subagent.end_event(
                         session_id=self.session_id,
@@ -232,6 +249,15 @@ class _SubagentTracker:
             next_subagent_model = self.registry.get(next_subagent)
             if next_subagent_model is not None:
                 self.sequence += 1
+                self._active_segment = SubagentExecutionReceipt(
+                    subagent=next_subagent,
+                    sequence=self.sequence,
+                    trigger=trigger,
+                    description=next_subagent_model.description,
+                    skills=next_subagent_model.skill_names(),
+                    tool_names=next_subagent_model.tool_names(),
+                )
+                self.segments.append(self._active_segment)
                 events.append(
                     next_subagent_model.start_event(
                         session_id=self.session_id,
@@ -246,6 +272,81 @@ class _SubagentTracker:
     def finish(self) -> list[dict[str, Any]]:
         """Emit the terminal end event for any active subagent."""
         return self.transition(None, trigger="finish")
+
+    def note_stage(
+        self,
+        *,
+        stage: Optional[str],
+        label: Optional[str],
+        subagent: Optional[str],
+    ) -> None:
+        """Attach one routed stage observation to the most relevant segment."""
+        segment = self._segment_for(subagent or self.active)
+        if segment is None:
+            return
+        observation = ExecutionReceiptStage(stage=stage, label=label)
+        if any(
+            existing.stage == observation.stage and existing.label == observation.label
+            for existing in segment.stages
+        ):
+            return
+        segment.stages.append(observation)
+
+    def note_tool(self, tool_name: str, *, subagent: Optional[str]) -> None:
+        """Attach one tool usage breadcrumb to the most relevant segment."""
+        normalized = _coerce_optional_str(tool_name)
+        if not normalized:
+            return
+        segment = self._segment_for(subagent or self.active)
+        if segment is None:
+            return
+        if normalized not in segment.tools_used:
+            segment.tools_used.append(normalized)
+
+    def note_artifact_patch(self, subagent: str, patch: dict[str, Any]) -> None:
+        """Attach artifact patch coverage to the latest segment for one subagent."""
+        segment = self._segment_for(subagent)
+        if segment is None or not isinstance(patch, dict):
+            return
+        for section in patch:
+            normalized = _coerce_optional_str(section)
+            if normalized and normalized not in segment.artifact_patch_sections:
+                segment.artifact_patch_sections.append(normalized)
+
+    def build_execution_receipt(self) -> dict[str, Any]:
+        """Build the execution receipt payload for the completed runtime run."""
+        receipt = ExecutionReceipt(
+            session_id=self.session_id,
+            run_id=self.run_id,
+            chat_mode=self.chat_mode,
+            subagent_order=[segment.subagent for segment in self.segments],
+            tools_used=_dedupe_preserve_order(
+                tool_name for segment in self.segments for tool_name in segment.tools_used
+            ),
+            artifact_patch_subagents=_dedupe_preserve_order(
+                segment.subagent for segment in self.segments if segment.artifact_patch_sections
+            ),
+            segments=self.segments,
+        )
+        return receipt.to_dict()
+
+    def _finalize_active_segment(self, *, status: str, summary: str) -> None:
+        """Finalize the active mutable segment before it is closed."""
+        if self._active_segment is None:
+            return
+        self._active_segment.status = status
+        self._active_segment.summary = summary
+        self._active_segment = None
+
+    def _segment_for(self, subagent: Optional[str]) -> Optional[SubagentExecutionReceipt]:
+        """Return the newest segment associated with one subagent name."""
+        normalized = _coerce_optional_str(subagent)
+        if not normalized:
+            return self._active_segment
+        for segment in reversed(self.segments):
+            if segment.subagent == normalized:
+                return segment
+        return None
 
 
 def _merge_artifact_patches(
@@ -275,3 +376,13 @@ def _coerce_optional_str(value: Any) -> Optional[str]:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _dedupe_preserve_order(values: Any) -> list[str]:
+    """Return one de-duplicated string list while preserving the first-seen order."""
+    deduped: list[str] = []
+    for value in values:
+        normalized = _coerce_optional_str(value)
+        if normalized and normalized not in deduped:
+            deduped.append(normalized)
+    return deduped

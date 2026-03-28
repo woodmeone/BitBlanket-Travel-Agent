@@ -29,6 +29,7 @@
         ],
         "done": {
           "artifact": {},
+          "execution_receipt": {},
           "request_id": "<id>",
           "run_id": "<id>",
           "trace_id": "<id>",
@@ -37,6 +38,7 @@
         "metadata": {
           "answer_length": 12,
           "artifact": {},
+          "execution_receipt": {},
           "execution_stats": {},
           "failure_clusters": {
             "irrelevant_answer": 0,
@@ -188,6 +190,7 @@
               "summary": ""
             }
           },
+          "execution_receipt": {},
           "request_id": "<id>",
           "run_id": "<id>",
           "trace_id": "<id>",
@@ -233,6 +236,7 @@
               "summary": ""
             }
           },
+          "execution_receipt": {},
           "execution_stats": {
             "steps": [
               {
@@ -583,6 +587,7 @@
               "summary": ""
             }
           },
+          "execution_receipt": {},
           "request_id": "<id>",
           "run_id": "<id>",
           "trace_id": "<id>",
@@ -628,6 +633,7 @@
               "summary": ""
             }
           },
+          "execution_receipt": {},
           "execution_stats": {
             "steps": [
               {

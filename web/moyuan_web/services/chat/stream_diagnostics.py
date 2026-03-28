@@ -16,6 +16,14 @@ class ChatStreamDiagnostics:
         normalized = normalize_trip_plan_artifact(payload)
         return normalized or None
 
+    @staticmethod
+    def public_execution_receipt_contract(payload: Any) -> dict[str, Any] | None:
+        """Normalize stored execution receipts into the public contract shape."""
+        from ...api.schemas import normalize_execution_receipt
+
+        normalized = normalize_execution_receipt(payload)
+        return normalized or None
+
     def build_success_diagnostics(self, state: Any) -> dict[str, Any]:
         """Build assistant diagnostics persisted for a successful stream run."""
         from ...observability import get_request_context
@@ -31,6 +39,7 @@ class ChatStreamDiagnostics:
             "executionStats": state.execution_stats,
             "artifact": self.public_artifact_contract(state.final_artifact),
             "subagentEvents": state.subagent_events,
+            "executionReceipt": self.public_execution_receipt_contract(state.execution_receipt),
             "runId": state.run_id,
             "requestId": request_context.get("request_id"),
             "traceId": request_context.get("trace_id"),
@@ -45,6 +54,7 @@ class ChatStreamDiagnostics:
             "sessionId": state.resolved_session_id(),
             "artifact": self.public_artifact_contract(state.final_artifact),
             "subagentEvents": state.subagent_events,
+            "executionReceipt": self.public_execution_receipt_contract(state.execution_receipt),
             "runId": state.run_id,
             "requestId": request_context.get("request_id"),
             "traceId": request_context.get("trace_id"),

@@ -1,4 +1,11 @@
-import type { LatestArtifactResponse, Message, MessageDiagnostics, SubagentEvent, TripPlanArtifact } from '@/types';
+import type {
+  ExecutionReceipt,
+  LatestArtifactResponse,
+  Message,
+  MessageDiagnostics,
+  SubagentEvent,
+  TripPlanArtifact,
+} from '@/types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -23,6 +30,10 @@ function normalizeSubagentEvents(value: unknown): SubagentEvent[] | undefined {
     }));
 }
 
+function normalizeExecutionReceipt(value: unknown): ExecutionReceipt | undefined {
+  return isRecord(value) ? (value as unknown as ExecutionReceipt) : undefined;
+}
+
 function normalizeDiagnostics(value: unknown): MessageDiagnostics | undefined {
   if (!isRecord(value)) return undefined;
 
@@ -39,6 +50,7 @@ function normalizeDiagnostics(value: unknown): MessageDiagnostics | undefined {
     executionStats: isRecord(value.executionStats) ? value.executionStats : undefined,
     artifact: isRecord(value.artifact) ? (value.artifact as unknown as TripPlanArtifact) : null,
     subagentEvents: normalizeSubagentEvents(value.subagentEvents),
+    executionReceipt: normalizeExecutionReceipt(value.executionReceipt),
     runId: typeof value.runId === 'string' ? value.runId : undefined,
     requestId: typeof value.requestId === 'string' ? value.requestId : undefined,
     traceId: typeof value.traceId === 'string' ? value.traceId : undefined,

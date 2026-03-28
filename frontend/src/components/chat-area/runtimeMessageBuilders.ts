@@ -37,6 +37,7 @@ export function buildCompletionDiagnostics({
     executionStats: metadata?.executionStats ?? artifact?.budget.summary,
     artifact,
     subagentEvents,
+    executionReceipt: completion?.executionReceipt ?? metadata?.executionReceipt ?? undefined,
     runId: completion?.runId || metadata?.runId,
     requestId: completion?.requestId || metadata?.requestId,
     traceId: completion?.traceId || metadata?.traceId,

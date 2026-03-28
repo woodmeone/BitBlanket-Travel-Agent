@@ -96,6 +96,7 @@ def test_runtime_emits_budget_subagent_events_and_artifact_patches(monkeypatch):
     budget_patch = next(event for event in events if event["type"] == "artifact_patch" and event["subagent"] == "budget")
     verification_end = next(event for event in events if event["type"] == "subagent_end" and event["subagent"] == "verification")
     done_event = events[-1]
+    execution_receipt = done_event["execution_receipt"]
 
     assert "PlanSynthesisSkill" in planning_start["skills"]
     assert budget_patch["artifact_patch"]["budget"]["executionBudget"]["estimated_total"] == 2400
@@ -104,6 +105,14 @@ def test_runtime_emits_budget_subagent_events_and_artifact_patches(monkeypatch):
     assert done_event["artifact"]["metadata"]["budget_subagent_completed"] is True
     assert done_event["artifact"]["budget"]["summary"]["sourceTools"] == ["calculate_budget"]
     assert done_event["artifact"]["metadata"]["verification_subagent_completed"] is True
+    assert execution_receipt["sessionId"] == "session-2"
+    assert execution_receipt["runId"] == "run-2"
+    assert execution_receipt["chatMode"] == "plan"
+    assert execution_receipt["subagentOrder"] == ["planning", "research", "budget", "verification"]
+    assert execution_receipt["artifactPatchSubagents"] == ["planning", "research", "budget", "verification"]
+    assert execution_receipt["segments"][0]["stages"][0]["label"] == "planning"
+    assert execution_receipt["segments"][2]["toolsUsed"] == ["calculate_budget"]
+    assert execution_receipt["segments"][2]["artifactPatchSections"] == ["budget", "metadata"]
 
 
 def test_subagent_registry_exposes_skill_selection_policy_and_context_plan():

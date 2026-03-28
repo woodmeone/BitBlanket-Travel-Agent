@@ -6,7 +6,7 @@ from typing import Annotated, Any, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
 
-from ..schemas import normalize_artifact_patch, normalize_trip_plan_artifact
+from ..schemas import normalize_artifact_patch, normalize_execution_receipt, normalize_trip_plan_artifact
 
 
 class _ChatStreamEventBase(BaseModel):
@@ -170,12 +170,19 @@ class MetadataEvent(_ChatStreamEventBase):
     fallback_steps: int = 0
     failure_clusters: Any = None
     artifact: dict[str, Any] = Field(default_factory=dict)
+    execution_receipt: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("artifact", mode="before")
     @classmethod
     def _normalize_artifact(cls, value: Any) -> dict[str, Any]:
         """Normalize terminal metadata artifacts into the public contract shape."""
         return normalize_trip_plan_artifact(value)
+
+    @field_validator("execution_receipt", mode="before")
+    @classmethod
+    def _normalize_execution_receipt(cls, value: Any) -> dict[str, Any]:
+        """Normalize execution receipts carried by metadata payloads."""
+        return normalize_execution_receipt(value)
 
 
 class ErrorEvent(_ChatStreamEventBase):
@@ -192,12 +199,19 @@ class DoneEvent(_ChatStreamEventBase):
     type: Literal["done"]
     run_id: str
     artifact: dict[str, Any] = Field(default_factory=dict)
+    execution_receipt: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("artifact", mode="before")
     @classmethod
     def _normalize_artifact(cls, value: Any) -> dict[str, Any]:
         """Normalize final artifacts carried by the terminal done event."""
         return normalize_trip_plan_artifact(value)
+
+    @field_validator("execution_receipt", mode="before")
+    @classmethod
+    def _normalize_execution_receipt(cls, value: Any) -> dict[str, Any]:
+        """Normalize final execution receipts carried by the terminal done event."""
+        return normalize_execution_receipt(value)
 
 
 ChatStreamEvent = Annotated[
