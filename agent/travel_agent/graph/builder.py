@@ -12,6 +12,14 @@ from langchain_core.runnables import Runnable
 from langchain_core.tools import Tool
 from langgraph.graph import END, StateGraph
 
+from ..contracts import (
+    SupervisorChunkEvent,
+    SupervisorDoneEvent,
+    SupervisorReasoningEvent,
+    SupervisorStageEvent,
+    SupervisorToolEndEvent,
+    SupervisorToolStartEvent,
+)
 from .nodes import AgentNodes
 from .runtime_config import get_runtime_config
 from .state import AgentState, TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_state
@@ -685,7 +693,7 @@ async def run_travel_agent_streaming_with_memory(
     progress = 5
 
     try:
-        yield {"type": "stage", "stage": stage, "progress": progress, "label": "解析需求"}
+        yield SupervisorStageEvent(stage=stage, progress=progress, label="解析需求").to_dict()
         async for event in agent.astream_events(initial_state):
             event_type = event.get("event")
 
@@ -694,88 +702,63 @@ async def run_travel_agent_streaming_with_memory(
                 if node_name == "intent":
                     stage = "parse"
                     progress = 10
-                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "解析需求"}
-                    yield {"type": "reasoning", "content": "分析用户意图..."}
+                    yield SupervisorStageEvent(stage=stage, progress=progress, label="解析需求").to_dict()
+                    yield SupervisorReasoningEvent(content="分析用户意图...").to_dict()
                 elif node_name == "strategy":
                     stage = "parse"
                     progress = 18
-                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "选择策略"}
-                    yield {"type": "reasoning", "content": "选择 ReAct 子策略..."}
+                    yield SupervisorStageEvent(stage=stage, progress=progress, label="选择策略").to_dict()
+                    yield SupervisorReasoningEvent(content="选择 ReAct 子策略...").to_dict()
                 elif node_name == "plan":
                     stage = "query"
                     progress = 25
-                    yield {
-                        "type": "stage",
-                        "stage": stage,
-                        "progress": progress,
-                        "label": "生成计划",
-                        "subagent": "planning",
-                    }
-                    yield {"type": "reasoning", "content": "制定执行计划..."}
+                    yield SupervisorStageEvent(stage=stage, progress=progress, label="生成计划", subagent="planning").to_dict()
+                    yield SupervisorReasoningEvent(content="制定执行计划...").to_dict()
                 elif node_name == "react":
                     stage = "query"
                     progress = 25
-                    yield {
-                        "type": "stage",
-                        "stage": stage,
-                        "progress": progress,
-                        "label": "ReAct 执行计划",
-                        "subagent": "planning",
-                    }
-                    yield {"type": "reasoning", "content": "进入 ReAct 工具编排..."}
+                    yield SupervisorStageEvent(stage=stage, progress=progress, label="ReAct 执行计划", subagent="planning").to_dict()
+                    yield SupervisorReasoningEvent(content="进入 ReAct 工具编排...").to_dict()
                 elif node_name == "execute":
                     stage = "query"
                     progress = 45
-                    yield {
-                        "type": "stage",
-                        "stage": stage,
-                        "progress": progress,
-                        "label": "查询数据",
-                        "subagent": "research",
-                    }
-                    yield {"type": "reasoning", "content": "执行工具..."}
+                    yield SupervisorStageEvent(stage=stage, progress=progress, label="查询数据", subagent="research").to_dict()
+                    yield SupervisorReasoningEvent(content="执行工具...").to_dict()
                 elif node_name in {"answer", "direct_answer"}:
                     stage = "generate"
                     progress = 80
-                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "生成方案"}
+                    yield SupervisorStageEvent(stage=stage, progress=progress, label="生成方案").to_dict()
                 elif node_name == "verify":
                     stage = "generate"
                     progress = 72
-                    yield {
-                        "type": "stage",
-                        "stage": stage,
-                        "progress": progress,
-                        "label": "验证结果一致性",
-                        "subagent": "verification",
-                    }
-                    yield {"type": "reasoning", "content": "校验价格/政策/日期一致性..."}
+                    yield SupervisorStageEvent(stage=stage, progress=progress, label="验证结果一致性", subagent="verification").to_dict()
+                    yield SupervisorReasoningEvent(content="校验价格/政策/日期一致性...").to_dict()
                 elif node_name == "self_check":
                     stage = "finalize"
                     progress = 95
-                    yield {"type": "stage", "stage": stage, "progress": progress, "label": "自检答案完整性"}
+                    yield SupervisorStageEvent(stage=stage, progress=progress, label="自检答案完整性").to_dict()
 
             elif event_type == "on_chat_model_stream":
                 content = _extract_text_from_chunk((event.get("data") or {}).get("chunk"))
                 if content:
                     answer += content
-                    yield {"type": "chunk", "content": content}
+                    yield SupervisorChunkEvent(content=content).to_dict()
 
             elif event_type == "on_tool_start":
                 tool_name = event.get("name", "")
                 tools_used.append(tool_name)
                 progress = min(75, progress + 5)
-                yield {"type": "stage", "stage": "query", "progress": progress, "label": f"查询数据: {tool_name}"}
-                yield {"type": "tool_start", "tool": tool_name, "progress": progress}
+                yield SupervisorStageEvent(stage="query", progress=progress, label=f"查询数据: {tool_name}").to_dict()
+                yield SupervisorToolStartEvent(tool=tool_name, progress=progress).to_dict()
 
             elif event_type == "on_tool_end":
                 tool_name = event.get("name", "")
                 result = (event.get("data") or {}).get("output")
-                yield {
-                    "type": "tool_end",
-                    "tool": tool_name,
-                    "result": str(result)[:TOOL_RESULT_PREVIEW_LIMIT],
-                    "progress": progress,
-                }
+                yield SupervisorToolEndEvent(
+                    tool=tool_name,
+                    result=str(result)[:TOOL_RESULT_PREVIEW_LIMIT],
+                    progress=progress,
+                ).to_dict()
             elif event_type == "on_chain_end":
                 output = (event.get("data") or {}).get("output")
                 if isinstance(output, dict) and ("answer" in output or "execution_stats" in output):
@@ -829,20 +812,19 @@ async def run_travel_agent_streaming_with_memory(
         else:
             answer = fallback_text
 
-    yield {"type": "stage", "stage": "finalize", "progress": 100, "label": "完整性检查"}
-    yield {
-        "type": "done",
-        "answer": answer,
-        "tools_used": tools_used,
-        "session_id": session_id,
-        "run_id": run_id,
-        "plan_id": plan_id,
-        "intent": intent,
-        "execution_stats": execution_stats,
-        "verification_passed": verification_passed,
-        "stale_result_count": stale_result_count,
-        "fallback_steps": fallback_steps,
-    }
+    yield SupervisorStageEvent(stage="finalize", progress=100, label="完整性检查").to_dict()
+    yield SupervisorDoneEvent(
+        answer=answer,
+        tools_used=tools_used,
+        session_id=session_id,
+        run_id=run_id,
+        plan_id=plan_id,
+        intent=intent,
+        execution_stats=execution_stats,
+        verification_passed=verification_passed,
+        stale_result_count=stale_result_count,
+        fallback_steps=fallback_steps,
+    ).to_dict()
 
 
 def generate_plan_preview_with_memory(

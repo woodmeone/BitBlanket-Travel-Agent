@@ -8,6 +8,14 @@ from .skills import (
     SkillOutputContract,
     SkillSelectionPolicy,
 )
+from .supervisor_events import (
+    SupervisorChunkEvent,
+    SupervisorDoneEvent,
+    SupervisorReasoningEvent,
+    SupervisorStageEvent,
+    SupervisorToolEndEvent,
+    SupervisorToolStartEvent,
+)
 from .supervisor_orchestration import (
     SupervisorPlanPreviewRequest,
     SupervisorRunRequest,
@@ -23,6 +31,12 @@ __all__ = [
     "SkillMarketMetadata",
     "SkillSelectionPolicy",
     "SubagentExecutionReceipt",
+    "SupervisorChunkEvent",
+    "SupervisorDoneEvent",
+    "SupervisorReasoningEvent",
+    "SupervisorStageEvent",
+    "SupervisorToolEndEvent",
+    "SupervisorToolStartEvent",
     "SupervisorPlanPreviewRequest",
     "SupervisorRunRequest",
     "SupervisorRuntimeContext",
