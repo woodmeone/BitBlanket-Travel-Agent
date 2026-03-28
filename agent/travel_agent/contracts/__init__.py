@@ -8,6 +8,11 @@ from .skills import (
     SkillOutputContract,
     SkillSelectionPolicy,
 )
+from .supervisor_orchestration import (
+    SupervisorPlanPreviewRequest,
+    SupervisorRunRequest,
+    SupervisorRuntimeContext,
+)
 
 __all__ = [
     "ExecutionReceipt",
@@ -18,4 +23,7 @@ __all__ = [
     "SkillMarketMetadata",
     "SkillSelectionPolicy",
     "SubagentExecutionReceipt",
+    "SupervisorPlanPreviewRequest",
+    "SupervisorRunRequest",
+    "SupervisorRuntimeContext",
 ]

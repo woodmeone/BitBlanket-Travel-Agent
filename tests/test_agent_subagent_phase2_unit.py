@@ -33,8 +33,8 @@ def test_default_subagent_registry_resolves_stage_and_tool_mapping():
 
 def test_runtime_emits_budget_subagent_events_and_artifact_patches():
     class _LegacyBridge:
-        async def stream_with_memory(self, **kwargs):
-            _ = kwargs
+        async def stream_with_memory(self, *, request, context):
+            _ = (request, context)
             yield {"type": "stage", "stage": "query", "label": "planning", "subagent": "planning"}
             yield {"type": "tool_start", "tool": "plan_itinerary"}
             yield {"type": "tool_end", "tool": "plan_itinerary", "result": "ok"}
@@ -59,7 +59,8 @@ def test_runtime_emits_budget_subagent_events_and_artifact_patches():
                 "execution_stats": {"steps": []},
             }
 
-        def generate_plan_preview_with_memory(self, **kwargs):
+        def generate_plan_preview_with_memory(self, *, request, context):
+            _ = (request, context)
             raise AssertionError("preview path should not be used in this test")
 
         def get_tool_health_diagnostics(self):

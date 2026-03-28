@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Optional
 
 from langchain_core.runnables import Runnable
@@ -12,7 +11,14 @@ from ..artifacts import (
     build_trip_plan_artifact_from_plan_preview,
     build_trip_plan_artifact_from_stream_event,
 )
-from ..contracts import ExecutionReceipt, ExecutionReceiptStage, SubagentExecutionReceipt
+from ..contracts import (
+    ExecutionReceipt,
+    ExecutionReceiptStage,
+    SubagentExecutionReceipt,
+    SupervisorPlanPreviewRequest,
+    SupervisorRunRequest,
+    SupervisorRuntimeContext,
+)
 from ..graph.state import TRAVEL_AGENT_SYSTEM_PROMPT
 from ..skills import SkillRegistry, build_default_skill_registry
 from ..subagents import SubagentRegistry, build_default_subagent_registry
@@ -66,23 +72,22 @@ class AgentRuntime:
         chat_mode: Optional[str] = None,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Stream normalized events and attach subagent and artifact payloads."""
-        tracker = _SubagentTracker(
-            registry=self.subagent_registry,
-            session_id=session_id,
-            run_id=run_id,
-            chat_mode=chat_mode,
-        )
-        async for event in self.legacy_bridge.stream_with_memory(
+        request = self._build_stream_request(
             user_message=user_message,
-            llm=self.llm,
-            tools=self.tools,
             session_id=session_id,
-            memory_manager=self.memory_manager,
-            system_prompt=self.system_prompt,
             persist_memory=persist_memory,
             run_id=run_id,
             chat_mode=chat_mode,
-            routing_llm=self.routing_llm,
+        )
+        tracker = _SubagentTracker(
+            registry=self.subagent_registry,
+            session_id=request.session_id,
+            run_id=request.run_id,
+            chat_mode=request.chat_mode,
+        )
+        async for event in self.legacy_bridge.stream_with_memory(
+            request=request,
+            context=self._build_runtime_context(),
         ):
             if event.get("type") == "stage":
                 explicit_subagent = _coerce_optional_str(event.get("subagent"))
@@ -124,15 +129,15 @@ class AgentRuntime:
                 enriched_event = dict(event)
                 artifact = build_trip_plan_artifact_from_stream_event(
                     enriched_event,
-                    user_message=user_message,
-                    session_id=session_id,
-                    chat_mode=chat_mode,
+                    user_message=request.user_message,
+                    session_id=request.session_id,
+                    chat_mode=request.chat_mode,
                 )
                 subagent_patches = self.subagent_registry.done_artifact_patches(
                     enriched_event,
-                    user_message=user_message,
-                    session_id=session_id,
-                    chat_mode=chat_mode,
+                    user_message=request.user_message,
+                    session_id=request.session_id,
+                    chat_mode=request.chat_mode,
                 )
                 merged_artifact = _merge_artifact_patches(artifact, subagent_patches.values())
                 enriched_event["artifact"] = merged_artifact
@@ -142,8 +147,8 @@ class AgentRuntime:
                         "type": "artifact_patch",
                         "subagent": subagent_name,
                         "artifact_patch": patch,
-                        "run_id": run_id,
-                        "session_id": session_id,
+                        "run_id": request.run_id,
+                        "session_id": request.session_id,
                     }
                 for transition_event in tracker.finish():
                     yield transition_event
@@ -160,21 +165,20 @@ class AgentRuntime:
         chat_mode: Optional[str] = None,
     ) -> dict[str, Any]:
         """Generate a memory-aware plan preview and attach a preview artifact."""
-        preview = self.legacy_bridge.generate_plan_preview_with_memory(
+        request = self._build_plan_preview_request(
             user_message=user_message,
-            llm=self.llm,
-            tools=self.tools,
             session_id=session_id,
-            memory_manager=self.memory_manager,
-            system_prompt=self.system_prompt,
             chat_mode=chat_mode,
-            routing_llm=self.routing_llm,
+        )
+        preview = self.legacy_bridge.generate_plan_preview_with_memory(
+            request=request,
+            context=self._build_runtime_context(),
         )
         enriched_preview = dict(preview)
         artifact = build_trip_plan_artifact_from_plan_preview(
             enriched_preview,
-            user_message=user_message,
-            session_id=session_id,
+            user_message=request.user_message,
+            session_id=request.session_id,
         )
         preview_patch = self.subagent_registry.preview_artifact_patch(enriched_preview)
         enriched_preview["artifact"] = _merge_artifact_patches(artifact, [preview_patch])
@@ -196,6 +200,49 @@ class AgentRuntime:
         }
         diagnostics["architecture_phase"] = "phase2-supervisor-subagents"
         return diagnostics
+
+    def _build_runtime_context(self) -> SupervisorRuntimeContext:
+        """Build the shared runtime context passed to the compatibility bridge."""
+        return SupervisorRuntimeContext(
+            llm=self.llm,
+            tools=self.tools,
+            memory_manager=self.memory_manager,
+            routing_llm=self.routing_llm,
+        )
+
+    def _build_stream_request(
+        self,
+        *,
+        user_message: str,
+        session_id: str,
+        persist_memory: bool,
+        run_id: Optional[str],
+        chat_mode: Optional[str],
+    ) -> SupervisorRunRequest:
+        """Build the explicit supervisor-run request used by the runtime seam."""
+        return SupervisorRunRequest(
+            user_message=user_message,
+            session_id=session_id,
+            system_prompt=self.system_prompt,
+            persist_memory=persist_memory,
+            run_id=run_id,
+            chat_mode=chat_mode,
+        )
+
+    def _build_plan_preview_request(
+        self,
+        *,
+        user_message: str,
+        session_id: str,
+        chat_mode: Optional[str],
+    ) -> SupervisorPlanPreviewRequest:
+        """Build the explicit plan-preview request used by the runtime seam."""
+        return SupervisorPlanPreviewRequest(
+            user_message=user_message,
+            session_id=session_id,
+            system_prompt=self.system_prompt,
+            chat_mode=chat_mode,
+        )
 
 
 class _SubagentTracker:

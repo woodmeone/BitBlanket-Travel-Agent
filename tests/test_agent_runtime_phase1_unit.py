@@ -10,6 +10,11 @@ from agent.travel_agent.artifacts import (
     build_trip_plan_artifact_from_plan_preview,
     build_trip_plan_artifact_from_state,
 )
+from agent.travel_agent.contracts import (
+    SupervisorPlanPreviewRequest,
+    SupervisorRunRequest,
+    SupervisorRuntimeContext,
+)
 from agent.travel_agent.runtime.agent_runtime import AgentRuntime
 from agent.travel_agent.skills import build_default_skill_registry
 
@@ -84,9 +89,12 @@ def test_build_trip_plan_artifact_from_plan_preview_contains_validation():
 
 
 def test_agent_runtime_enriches_done_stream_event():
+    observed: dict[str, object] = {}
+
     class _LegacyBridge:
-        async def stream_with_memory(self, **kwargs):
-            _ = kwargs
+        async def stream_with_memory(self, *, request, context):
+            observed["request"] = request
+            observed["context"] = context
             yield {"type": "stage", "stage": "parse"}
             yield {
                 "type": "done",
@@ -125,6 +133,11 @@ def test_agent_runtime_enriches_done_stream_event():
     events = asyncio.run(_collect())
 
     assert events[0]["type"] == "stage"
+    assert isinstance(observed["request"], SupervisorRunRequest)
+    assert observed["request"].session_id == "session-1"
+    assert observed["request"].persist_memory is False
+    assert isinstance(observed["context"], SupervisorRuntimeContext)
+    assert observed["context"].tools[0].name == "search_cities"
     done_event = next(event for event in events if event["type"] == "done")
     assert done_event["artifact"]["intent"]["name"] == "recommend"
     assert done_event["artifact"]["metadata"]["session_id"] == "session-1"
@@ -132,14 +145,17 @@ def test_agent_runtime_enriches_done_stream_event():
 
 
 def test_agent_runtime_preview_attaches_artifact():
+    observed: dict[str, object] = {}
+
     class _LegacyBridge:
-        async def stream_with_memory(self, **kwargs):
-            _ = kwargs
+        async def stream_with_memory(self, *, request, context):
+            _ = (request, context)
             if False:  # pragma: no cover - async generator marker
                 yield {}
 
-        def generate_plan_preview_with_memory(self, **kwargs):
-            _ = kwargs
+        def generate_plan_preview_with_memory(self, *, request, context):
+            observed["request"] = request
+            observed["context"] = context
             return {
                 "plan_id": "preview-2",
                 "intent": "itinerary",
@@ -167,17 +183,21 @@ def test_agent_runtime_preview_attaches_artifact():
 
     assert preview["artifact"]["itinerary"]["plan_id"] == "preview-2"
     assert preview["artifact"]["metadata"]["phase"] == "plan_preview"
+    assert isinstance(observed["request"], SupervisorPlanPreviewRequest)
+    assert observed["request"].session_id == "session-2"
+    assert isinstance(observed["context"], SupervisorRuntimeContext)
+    assert observed["context"].tools[0].name == "plan_itinerary"
 
 
 def test_agent_runtime_diagnostics_merge_legacy_bridge_payload():
     class _LegacyBridge:
-        async def stream_with_memory(self, **kwargs):
-            _ = kwargs
+        async def stream_with_memory(self, *, request, context):
+            _ = (request, context)
             if False:  # pragma: no cover - async generator marker
                 yield {}
 
-        def generate_plan_preview_with_memory(self, **kwargs):
-            _ = kwargs
+        def generate_plan_preview_with_memory(self, *, request, context):
+            _ = (request, context)
             return {}
 
         def get_tool_health_diagnostics(self):
