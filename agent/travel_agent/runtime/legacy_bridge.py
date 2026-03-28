@@ -46,7 +46,7 @@ class DefaultLegacyRuntimeBridge:
         context: SupervisorRuntimeContext,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Yield runtime events from the legacy memory-aware streaming entrypoint."""
-        from ..graph.builder import run_travel_agent_streaming_with_memory
+        from ..graph.legacy_runtime import run_travel_agent_streaming_with_memory
 
         async for event in run_travel_agent_streaming_with_memory(
             user_message=request.user_message,
@@ -69,7 +69,7 @@ class DefaultLegacyRuntimeBridge:
         context: SupervisorRuntimeContext,
     ) -> dict[str, Any]:
         """Return legacy graph plan preview data without exposing builder imports upstream."""
-        from ..graph.builder import generate_plan_preview_with_memory
+        from ..graph.legacy_runtime import generate_plan_preview_with_memory
 
         return generate_plan_preview_with_memory(
             user_message=request.user_message,
@@ -84,6 +84,6 @@ class DefaultLegacyRuntimeBridge:
 
     def get_tool_health_diagnostics(self) -> dict[str, Any]:
         """Return tool-health diagnostics from the legacy graph compatibility path."""
-        from ..graph.builder import get_tool_health_diagnostics
+        from ..graph.legacy_runtime import get_tool_health_diagnostics
 
         return get_tool_health_diagnostics()
