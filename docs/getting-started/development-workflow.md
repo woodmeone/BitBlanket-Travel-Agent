@@ -52,7 +52,9 @@ python scripts/dev.py help
   - `docstring_audit --strict`（覆盖率 + 低信息量治理）
   - `complexity_budget --strict`（热点文件只减不增）
   - `decision_record_audit --strict`（ADR / RFC / Design Review 结构审计）
+  - `skills_market_audit --strict`（skills 的 `schema + tests + docs + eval` 四件套治理）
   - `runtime_doctor --json`
+    当 runtime 数据文件被占用时会降级报告具体文件问题，而不是直接让整条 `infra-check` 中断
   - OpenAPI / SSE snapshot 导出
   - release harness scorecard
   - release manifest 导出
@@ -112,6 +114,7 @@ python -m mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py script
 python scripts/docstring_audit.py --strict
 python scripts/complexity_budget.py --strict
 python scripts/decision_record_audit.py --strict
+python scripts/skills_market_audit.py --strict
 cd frontend
 npm run lint
 npm run test:run
@@ -124,6 +127,7 @@ npm run build
 - 当前存量低信息量项由 `docs/reference/docstring-audit.low-info-baseline.json` 记录，后续改动应只减不增
 - `complexity_budget --strict` 会对热点文件执行“只减不增”预算门禁，当前预算基线由 `docs/reference/complexity-budget.json` 记录
 - `decision_record_audit --strict` 会检查 `docs/governance/` 下的 ADR / RFC / Design Review 是否包含统一状态和必填章节
+- `skills_market_audit --strict` 会检查默认 skill catalog 是否补齐 `schema + tests + docs + eval` 四件套，并验证 `docs_path / test_fixture / eval_fixture / onboarding_doc`
 - 当前前端默认验证入口已经稳定化：`npm run test:run` 会把 `vitest` worker 上限固定为 `2`，`npm run build` 默认走 `next build --webpack`
 - `scripts/dev.py` 当前也会自动解析跨平台 npm 可执行文件，在 Windows 上优先命中 `npm.cmd`
 
@@ -159,7 +163,7 @@ python scripts/dev.py container-smoke
 2. `/api/ready` 返回 `200`，或者你明确知道为什么是 `503`
 3. `/api/metrics` 可访问
 4. 跑后端 `unit/local`
-5. 跑 `ruff`、`mypy`、`docstring_audit --strict`、`complexity_budget --strict`、`decision_record_audit --strict`
+5. 跑 `ruff`、`mypy`、`docstring_audit --strict`、`complexity_budget --strict`、`decision_record_audit --strict`、`skills_market_audit --strict`
 6. 跑 `runtime_doctor --strict`
 7. 跑 `release_harness_scorecard.py --strict`
 8. 如改契约，刷新 OpenAPI / SSE 快照

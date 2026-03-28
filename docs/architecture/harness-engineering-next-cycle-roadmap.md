@@ -68,7 +68,7 @@
 
 - [已完成 2026-03-27] 建立 skills metadata registry 与 onboarding 模板
 - [已完成 2026-03-27] 补齐技能版本、责任人、证据要求和失败回退字段
-- 让新 skill 接入必须经过 `schema + tests + docs + eval` 四件套
+- [已完成 2026-03-28] 让新 skill 接入必须经过 `schema + tests + docs + eval` 四件套，当前 `scripts/skills_market_audit.py --strict` 已把 `docs_path / test_fixture / eval_fixture / onboarding_doc` 与输入输出 contract 一并纳入治理门禁
 
 ### Phase C：Runtime Decoupling
 
@@ -83,7 +83,7 @@
 - [已完成 2026-03-28] 将 benchmark / delivery / skills checklist 接入 CI / release checklist，当前 `ci.yml`、`python scripts/dev.py infra-check` 与 `export_release_manifest.py` 已统一纳入 release harness scorecard
 - [已完成 2026-03-28] 收口本地开发入口并清理 Windows 专用脚本，当前根目录 dev.ps1 与 scripts/bootstrap.ps1 已移除，统一改为 scripts/dev.py / scripts/bootstrap.py，并同步更新 README、开发流程、测试指南与架构文档
 - [已完成 2026-03-28] 统一脚本 bootstrap 加载方式并把新入口接入 `pytest + ruff + mypy`，当前 `scripts/dev.py`、`scripts/bootstrap.py` 以及 benchmark / replay / runtime / snapshot 脚本都已兼容“直接执行 / 包内导入 / spec 加载单测”三种运行路径
-- 在治理文档中固化“新增 agent 能力前先补 contract / eval / docs”的流程
+- [已完成 2026-03-28] 在治理文档中固化“新增 agent 能力前先补 contract / eval / docs”的流程，当前 onboarding 文档、skills catalog、README、测试指南和 `python scripts/dev.py infra-check` 已统一引用 skills market audit
 
 ## 5. 退出标准
 
@@ -105,8 +105,10 @@
 下一步建议从下面三项开始：
 
 1. 继续把 `AgentRuntime` 从 legacy graph 兼容入口中解耦
-2. 让新 skill 接入必须经过 `schema + tests + docs + eval` 四件套，并补齐相应治理门禁
+2. [已完成 2026-03-28] 让新 skill 接入必须经过 `schema + tests + docs + eval` 四件套，并补齐相应治理门禁
 3. 继续削薄 runtime 和 legacy graph 之间的兼容层，让 `AgentRuntime` 真正脱离旧 `run_travel_agent_streaming_with_memory` 入口
 ### Update 2026-03-28
 
 - [已完成 2026-03-28] 稳定前端默认验证入口，当前 `frontend/vitest.config.ts` 已把 `vitest` worker 上限固定为 `2`，`frontend/package.json` 的 `npm run build` 已切到 `next build --webpack`，`scripts/dev.py` 也会在 Windows 上自动解析 `npm.cmd`，让默认 `npm run test:run / npm run build / python scripts/dev.py test` 都能直接复用。
+- [已完成 2026-03-28] 技能市场治理门禁已落地，当前 `agent/travel_agent/contracts/skills.py` 新增 `market_metadata.test_fixture`，默认 skill registry 已补齐 `schema / tests / docs / eval` 四件套指针，`scripts/skills_market_audit.py`、`ci.yml` 与 `python scripts/dev.py infra-check` 会统一拦截缺失治理信息的新 skill。
+- [已完成 2026-03-28] 稳定 runtime doctor 的治理链韧性，当前 `scripts/runtime_doctor.py` 在遇到被占用的 runtime 文件时会把 `runtime_files` 标记为 `degraded` 并保留错误类型，不再让 `python scripts/dev.py infra-check` 因单个锁定文件直接异常退出。

@@ -27,6 +27,7 @@
      - `freshness_policy`
      - `fallback_policy`
      - `market_metadata.owner / version / docs_path / prompt_asset / eval_fixture`
+     - `market_metadata.test_fixture`
      - `selection_policy.priority / intent_signals / preferred_context / notes`
 2. `tests`
    - 至少补一条 registry 级单测，落在 [tests/test_skill_registry_unit.py](/D:/moyuan/moyuan-travel-agent/tests/test_skill_registry_unit.py)
@@ -37,6 +38,11 @@
 4. `eval`
    - 在 `market_metadata.eval_fixture` 里挂上至少一个可追溯的验证入口
    - 默认优先复用 registry / runtime 单测；高风险 skill 再追加 benchmark 或 golden eval
+
+当前这份清单已经有对应门禁：
+
+- `python scripts/skills_market_audit.py --strict`
+- `python scripts/dev.py infra-check`
 
 ## 推荐接入步骤
 
@@ -57,6 +63,7 @@
 - evidence / freshness / fallback 是否写成了稳定 contract，而不是散落在 prompt 里
 - selection policy 是否足够显式，避免 subagent 继续靠 prompt 猜测该优先用哪个 skill
 - `owner`、`docs_path`、`eval_fixture` 是否可追溯
+- `test_fixture` 是否真实覆盖当前 skill contract，而不是只保留一个空字段
 
 ## 当前基线
 

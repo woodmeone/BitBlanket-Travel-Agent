@@ -23,11 +23,12 @@ The current implementation goal is intentionally conservative:
 - introduce `Supervisor`, `Subagents`, `Skills`, and `Artifact` layers as real code boundaries
 - preserve current SSE behavior while attaching artifact-first payloads and subagent events for future evolution
 - keep shrinking `memory_integration.py` by migrating conflict handling into dedicated memory collaborators
-- default `SkillRegistry` entries now expose governed `owner / version / input / output / selection policy / evidence / freshness / fallback / docs / eval` metadata, with onboarding guidance in [docs/governance/skills-market-onboarding.md](/D:/moyuan/moyuan-travel-agent/docs/governance/skills-market-onboarding.md)
+- default `SkillRegistry` entries now expose governed `owner / version / input / output / selection policy / evidence / freshness / fallback / docs / tests / eval` metadata, with onboarding guidance in [docs/governance/skills-market-onboarding.md](/D:/moyuan/moyuan-travel-agent/docs/governance/skills-market-onboarding.md)
 - subagent-side skill selection is now an explicit contract exposed through `selection_policy()` / `selection_plan()` and `AgentRuntime` diagnostics, instead of staying buried in prompt heuristics
 - replay / eval side now also has a committed subagent scorecard baseline via [scripts/agent_subagent_scorecard.py](/D:/moyuan/moyuan-travel-agent/scripts/agent_subagent_scorecard.py) and [docs/benchmarks/agent_subagent_scorecard_latest.md](/D:/moyuan/moyuan-travel-agent/docs/benchmarks/agent_subagent_scorecard_latest.md)
 - release-facing checklist / scorecard now also exists via [scripts/release_harness_scorecard.py](/D:/moyuan/moyuan-travel-agent/scripts/release_harness_scorecard.py), covering HTML delivery snapshot, benchmark evidence, subagent scorecard and skills governance in one summary
 - subagent runtime output now also emits a governed `execution receipt`, so stage routing, tool coverage, artifact patch sections, and subagent order can flow through SSE `metadata / done` and persisted diagnostics instead of staying implicit in scattered event lists
+- new skills now also pass through an explicit governance gate via [scripts/skills_market_audit.py](/D:/moyuan/moyuan-travel-agent/scripts/skills_market_audit.py), which enforces `schema + tests + docs + eval`, validates `docs_path / test_fixture / eval_fixture / onboarding_doc`, and keeps the onboarding workflow executable instead of advisory only
 
 这份文档专门回答一个问题：
 

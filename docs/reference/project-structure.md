@@ -53,6 +53,7 @@ moyuan-travel-agent/
 - `mypy`
 - docstring 覆盖率与低信息量审计
 - 热点文件复杂度预算门禁
+- skills market 四件套治理审计
 - OpenAPI / SSE 快照导出
 - release manifest
 - release harness scorecard
@@ -165,6 +166,7 @@ python scripts/dev.py help
 - [`docs/governance/design-reviews/DR-0000-template.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/design-reviews/DR-0000-template.md)
 
 配套的结构审计脚本是 [`scripts/decision_record_audit.py`](/D:/moyuan/moyuan-travel-agent/scripts/decision_record_audit.py)，当前已接入本地 `python scripts/dev.py infra-check` 和 CI。
+配套的 skills 四件套审计脚本是 [`scripts/skills_market_audit.py`](/D:/moyuan/moyuan-travel-agent/scripts/skills_market_audit.py)，当前也已接入本地 `python scripts/dev.py infra-check` 和 CI。
 
 ### `config/`
 

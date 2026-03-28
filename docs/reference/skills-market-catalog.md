@@ -27,6 +27,7 @@
 - `market_metadata.owner`
 - `market_metadata.version`
 - `market_metadata.docs_path`
+- `market_metadata.test_fixture`
 - `market_metadata.prompt_asset`
 - `market_metadata.eval_fixture`
 - `market_metadata.onboarding_requirements`
@@ -65,6 +66,18 @@
 - [agent/travel_agent/runtime/agent_runtime.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/runtime/agent_runtime.py)
 
 读取 `selection_policy()`、`selection_plan()` 和 `subagent_skill_policies` diagnostics。
+
+## 当前治理门禁
+
+默认 catalog 当前会额外经过：
+
+- `python scripts/skills_market_audit.py --strict`
+
+这条门禁会检查：
+
+- onboarding requirements 是否包含 `schema + tests + docs + eval`
+- `docs_path / test_fixture / eval_fixture / onboarding_doc` 是否存在
+- `input_contract.required_context / output_contract.artifact / output_contract.fields` 是否完整
 
 ## 当前配套入口
 

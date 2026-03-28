@@ -130,6 +130,7 @@
 - `scripts/complexity_budget.py`: 热点文件“只减不增”复杂度门禁脚本
 - `reference/complexity-budget.json`: 当前热点文件复杂度预算基线
 - `scripts/decision_record_audit.py`: ADR / RFC / Design Review 记录结构审计脚本
+- `scripts/skills_market_audit.py`: 审计默认 skills market 是否补齐 `schema + tests + docs + eval` 四件套
 - `compose.yaml` / `Dockerfile*`: 支持通过 `PYTHON_BASE_IMAGE`、`NODE_BASE_IMAGE` 切换基础镜像
 - [benchmarks/agent_benchmark_latest.md](benchmarks/agent_benchmark_latest.md): 最新 benchmark 报告
 - [benchmarks/agent_benchmark_trend_latest.md](benchmarks/agent_benchmark_trend_latest.md): benchmark 趋势报告

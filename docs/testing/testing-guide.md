@@ -40,6 +40,7 @@ npm run build
 - `npm run test:run` 当前会通过 `frontend/vitest.config.ts` 把 `vitest` worker 上限固定为 `2`，避免本地和 CI 在大 fixture 回放下触发进程 OOM
 - `npm run build` 当前固定走 `next build --webpack`，保证默认入口在当前 `Next.js 16` 栈上能稳定完成生产构建
 - `python scripts/dev.py test / infra-check` 当前会自动解析跨平台 npm 可执行文件，在 Windows 上会优先命中 `npm.cmd`
+- `python scripts/runtime_doctor.py --json` 当前在遇到被占用的 runtime 文件时会返回 `degraded` 检查项，而不是直接中断门禁链
 
 ## 2. 推荐的本地回归顺序
 
@@ -64,6 +65,7 @@ python -m ruff check --config ruff.toml scripts web/moyuan_web
 python scripts/docstring_audit.py --strict
 python scripts/complexity_budget.py --strict
 python scripts/decision_record_audit.py --strict
+python scripts/skills_market_audit.py --strict
 python -m mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/release_harness_scorecard.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
 cd frontend
 npm run lint
@@ -76,6 +78,7 @@ npm run build
 - 历史存量低信息量项通过 `docs/reference/docstring-audit.low-info-baseline.json` 管理，后续变更应避免新增
 - `python scripts/complexity_budget.py --strict` 会对热点文件执行“只减不增”预算门禁，避免复杂区重新无序膨胀
 - `python scripts/decision_record_audit.py --strict` 会审计 ADR / RFC / Design Review 的基础结构，保证大改动有稳定记录入口
+- `python scripts/skills_market_audit.py --strict` 会审计默认 `skills market` 是否补齐 `schema + tests + docs + eval` 四件套，并验证 `docs_path / test_fixture / eval_fixture / onboarding_doc`
 - `scripts/dev.py` 与 `scripts/bootstrap.py` 当前也纳入了脚本级单测和 `ruff / mypy` 门禁，避免跨平台入口在 CI 中退化成只能本地手工验证
 
 ### 2.3 改运行维护脚本、契约快照、发布与观测资产
@@ -140,6 +143,7 @@ python scripts/export_support_bundle.py --base-url http://localhost:38000
 python scripts/docstring_audit.py --strict
 python scripts/complexity_budget.py --strict
 python scripts/decision_record_audit.py --strict
+python scripts/skills_market_audit.py --strict
 ruff check --config ruff.toml scripts web/moyuan_web
 mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/release_harness_scorecard.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
 ```
