@@ -76,6 +76,7 @@ python scripts/dev.py help
 
 - `travel_agent/runtime/`
   - Web/API 层调用的应用级入口，封装 supervisor、skills、artifact 组合
+  - `legacy_bridge.py` 负责把 `AgentRuntime` 与旧 `graph.builder` 的 streaming / preview / diagnostics 兼容调用收口成显式 bridge
 - `travel_agent/supervisor/`
   - Phase 1 兼容层，先用 supervisor 外壳承接当前单图
 - `travel_agent/subagents/`

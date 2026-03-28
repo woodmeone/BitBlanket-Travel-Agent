@@ -29,6 +29,7 @@ The current implementation goal is intentionally conservative:
 - release-facing checklist / scorecard now also exists via [scripts/release_harness_scorecard.py](/D:/moyuan/moyuan-travel-agent/scripts/release_harness_scorecard.py), covering HTML delivery snapshot, benchmark evidence, subagent scorecard and skills governance in one summary
 - subagent runtime output now also emits a governed `execution receipt`, so stage routing, tool coverage, artifact patch sections, and subagent order can flow through SSE `metadata / done` and persisted diagnostics instead of staying implicit in scattered event lists
 - new skills now also pass through an explicit governance gate via [scripts/skills_market_audit.py](/D:/moyuan/moyuan-travel-agent/scripts/skills_market_audit.py), which enforces `schema + tests + docs + eval`, validates `docs_path / test_fixture / eval_fixture / onboarding_doc`, and keeps the onboarding workflow executable instead of advisory only
+- `AgentRuntime` no longer calls legacy `graph.builder` entrypoints directly; the compatibility path now lives behind [agent/travel_agent/runtime/legacy_bridge.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/runtime/legacy_bridge.py), which narrows the remaining legacy-runtime seam to one replaceable bridge
 
 这份文档专门回答一个问题：
 
