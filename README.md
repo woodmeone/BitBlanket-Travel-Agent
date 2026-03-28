@@ -115,6 +115,7 @@ moyuan-travel-agent/
 - `scripts/dev.py` 与 `scripts/bootstrap.py` 现在既是跨平台本地入口，也被 `pytest + ruff + mypy` 直接覆盖；对应脚本入口已统一兼容“直接执行 / 包内导入 / spec 加载单测”三种运行方式
 - `agent/travel_agent/memory/conflict_resolution.py` 现在统一承接 memory 冲突检测、澄清提示排序、显式覆盖闭环、resolved 审计日志和 persisted conflict schema 归一化，`agent/travel_agent/graph/memory_integration.py` 已进一步退化为会话 memory 编排层
 - `agent/travel_agent/contracts/skills.py`、`agent/travel_agent/skills/registry.py` 与 `agent/travel_agent/subagents/registry.py` 现在把 `skills market` 收口成显式 schema + selection policy：默认 skill 会带 `owner / version / input / output / evidence / freshness / fallback / docs / eval` 元数据，以及 `priority / intent_signals / preferred_context` 选择规则；`AgentRuntime` diagnostics 也会暴露 `subagent_skill_policies`，不再把能力选择继续藏在 prompt 里；配套 onboarding 清单见 [docs/governance/skills-market-onboarding.md](docs/governance/skills-market-onboarding.md)，catalog 见 [docs/reference/skills-market-catalog.md](docs/reference/skills-market-catalog.md)
+- `agent/travel_agent/contracts/execution_receipt.py` 与 `agent/travel_agent/runtime/agent_runtime.py` 现在会把每轮 `research / planning / budget / verification` 的阶段、工具使用和 artifact patch 覆盖面收口成统一 `execution receipt`；这份 receipt 会继续进入 SSE `metadata / done`、persisted diagnostics，以及前端 session restore / parser 类型契约
 - `scripts/docstring_audit.py` 现在不只检查 docstring 是否存在，还会识别低信息量模板文档，并用 `docs/reference/docstring-audit.low-info-baseline.json` 记录存量基线；`--strict` 会同时拦截新增缺失项和新增低信息量项
 - `scripts/complexity_budget.py` 现在会对高复杂度热点文件执行“只减不增”的行数预算门禁，并用 `docs/reference/complexity-budget.json` 记录当前预算基线；`--strict` 会拦截热点文件无序膨胀
 - `docs/governance/` 现在统一承接 `ADR / RFC / Design Review` 流程，配套 `scripts/decision_record_audit.py` 会检查记录模板和必填章节，避免跨层设计决策再次漂回口头约定
@@ -400,6 +401,12 @@ npm run lint
 npm run test:run
 npm run build
 ```
+
+当前前端默认验证入口已经做过跨平台稳定化处理：
+
+- `npm run test:run` 会通过 `frontend/vitest.config.ts` 把 `vitest` worker 数限制为 `2`
+- `npm run build` 默认走 `next build --webpack`，避免当前 `Next.js 16` 默认构建路径在部分本地环境里出现 worker init 失败
+- `python scripts/dev.py test / infra-check` 现在会在 Windows 上自动解析 `npm.cmd`，不再因为 `subprocess` 直接找 `npm` 而中断
 
 ### 后端
 

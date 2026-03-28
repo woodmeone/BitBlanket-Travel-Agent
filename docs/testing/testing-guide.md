@@ -35,6 +35,12 @@ npm run test:run
 npm run build
 ```
 
+补充说明：
+
+- `npm run test:run` 当前会通过 `frontend/vitest.config.ts` 把 `vitest` worker 上限固定为 `2`，避免本地和 CI 在大 fixture 回放下触发进程 OOM
+- `npm run build` 当前固定走 `next build --webpack`，保证默认入口在当前 `Next.js 16` 栈上能稳定完成生产构建
+- `python scripts/dev.py test / infra-check` 当前会自动解析跨平台 npm 可执行文件，在 Windows 上会优先命中 `npm.cmd`
+
 ## 2. 推荐的本地回归顺序
 
 ### 2.1 优先走统一入口
@@ -149,7 +155,9 @@ mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_o
 - [`tests/test_agent_runtime_phase1_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_runtime_phase1_unit.py)
   - 保护 phase-1 `AgentRuntime / Skills / Artifact` 兼容层
 - [`tests/test_agent_subagent_phase2_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_subagent_phase2_unit.py)
-  - 保护 phase-2 `Research / Planning / Budget / Verification` subagent 映射、事件编排和 skill selection policy 计划
+  - 保护 phase-2 `Research / Planning / Budget / Verification` subagent 映射、事件编排、skill selection policy 计划，以及统一 `execution receipt`
+- [`tests/test_chat_stream_diagnostics_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_chat_stream_diagnostics_unit.py)
+  - 保护 persisted diagnostics 对 `artifact / subagentEvents / executionReceipt` 的归一化持久化
 - [`tests/test_agent_subagent_scorecard_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_subagent_scorecard_script_unit.py)
   - 保护 replay-backed subagent scorecard 的聚合逻辑和报告输出
 - [`tests/test_release_harness_scorecard_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_release_harness_scorecard_script_unit.py)

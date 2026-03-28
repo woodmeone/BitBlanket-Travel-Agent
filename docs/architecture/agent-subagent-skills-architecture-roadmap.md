@@ -27,6 +27,7 @@ The current implementation goal is intentionally conservative:
 - subagent-side skill selection is now an explicit contract exposed through `selection_policy()` / `selection_plan()` and `AgentRuntime` diagnostics, instead of staying buried in prompt heuristics
 - replay / eval side now also has a committed subagent scorecard baseline via [scripts/agent_subagent_scorecard.py](/D:/moyuan/moyuan-travel-agent/scripts/agent_subagent_scorecard.py) and [docs/benchmarks/agent_subagent_scorecard_latest.md](/D:/moyuan/moyuan-travel-agent/docs/benchmarks/agent_subagent_scorecard_latest.md)
 - release-facing checklist / scorecard now also exists via [scripts/release_harness_scorecard.py](/D:/moyuan/moyuan-travel-agent/scripts/release_harness_scorecard.py), covering HTML delivery snapshot, benchmark evidence, subagent scorecard and skills governance in one summary
+- subagent runtime output now also emits a governed `execution receipt`, so stage routing, tool coverage, artifact patch sections, and subagent order can flow through SSE `metadata / done` and persisted diagnostics instead of staying implicit in scattered event lists
 
 这份文档专门回答一个问题：
 

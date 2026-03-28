@@ -74,7 +74,7 @@
 
 - 收口 supervisor 编排状态
 - 逐步削薄 legacy graph 兼容入口
-- 为 subagent 运行记录统一生成 execution receipt
+- [已完成 2026-03-28] 为 subagent 运行记录统一生成 execution receipt，当前 `agent/travel_agent/contracts/execution_receipt.py` 与 `agent/travel_agent/runtime/agent_runtime.py` 已把阶段、工具、artifact patch 收口进 `done` 事件，`web/moyuan_web/services/chat/stream_diagnostics.py` 也会把它持久化到 assistant diagnostics
 
 ### Phase D：Eval / Release 闭环
 
@@ -106,4 +106,7 @@
 
 1. 继续把 `AgentRuntime` 从 legacy graph 兼容入口中解耦
 2. 让新 skill 接入必须经过 `schema + tests + docs + eval` 四件套，并补齐相应治理门禁
-3. 为 subagent 运行记录统一生成 execution receipt，继续削薄 runtime 和 legacy graph 之间的兼容层
+3. 继续削薄 runtime 和 legacy graph 之间的兼容层，让 `AgentRuntime` 真正脱离旧 `run_travel_agent_streaming_with_memory` 入口
+### Update 2026-03-28
+
+- [已完成 2026-03-28] 稳定前端默认验证入口，当前 `frontend/vitest.config.ts` 已把 `vitest` worker 上限固定为 `2`，`frontend/package.json` 的 `npm run build` 已切到 `next build --webpack`，`scripts/dev.py` 也会在 Windows 上自动解析 `npm.cmd`，让默认 `npm run test:run / npm run build / python scripts/dev.py test` 都能直接复用。

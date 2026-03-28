@@ -124,6 +124,8 @@ npm run build
 - 当前存量低信息量项由 `docs/reference/docstring-audit.low-info-baseline.json` 记录，后续改动应只减不增
 - `complexity_budget --strict` 会对热点文件执行“只减不增”预算门禁，当前预算基线由 `docs/reference/complexity-budget.json` 记录
 - `decision_record_audit --strict` 会检查 `docs/governance/` 下的 ADR / RFC / Design Review 是否包含统一状态和必填章节
+- 当前前端默认验证入口已经稳定化：`npm run test:run` 会把 `vitest` worker 上限固定为 `2`，`npm run build` 默认走 `next build --webpack`
+- `scripts/dev.py` 当前也会自动解析跨平台 npm 可执行文件，在 Windows 上优先命中 `npm.cmd`
 
 ### 4.2 运行态与契约维护
 
