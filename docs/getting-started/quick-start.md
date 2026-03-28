@@ -1,6 +1,6 @@
 # Quick Start
 
-这份文档面向第一次本地运行 moyuan-travel-agent 的开发者，默认环境为 Windows + PowerShell。
+这份文档面向第一次本地运行 moyuan-travel-agent 的开发者，默认环境为 macOS / Linux / Windows 终端。
 
 ## 前置条件
 
@@ -16,14 +16,14 @@
 ```bash
 uv python install 3.13
 uv venv .venv --python 3.13
-.\.venv\Scripts\activate
+python scripts/bootstrap.py
 uv pip install -r requirements-dev.txt
 ```
 
 安装完成后，建议先看一眼统一命令入口：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
+python scripts/dev.py help
 ```
 
 如果你只是想最低成本跑起来，不打算本地执行 `ruff / mypy / pip-audit`，也可以只安装：
@@ -43,8 +43,7 @@ cd ..
 ## 3. 准备模型配置
 
 ```bash
-copy config\llm_config.yaml.example config\llm_config.yaml
-copy config\server_config.yaml.example config\server_config.yaml
+python scripts/bootstrap.py --skip-frontend
 ```
 
 根据你的模型服务填写：
@@ -123,15 +122,15 @@ Compose 默认会：
 如果你这次改的是端口、环境变量、镜像 build 参数或 observability profile，建议先做一次本地渲染校验：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-config
+python scripts/dev.py compose-config
 ```
 
 如果当前网络拉取 Docker Hub 较慢，也可以显式指定镜像站：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-up `
-  -PythonBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" `
-  -NodeBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
+python scripts/dev.py compose-up \
+  --python-base-image "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" \
+  --node-base-image "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
 ```
 
 ## 7. 首次体验建议
@@ -185,7 +184,7 @@ python scripts/export_support_bundle.py --base-url http://localhost:38000
 或者直接走统一入口：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 support-bundle
+python scripts/dev.py support-bundle
 ```
 
 ## 9. 常用地址

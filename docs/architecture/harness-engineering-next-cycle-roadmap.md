@@ -6,7 +6,7 @@
 
 - `Contract / Application / Agent Runtime / Frontend Feature / Replay & Eval / Governance` 六条主线已全部落到代码、测试与 CI 门禁
 - 前端主工作区与测试目录已经收口为按 feature 组织的结构，当前测试树稳定落在 `frontend/tests/features/`
-- `docstring_audit`、`complexity_budget`、`decision_record_audit` 已全部接入本地 `dev.ps1 infra-check` 与 GitHub Actions
+- `docstring_audit`、`complexity_budget`、`decision_record_audit` 已全部接入本地 `python scripts/dev.py infra-check` 与 GitHub Actions
 
 本文件从这一基线继续往下推进，作为新的活动规划入口。
 
@@ -80,7 +80,9 @@
 
 - [已完成 2026-03-27] 对 subagent 协作质量建立 replay scorecard 基线，当前已覆盖 `research / planning / budget / verification`
 - [已完成 2026-03-28] 对 HTML 成品、artifact 完整度、skill 质量建立 release harness scorecard
-- [已完成 2026-03-28] 将 benchmark / delivery / skills checklist 接入 CI / release checklist，当前 `ci.yml`、`dev.ps1 infra-check` 与 `export_release_manifest.py` 已统一纳入 release harness scorecard
+- [已完成 2026-03-28] 将 benchmark / delivery / skills checklist 接入 CI / release checklist，当前 `ci.yml`、`python scripts/dev.py infra-check` 与 `export_release_manifest.py` 已统一纳入 release harness scorecard
+- [已完成 2026-03-28] 收口本地开发入口并清理 Windows 专用脚本，当前根目录 dev.ps1 与 scripts/bootstrap.ps1 已移除，统一改为 scripts/dev.py / scripts/bootstrap.py，并同步更新 README、开发流程、测试指南与架构文档
+- [已完成 2026-03-28] 统一脚本 bootstrap 加载方式并把新入口接入 `pytest + ruff + mypy`，当前 `scripts/dev.py`、`scripts/bootstrap.py` 以及 benchmark / replay / runtime / snapshot 脚本都已兼容“直接执行 / 包内导入 / spec 加载单测”三种运行路径
 - 在治理文档中固化“新增 agent 能力前先补 contract / eval / docs”的流程
 
 ## 5. 退出标准

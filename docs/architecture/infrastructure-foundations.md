@@ -112,9 +112,9 @@ docker compose up --build
 这样在 Docker Hub 拉取受限时，可以直接切换到镜像站，例如：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-up `
-  -PythonBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" `
-  -NodeBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
+python scripts/dev.py compose-up \
+  --python-base-image "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" \
+  --node-base-image "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
 ```
 
 ### 2.3 运行方式建议
@@ -490,14 +490,14 @@ python scripts/export_sse_contract_snapshot.py
 它们最主要保护的是：
 
 - Markdown / YAML / JSON 不被错误改成其他换行
-- PowerShell 脚本保留 `CRLF`
+- 全仓文本默认使用 `LF`
 - 图片、PDF、SQLite 不被当成文本文件处理
 
 ### 10.6 本地命令入口统一
 
 根目录新增了统一命令脚本：
 
-- [`dev.ps1`](/D:/moyuan/moyuan-travel-agent/dev.ps1)
+- [`scripts/dev.py`](/D:/moyuan/moyuan-travel-agent/scripts/dev.py)
 
 它把原来分散的本地命令统一成固定任务，包括：
 
@@ -534,7 +534,7 @@ CI 现在多了一层专门的部署验证任务：
 本地推荐用这条命令先预检查：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-config
+python scripts/dev.py compose-config
 ```
 
 如果这一步已经失败，通常不必等 CI 再报一次。
@@ -542,9 +542,9 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-config
 如果失败原因只是基础镜像拉取慢，可以直接切镜像站后再跑：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke `
-  -PythonBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" `
-  -NodeBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
+python scripts/dev.py container-smoke \
+  --python-base-image "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" \
+  --node-base-image "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
 ```
 
 ### 10.1 静态质量门禁

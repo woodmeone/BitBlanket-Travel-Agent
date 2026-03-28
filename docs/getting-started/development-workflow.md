@@ -1,10 +1,10 @@
 # Development Workflow
 
-这份文档面向日常开发、联调、提交前自检和基础设施改动同步，默认环境为 Windows + PowerShell。
+这份文档面向日常开发、联调、提交前自检和基础设施改动同步，默认环境为 macOS / Linux / Windows 终端。
 
 ## 1. 日常开发顺序
 
-1. 激活虚拟环境：`.\.venv\Scripts\activate`
+1. 确保本地依赖已就绪：`python scripts/bootstrap.py`
 2. 检查配置文件：
    - `config\llm_config.yaml`
    - `config\server_config.yaml`
@@ -35,10 +35,10 @@ uv pip install -r requirements-dev.txt
 
 ## 2. 统一命令入口
 
-根目录的 [`dev.ps1`](/D:/moyuan/moyuan-travel-agent/dev.ps1) 是本地开发、测试和基础设施校验的统一入口，推荐优先使用。
+根目录的 [`scripts/dev.py`](/D:/moyuan/moyuan-travel-agent/scripts/dev.py) 是本地开发、测试和基础设施校验的统一入口，推荐优先使用。
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
+python scripts/dev.py help
 ```
 
 当前最常用的任务有：
@@ -89,15 +89,15 @@ docker compose --profile observability up --build
 在真正启动前，先做一次渲染校验会更稳：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-config
+python scripts/dev.py compose-config
 ```
 
 如果当前网络拉取 Docker Hub 较慢，可以直接把镜像站作为基础镜像传进来：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-up `
-  -PythonBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" `
-  -NodeBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
+python scripts/dev.py compose-up \
+  --python-base-image "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" \
+  --node-base-image "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
 ```
 
 ## 4. 常用命令
@@ -108,7 +108,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-up `
 python -m pytest tests -m "unit and not local and not external_api" -q
 python -m pytest tests -m "local and not external_api" -q
 python -m ruff check --config ruff.toml scripts web/moyuan_web
-python -m mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/release_harness_scorecard.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
+python -m mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/release_harness_scorecard.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
 python scripts/docstring_audit.py --strict
 python scripts/complexity_budget.py --strict
 python scripts/decision_record_audit.py --strict
@@ -142,11 +142,11 @@ python scripts/export_support_bundle.py --base-url http://localhost:38000
 ### 4.3 对应的统一入口
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 test
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 infra-check
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 snapshots
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 support-bundle
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke
+python scripts/dev.py test
+python scripts/dev.py infra-check
+python scripts/dev.py snapshots
+python scripts/dev.py support-bundle
+python scripts/dev.py container-smoke
 ```
 
 ## 5. 提交前检查建议
@@ -173,7 +173,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke
 
 ### 5.3 改 Docker / compose / release / dashboard / alert
 
-1. `powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-config`
+1. `python scripts/dev.py compose-config`
 2. 检查 [`compose.yaml`](/D:/moyuan/moyuan-travel-agent/compose.yaml)
 3. 检查 [`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml) 的 `container-validate`
 4. 检查 [`.github/workflows/release.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/release.yml)
@@ -184,9 +184,9 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke
 如果只是 Docker Hub 拉取问题，优先改用镜像站复现：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke `
-  -PythonBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" `
-  -NodeBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
+python scripts/dev.py container-smoke \
+  --python-base-image "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" \
+  --node-base-image "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
 ```
 
 ## 6. 文档同步最小清单
@@ -206,7 +206,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke `
 
 - `/.editorconfig`
 - `/.gitattributes`
-- `/dev.ps1`
+- `/scripts/dev.py`
 
 ## 7. 推荐阅读
 

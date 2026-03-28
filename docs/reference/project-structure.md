@@ -15,8 +15,7 @@ moyuan-travel-agent/
 ├── data/                 # 运行时数据
 ├── logs/                 # 本地日志
 ├── ops/                  # 观测与运维资产
-├── scripts/              # 运行维护、快照、质量脚本
-├── dev.ps1               # 本地统一命令入口
+├── scripts/              # 运行维护、快照、质量脚本和跨平台命令入口
 ├── compose.yaml          # 根目录 Docker Compose
 ├── Dockerfile.backend    # Web API 镜像构建文件
 ├── requirements-dev.txt  # 本地开发与静态检查依赖
@@ -35,17 +34,17 @@ moyuan-travel-agent/
 - Markdown 允许保留行尾空格
 - Python 4 空格缩进
 - TypeScript / JSON / YAML 2 空格缩进
-- PowerShell 使用 `CRLF`
+- 全仓文本默认使用 `LF`
 
 ### `.gitattributes`
 
 统一这些 Git 行为：
 
 - 常见文本文件按规则归一化换行
-- `ps1/cmd/bat` 保持 `CRLF`
+- 常见文本文件统一为 `LF`
 - 图片、PDF、Zip、SQLite 以 binary 处理
 
-### `dev.ps1`
+### `scripts/dev.py`
 
 这是本地最推荐的统一入口，负责收口：
 
@@ -63,7 +62,7 @@ moyuan-travel-agent/
 优先命令：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
+python scripts/dev.py help
 ```
 
 ## 关键目录说明
@@ -165,7 +164,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 - [`docs/governance/rfcs/RFC-0000-template.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/rfcs/RFC-0000-template.md)
 - [`docs/governance/design-reviews/DR-0000-template.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/design-reviews/DR-0000-template.md)
 
-配套的结构审计脚本是 [`scripts/decision_record_audit.py`](/D:/moyuan/moyuan-travel-agent/scripts/decision_record_audit.py)，当前已接入本地 `dev.ps1 infra-check` 和 CI。
+配套的结构审计脚本是 [`scripts/decision_record_audit.py`](/D:/moyuan/moyuan-travel-agent/scripts/decision_record_audit.py)，当前已接入本地 `python scripts/dev.py infra-check` 和 CI。
 
 ### `config/`
 
@@ -345,7 +344,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
 
 - `/.editorconfig`
 - `/.gitattributes`
-- `/dev.ps1`
+- `/scripts/dev.py`
 - `/compose.yaml`
 - `/.github/workflows/ci.yml`
 - `docs/getting-started/development-workflow.md`

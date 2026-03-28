@@ -1,4 +1,4 @@
-﻿# Documentation Index
+# Documentation Index
 
 这套文档按“先上手、再理解、再查表”的顺序组织，方便不同读者快速找到入口。
 
@@ -121,7 +121,8 @@
 - `scripts/export_release_manifest.py`: release manifest 导出
 - `scripts/release_harness_scorecard.py`: 发布前收口 benchmark / delivery / skills / subagent 质量证据
 - `scripts/export_support_bundle.py`: 运行态支持包导出
-- `dev.ps1`: 本地开发、测试、infra 检查、compose 校验统一入口
+- `scripts/bootstrap.py`: 跨平台本地依赖、虚拟环境与配置模板初始化入口
+- `scripts/dev.py`: 本地开发、测试、infra 检查、compose 校验统一入口
 - `scripts/docstring_audit.py`: Python docstring 覆盖率 + 低信息量治理审计脚本
 - `frontend/tests/features/trip-plan/travelPlanDeliverySnapshot.test.ts`: 复用 frontend runtime golden fixture 回放最终 HTML 交付结果
 - `scripts/agent_subagent_scorecard.py`: 生成 `research / planning / budget / verification` 的 replay scorecard 基线

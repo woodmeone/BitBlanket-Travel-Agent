@@ -97,8 +97,7 @@ moyuan-travel-agent/
 ├── docs/                   # 文档中心
 ├── config/                 # 服务与模型配置
 ├── data/                   # 本地运行数据
-├── scripts/                # benchmark / replay / quality gate 等脚本
-├── dev.ps1                 # 本地开发、测试与基础设施命令入口
+├── scripts/                # benchmark / replay / quality gate 等脚本和跨平台开发入口
 ├── compose.yaml            # 根目录 Compose
 ├── requirements-dev.txt    # 本地开发与静态检查依赖
 └── Dockerfile.backend      # Web API Dockerfile
@@ -113,6 +112,7 @@ moyuan-travel-agent/
 - `frontend/src/services/api/artifactClient.ts` 现在同时提供 `getLatestArtifact()` 和 `getArtifactHistory()`，为 session restore、artifact compare/history UI 与 compare tab 的 artifact-history 优先路径提供稳定数据面
 - `web/moyuan_web/bootstrap.py` 现在统一收口 repo root + `web/` 的导入入口，`tests/conftest.py` 会直接复用它来初始化 pytest 的导入边界，避免 root tests 继续各自写 `sys.path` 补丁
 - `scripts/bootstrap_paths.py` 现在统一承接 benchmark / replay / runtime / snapshot 脚本的导入入口，`agent_benchmark.py`、`agent_replay.py`、`runtime_doctor.py`、`export_openapi_snapshot.py` 等脚本不再各自内联 repo root / `web/` 注入
+- `scripts/dev.py` 与 `scripts/bootstrap.py` 现在既是跨平台本地入口，也被 `pytest + ruff + mypy` 直接覆盖；对应脚本入口已统一兼容“直接执行 / 包内导入 / spec 加载单测”三种运行方式
 - `agent/travel_agent/memory/conflict_resolution.py` 现在统一承接 memory 冲突检测、澄清提示排序、显式覆盖闭环、resolved 审计日志和 persisted conflict schema 归一化，`agent/travel_agent/graph/memory_integration.py` 已进一步退化为会话 memory 编排层
 - `agent/travel_agent/contracts/skills.py`、`agent/travel_agent/skills/registry.py` 与 `agent/travel_agent/subagents/registry.py` 现在把 `skills market` 收口成显式 schema + selection policy：默认 skill 会带 `owner / version / input / output / evidence / freshness / fallback / docs / eval` 元数据，以及 `priority / intent_signals / preferred_context` 选择规则；`AgentRuntime` diagnostics 也会暴露 `subagent_skill_policies`，不再把能力选择继续藏在 prompt 里；配套 onboarding 清单见 [docs/governance/skills-market-onboarding.md](docs/governance/skills-market-onboarding.md)，catalog 见 [docs/reference/skills-market-catalog.md](docs/reference/skills-market-catalog.md)
 - `scripts/docstring_audit.py` 现在不只检查 docstring 是否存在，还会识别低信息量模板文档，并用 `docs/reference/docstring-audit.low-info-baseline.json` 记录存量基线；`--strict` 会同时拦截新增缺失项和新增低信息量项
@@ -166,27 +166,19 @@ moyuan-travel-agent/
 ### 2. 安装依赖
 
 ```bash
-uv python install 3.13
-uv venv .venv --python 3.13
-.\.venv\Scripts\activate
-uv pip install -r requirements-dev.txt
-
-cd frontend
-npm install
-cd ..
+python scripts/bootstrap.py
 ```
 
 安装完成后，建议先看一眼统一命令入口：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
+python scripts/dev.py help
 ```
 
 ### 3. 准备配置
 
 ```bash
-copy config\llm_config.yaml.example config\llm_config.yaml
-copy config\server_config.yaml.example config\server_config.yaml
+python scripts/bootstrap.py --skip-frontend
 ```
 
 根据实际模型服务填写 `api_key`、`api_base`、`model`。
@@ -234,10 +226,10 @@ npm run dev
 ### 6.1 常用统一命令入口
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 test
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 infra-check
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-config
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke
+python scripts/dev.py test
+python scripts/dev.py infra-check
+python scripts/dev.py compose-config
+python scripts/dev.py container-smoke
 ```
 
 说明：
@@ -264,17 +256,17 @@ docker compose --profile observability up --build
 如果当前网络拉取 Docker Hub 基础镜像较慢，可以直接切到镜像站：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-up `
-  -PythonBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" `
-  -NodeBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
+python scripts/dev.py compose-up \
+  --python-base-image "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" \
+  --node-base-image "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
 ```
 
 如果只想验证本地镜像构建：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke `
-  -PythonBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" `
-  -NodeBaseImage "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
+python scripts/dev.py container-smoke \
+  --python-base-image "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" \
+  --node-base-image "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
 ```
 
 相关资产：
@@ -418,7 +410,7 @@ python -m ruff check --config ruff.toml scripts web/moyuan_web
 python scripts/docstring_audit.py --strict
 python scripts/complexity_budget.py --strict
 python scripts/decision_record_audit.py --strict
-mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
+mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
 ```
 
 其中 `python scripts/docstring_audit.py --strict` 当前会同时检查两类问题：
@@ -430,11 +422,11 @@ mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_re
 
 ### 推荐统一入口
 
-- `powershell -ExecutionPolicy Bypass -File .\dev.ps1 test`
-- `powershell -ExecutionPolicy Bypass -File .\dev.ps1 infra-check`
-- `powershell -ExecutionPolicy Bypass -File .\dev.ps1 snapshots`
-- `powershell -ExecutionPolicy Bypass -File .\dev.ps1 support-bundle`
-- `powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke`
+- `python scripts/dev.py test`
+- `python scripts/dev.py infra-check`
+- `python scripts/dev.py snapshots`
+- `python scripts/dev.py support-bundle`
+- `python scripts/dev.py container-smoke`
 
 ### Agent 质量脚本
 
@@ -481,7 +473,7 @@ mypy --config-file mypy.ini scripts/export_openapi_snapshot.py scripts/export_re
 
 - 编辑器规范：[`/.editorconfig`](/D:/moyuan/moyuan-travel-agent/.editorconfig)
 - Git 文本归一化：[`/.gitattributes`](/D:/moyuan/moyuan-travel-agent/.gitattributes)
-- 本地命令入口：[`/dev.ps1`](/D:/moyuan/moyuan-travel-agent/dev.ps1)
+- 本地命令入口：[`/scripts/dev.py`](/D:/moyuan/moyuan-travel-agent/scripts/dev.py)
 - CI 的 `container-validate` 会执行 `docker compose config`、`docker compose --profile observability config`、后端镜像 smoke build、前端镜像 smoke build，并上传 `deployment-validation-artifacts`
 
 更多测试与回放说明见 [docs/testing/testing-guide.md](docs/testing/testing-guide.md)。

@@ -145,11 +145,11 @@ npm run lint
 如果你是维护者，建议优先从根目录脚本进入，而不是每次手敲零散命令：
 
 ```bash
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 help
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 infra-check
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 support-bundle
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 compose-config
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 container-smoke
+python scripts/dev.py help
+python scripts/dev.py infra-check
+python scripts/dev.py support-bundle
+python scripts/dev.py compose-config
+python scripts/dev.py container-smoke
 ```
 
 适合场景：

@@ -66,7 +66,7 @@
    - `ADR-xxxx-*.md`
    - `RFC-xxxx-*.md`
    - `DR-xxxx-*.md`
-5. `python scripts/decision_record_audit.py --strict` 会检查这些记录的基础结构，当前已接入本地 `dev.ps1 infra-check` 和 CI。
+5. `python scripts/decision_record_audit.py --strict` 会检查这些记录的基础结构，当前已接入本地 `python scripts/dev.py infra-check` 和 CI。
 
 ## 当前入口
 
