@@ -90,7 +90,7 @@ python scripts/dev.py help
 - `travel_agent/memory/`
   - 从 legacy graph 中逐步拆出的 memory 协作器，当前包含 `persistence.py` 与 `conflict_resolution.py`
 - `travel_agent/graph/`
-  - 图构建、节点、运行时配置、checkpoint
+  - 图构建、节点、运行时配置、legacy 执行兼容入口、checkpoint
 - `travel_agent/tools/`
   - 工具定义、provider 适配
 - `travel_agent/llm/`
@@ -285,6 +285,8 @@ python scripts/dev.py help
   - `SupervisorRunRequest / SupervisorPlanPreviewRequest / SupervisorRuntimeContext` 三个 contract，用来收口 `AgentRuntime -> legacy bridge` 的编排状态
 - [`agent/travel_agent/contracts/supervisor_events.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/contracts/supervisor_events.py)
   - `SupervisorStageEvent / SupervisorReasoningEvent / SupervisorChunkEvent / SupervisorToolStartEvent / SupervisorToolEndEvent / SupervisorDoneEvent` 六类 contract，用来收口 legacy graph 归一化后的 runtime 事件形状
+- [`agent/travel_agent/graph/legacy_runtime.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/legacy_runtime.py)
+  - legacy graph 的 `run / stream / stream_with_memory / plan preview / diagnostics` 兼容执行入口；`builder.py` 现在主要保留 `TravelAgentGraph`、`build_travel_agent()` 和图编译逻辑
 - [`agent/travel_agent/subagents/research.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/research.py)
 - [`agent/travel_agent/subagents/planning.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/planning.py)
 - [`agent/travel_agent/subagents/budget.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/budget.py)
