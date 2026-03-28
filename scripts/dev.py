@@ -25,6 +25,7 @@ STATIC_TARGETS = (
     "scripts/export_openapi_snapshot.py",
     "scripts/export_release_manifest.py",
     "scripts/release_harness_scorecard.py",
+    "scripts/runtime_contract_audit.py",
     "scripts/skills_market_audit.py",
     "scripts/export_support_bundle.py",
     "scripts/export_sse_contract_snapshot.py",
@@ -59,6 +60,7 @@ Tasks:
   complexity             Run hotspot complexity budget gate.
   decision-records       Run ADR / RFC / design-review audit.
   skills-market          Run the governed skills market audit.
+  runtime-contracts      Run the typed runtime seam audit.
   snapshots              Export OpenAPI and SSE contract snapshots.
   release-manifest       Export a local release manifest.
   support-bundle         Export a runtime support bundle.
@@ -243,6 +245,12 @@ def run_skills_market_audit(python_executable: str) -> None:
     """Execute the strict governed skills-market audit."""
 
     run_command([python_executable, "scripts/skills_market_audit.py", "--strict"])
+
+
+def run_runtime_contract_audit(python_executable: str) -> None:
+    """Execute the strict runtime seam contract audit."""
+
+    run_command([python_executable, "scripts/runtime_contract_audit.py", "--strict"])
 
 
 def run_snapshots(python_executable: str) -> None:
@@ -439,6 +447,8 @@ def main() -> int:
         run_decision_records(python_executable)
     elif task == "skills-market":
         run_skills_market_audit(python_executable)
+    elif task == "runtime-contracts":
+        run_runtime_contract_audit(python_executable)
     elif task == "snapshots":
         run_snapshots(python_executable)
     elif task == "release-manifest":
@@ -452,6 +462,7 @@ def main() -> int:
         run_complexity_budget(python_executable)
         run_decision_records(python_executable)
         run_skills_market_audit(python_executable)
+        run_runtime_contract_audit(python_executable)
         run_command([python_executable, "scripts/runtime_doctor.py", "--json"])
         run_snapshots(python_executable)
         run_release_harness_scorecard(python_executable)

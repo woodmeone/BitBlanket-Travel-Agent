@@ -44,6 +44,9 @@ jobs:
       - name: Run skills market audit
         run: python scripts/skills_market_audit.py --strict
 
+      - name: Run runtime contract audit
+        run: python scripts/runtime_contract_audit.py --strict
+
       - name: Run Ruff static checks
         run: |
           ruff check --config ruff.toml \
@@ -52,6 +55,7 @@ jobs:
             scripts/export_openapi_snapshot.py \
             scripts/export_release_manifest.py \
             scripts/release_harness_scorecard.py \
+            scripts/runtime_contract_audit.py \
             scripts/skills_market_audit.py \
             scripts/export_support_bundle.py \
             scripts/export_sse_contract_snapshot.py \
@@ -77,6 +81,7 @@ jobs:
             scripts/export_openapi_snapshot.py \
             scripts/export_release_manifest.py \
             scripts/release_harness_scorecard.py \
+            scripts/runtime_contract_audit.py \
             scripts/skills_market_audit.py \
             scripts/export_support_bundle.py \
             scripts/export_sse_contract_snapshot.py \
@@ -177,6 +182,7 @@ jobs:
             echo "- Complexity budget gate: \`python scripts/complexity_budget.py --strict\`"
             echo "- Decision record audit: \`python scripts/decision_record_audit.py --strict\`"
             echo "- Skills market audit: \`python scripts/skills_market_audit.py --strict\`"
+            echo "- Runtime contract audit: \`python scripts/runtime_contract_audit.py --strict\`"
             echo "- Ruff: \`ruff check --config ruff.toml ...\`"
             echo "- mypy: \`mypy --config-file mypy.ini ...\`"
             echo "- Dependency audit: \`pip-audit -r requirements.txt\`"
