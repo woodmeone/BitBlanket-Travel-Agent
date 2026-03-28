@@ -78,6 +78,7 @@
 - [已完成 2026-03-28] 抽出 `AgentRuntime -> legacy graph` 的显式 bridge，当前 `agent/travel_agent/runtime/legacy_bridge.py` 已统一承接 streaming / preview / diagnostics 三类兼容调用，`AgentRuntime` 不再直接 import 旧 `graph.builder` 入口函数
 - [已完成 2026-03-28] 把 legacy graph 归一化 runtime 事件收口成显式 contract，当前 `agent/travel_agent/contracts/supervisor_events.py` 已统一定义 `stage / reasoning / chunk / tool_start / tool_end / done` 六类 payload，`agent/travel_agent/graph/builder.py` 不再继续手搓大段事件字典
 - [已完成 2026-03-28] 把 legacy graph 的兼容执行入口整体迁到独立 shim，当前 `agent/travel_agent/graph/legacy_runtime.py` 已承接 `run / stream / stream_with_memory / plan preview / diagnostics`，`agent/travel_agent/graph/builder.py` 进一步退化为图组装与编译模块
+- [已完成 2026-03-28] 让 legacy runtime shim 直接消费 supervisor request/context contract，当前 `agent/travel_agent/graph/legacy_runtime.py` 已新增 `stream_supervisor_run()` 与 `generate_supervisor_plan_preview()`，`agent/travel_agent/runtime/legacy_bridge.py` 不再手工重组 streaming / preview 所需的一长串 kwargs
 
 ### Phase D：Eval / Release 闭环
 
@@ -119,3 +120,4 @@
 - [已完成 2026-03-28] supervisor 编排状态已从散落 kwargs 收口成显式 contract，当前 `AgentRuntime` 会先构造 `SupervisorRunRequest / SupervisorPlanPreviewRequest` 与 `SupervisorRuntimeContext`，再交给 `runtime/legacy_bridge.py` 做兼容分发，后续替换 legacy graph 时可以优先替换 request/context 消费方，而不是继续扩散签名。
 - [已完成 2026-03-28] legacy graph 的 normalized runtime events 已从 `graph/builder.py` 内联字典收口成 `agent/travel_agent/contracts/supervisor_events.py`，当前 bridge 继续替换时可以先稳定事件 contract，再逐步替换底层 graph 执行源。
 - [已完成 2026-03-28] legacy graph 的执行 shim 已从 `graph/builder.py` 拆到 `graph/legacy_runtime.py`，当前 `AgentRuntime -> legacy bridge -> legacy_runtime` 的兼容链已显式成层，后续继续替换 legacy graph 时可以优先替换最内层执行实现，而不是继续挤占 builder。
+- [已完成 2026-03-28] legacy runtime shim 现在也直接消费 `SupervisorRunRequest / SupervisorPlanPreviewRequest / SupervisorRuntimeContext`，当前 `runtime/legacy_bridge.py` 只负责桥接显式 contract，不再继续重组 legacy streaming / preview 参数链；对应 seam 已补齐 [tests/test_legacy_runtime_contract_unit.py](/D:/moyuan/moyuan-travel-agent/tests/test_legacy_runtime_contract_unit.py)。

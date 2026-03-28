@@ -33,6 +33,7 @@ The current implementation goal is intentionally conservative:
 - `AgentRuntime` now also sends supervisor orchestration state through explicit contracts in [agent/travel_agent/contracts/supervisor_orchestration.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/contracts/supervisor_orchestration.py), so `streaming / plan preview` compatibility no longer depends on one long kwargs chain
 - normalized legacy supervisor events now also come from explicit contracts in [agent/travel_agent/contracts/supervisor_events.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/contracts/supervisor_events.py), which narrows the remaining builder seam to event production instead of repeated ad hoc dictionaries
 - legacy graph execution entrypoints now also live in [agent/travel_agent/graph/legacy_runtime.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/legacy_runtime.py), so [agent/travel_agent/graph/builder.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py) is closer to a pure graph-assembly module than a mixed “build + execute + normalize” file
+- the legacy runtime shim now also consumes `SupervisorRunRequest / SupervisorPlanPreviewRequest / SupervisorRuntimeContext` directly, so [agent/travel_agent/runtime/legacy_bridge.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/runtime/legacy_bridge.py) no longer has to re-pack one long kwargs chain before delegating into the remaining legacy graph path
 
 这份文档专门回答一个问题：
 

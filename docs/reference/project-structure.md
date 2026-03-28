@@ -286,7 +286,7 @@ python scripts/dev.py help
 - [`agent/travel_agent/contracts/supervisor_events.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/contracts/supervisor_events.py)
   - `SupervisorStageEvent / SupervisorReasoningEvent / SupervisorChunkEvent / SupervisorToolStartEvent / SupervisorToolEndEvent / SupervisorDoneEvent` 六类 contract，用来收口 legacy graph 归一化后的 runtime 事件形状
 - [`agent/travel_agent/graph/legacy_runtime.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/legacy_runtime.py)
-  - legacy graph 的 `run / stream / stream_with_memory / plan preview / diagnostics` 兼容执行入口；`builder.py` 现在主要保留 `TravelAgentGraph`、`build_travel_agent()` 和图编译逻辑
+  - legacy graph 的 `run / stream / stream_with_memory / plan preview / diagnostics` 兼容执行入口；现在也通过 `stream_supervisor_run()` / `generate_supervisor_plan_preview()` 直接消费 `SupervisorRunRequest / SupervisorPlanPreviewRequest / SupervisorRuntimeContext`，`builder.py` 主要保留 `TravelAgentGraph`、`build_travel_agent()` 和图编译逻辑
 - [`agent/travel_agent/subagents/research.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/research.py)
 - [`agent/travel_agent/subagents/planning.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/planning.py)
 - [`agent/travel_agent/subagents/budget.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/budget.py)
