@@ -186,7 +186,16 @@ def _check_data_dir(path: Path) -> dict[str, Any]:
 
 def _check_runtime_files(project_root: Path) -> dict[str, Any]:
     """Summarize known runtime files currently present under the project root."""
-    files = discover_runtime_files(project_root)
+    try:
+        files = discover_runtime_files(project_root)
+    except Exception as exc:
+        return _build_check(
+            "runtime_files",
+            "degraded",
+            f"Runtime file inventory could not be completed: {exc}",
+            error_type=type(exc).__name__,
+            project_root=str(project_root),
+        )
     return _build_check(
         "runtime_files",
         "ok",

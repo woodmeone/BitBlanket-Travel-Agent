@@ -41,6 +41,9 @@ jobs:
       - name: Run decision record audit
         run: python scripts/decision_record_audit.py --strict
 
+      - name: Run skills market audit
+        run: python scripts/skills_market_audit.py --strict
+
       - name: Run Ruff static checks
         run: |
           ruff check --config ruff.toml \
@@ -49,6 +52,7 @@ jobs:
             scripts/export_openapi_snapshot.py \
             scripts/export_release_manifest.py \
             scripts/release_harness_scorecard.py \
+            scripts/skills_market_audit.py \
             scripts/export_support_bundle.py \
             scripts/export_sse_contract_snapshot.py \
             scripts/runtime_backup.py \
@@ -73,6 +77,7 @@ jobs:
             scripts/export_openapi_snapshot.py \
             scripts/export_release_manifest.py \
             scripts/release_harness_scorecard.py \
+            scripts/skills_market_audit.py \
             scripts/export_support_bundle.py \
             scripts/export_sse_contract_snapshot.py \
             scripts/runtime_backup.py \
@@ -171,6 +176,7 @@ jobs:
             echo "- Docstring audit: \`python scripts/docstring_audit.py --strict\`"
             echo "- Complexity budget gate: \`python scripts/complexity_budget.py --strict\`"
             echo "- Decision record audit: \`python scripts/decision_record_audit.py --strict\`"
+            echo "- Skills market audit: \`python scripts/skills_market_audit.py --strict\`"
             echo "- Ruff: \`ruff check --config ruff.toml ...\`"
             echo "- mypy: \`mypy --config-file mypy.ini ...\`"
             echo "- Dependency audit: \`pip-audit -r requirements.txt\`"

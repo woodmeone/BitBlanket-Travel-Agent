@@ -18,6 +18,7 @@ def test_default_skill_registry_exposes_governed_metadata():
     assert city_skill.market_metadata.owner == "research-subagent"
     assert city_skill.market_metadata.version == "2026.03"
     assert city_skill.market_metadata.docs_path == "docs/reference/skills-market-catalog.md"
+    assert city_skill.market_metadata.test_fixture == "tests/test_skill_registry_unit.py"
     assert city_skill.market_metadata.eval_fixture == "tests/test_skill_registry_unit.py"
     assert city_skill.market_metadata.onboarding_requirements == ["schema", "tests", "docs", "eval"]
     assert city_skill.input_contract.required_context == ["user_intent"]
@@ -35,6 +36,7 @@ def test_default_skill_registry_exposes_governed_metadata():
     payload = city_skill.to_dict()
 
     assert payload["market_metadata"]["owner"] == "research-subagent"
+    assert payload["market_metadata"]["test_fixture"] == "tests/test_skill_registry_unit.py"
     assert payload["input_contract"]["required_context"] == ["user_intent"]
     assert payload["output_contract"]["artifact"] == "ResearchDossier"
     assert payload["selection_policy"]["priority"] == 10

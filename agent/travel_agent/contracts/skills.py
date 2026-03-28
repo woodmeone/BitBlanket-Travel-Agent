@@ -29,6 +29,7 @@ class SkillMarketMetadata:
     owner: str = "travel-agent-platform"
     version: str = "2026.03"
     docs_path: Optional[str] = None
+    test_fixture: Optional[str] = None
     prompt_asset: Optional[str] = None
     eval_fixture: Optional[str] = None
     onboarding_requirements: list[str] = field(

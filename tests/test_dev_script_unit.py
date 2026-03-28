@@ -50,3 +50,14 @@ def test_resolve_repo_python_falls_back_to_current_interpreter(monkeypatch):
     monkeypatch.setattr(dev_module, "REPO_ROOT", PROJECT_ROOT / "tests" / "missing-dev-root")
 
     assert dev_module.resolve_repo_python() == sys.executable
+
+
+def test_resolve_npm_command_prefers_windows_cmd_when_available(monkeypatch):
+    dev_module = load_module("test_dev_script_unit_dev_npm", "scripts/dev.py")
+
+    def fake_which(name: str):
+        return "C:/node/npm.cmd" if name == "npm.cmd" else None
+
+    monkeypatch.setattr(dev_module.shutil, "which", fake_which)
+
+    assert dev_module.resolve_npm_command() == "C:/node/npm.cmd"

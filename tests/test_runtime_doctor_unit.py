@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import scripts.runtime_doctor as runtime_doctor
 from scripts.runtime_doctor import run_runtime_doctor
 
 
@@ -85,3 +86,47 @@ def test_runtime_doctor_reports_not_ready_when_llm_config_missing(tmp_path):
 
     assert report["status"] == "not_ready"
     assert report["checks"]["llm_config"]["status"] == "not_ready"
+
+
+def test_runtime_doctor_degrades_when_runtime_file_inventory_is_locked(tmp_path, monkeypatch):
+    project_root = tmp_path
+    (project_root / "config").mkdir()
+    (project_root / "data").mkdir()
+    (project_root / "docs" / "reference").mkdir(parents=True)
+
+    (project_root / "config" / "llm_config.yaml").write_text(
+        """
+default_model: demo
+models:
+  demo:
+    provider: openai-compatible
+    model: demo
+    api_base: http://localhost:1234/v1
+    api_key: ""
+""".strip(),
+        encoding="utf-8",
+    )
+    (project_root / "docs" / "reference" / "openapi.snapshot.json").write_text(
+        '{"openapi": "3.1.0", "paths": {}}',
+        encoding="utf-8",
+    )
+    (project_root / "docs" / "reference" / "sse-contract.snapshot.json").write_text(
+        '{"schema_version": 1, "modes": {}}',
+        encoding="utf-8",
+    )
+
+    def _raise_permission_error(_project_root):
+        raise PermissionError("sessions.json is locked")
+
+    monkeypatch.setattr(runtime_doctor, "discover_runtime_files", _raise_permission_error)
+
+    report = run_runtime_doctor(
+        project_root=project_root,
+        backup_dir=project_root / "artifacts" / "runtime_backups",
+        openapi_snapshot=project_root / "docs" / "reference" / "openapi.snapshot.json",
+        sse_snapshot=project_root / "docs" / "reference" / "sse-contract.snapshot.json",
+    )
+
+    assert report["status"] == "degraded"
+    assert report["checks"]["runtime_files"]["status"] == "degraded"
+    assert report["checks"]["runtime_files"]["details"]["error_type"] == "PermissionError"

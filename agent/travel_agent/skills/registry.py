@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Iterable, Optional
+from typing import TYPE_CHECKING, Any, Iterable, Optional
 
-from langchain_core.tools import Tool
+if TYPE_CHECKING:
+    from langchain_core.tools import Tool
+else:
+    Tool = Any
 
 from ..contracts import (
     SkillContract,
@@ -19,6 +22,7 @@ _SKILL_CATALOG_DOC = "docs/reference/skills-market-catalog.md"
 _SKILL_ONBOARDING_DOC = "docs/governance/skills-market-onboarding.md"
 _SKILL_PROMPT_ANCHOR = "agent/travel_agent/graph/state.py::TRAVEL_AGENT_SYSTEM_PROMPT"
 _SKILL_EVAL_FIXTURE = "tests/test_skill_registry_unit.py"
+_SKILL_TEST_FIXTURE = "tests/test_skill_registry_unit.py"
 
 
 class SkillRegistry:
@@ -102,6 +106,7 @@ def _default_skill_contracts() -> list[SkillContract]:
                 owner="research-subagent",
                 version="2026.03",
                 docs_path=_SKILL_CATALOG_DOC,
+                test_fixture=_SKILL_TEST_FIXTURE,
                 prompt_asset=_SKILL_PROMPT_ANCHOR,
                 eval_fixture=_SKILL_EVAL_FIXTURE,
                 tags=["research", "destination-discovery", "artifact-first"],
@@ -133,6 +138,7 @@ def _default_skill_contracts() -> list[SkillContract]:
                 owner="research-subagent",
                 version="2026.03",
                 docs_path=_SKILL_CATALOG_DOC,
+                test_fixture=_SKILL_TEST_FIXTURE,
                 prompt_asset=_SKILL_PROMPT_ANCHOR,
                 eval_fixture=_SKILL_EVAL_FIXTURE,
                 tags=["research", "attractions", "evidence"],
@@ -164,6 +170,7 @@ def _default_skill_contracts() -> list[SkillContract]:
                 owner="research-subagent",
                 version="2026.03",
                 docs_path=_SKILL_CATALOG_DOC,
+                test_fixture=_SKILL_TEST_FIXTURE,
                 prompt_asset=_SKILL_PROMPT_ANCHOR,
                 eval_fixture=_SKILL_EVAL_FIXTURE,
                 tags=["weather", "freshness", "cross-subagent"],
@@ -196,6 +203,7 @@ def _default_skill_contracts() -> list[SkillContract]:
                 owner="budget-subagent",
                 version="2026.03",
                 docs_path=_SKILL_CATALOG_DOC,
+                test_fixture=_SKILL_TEST_FIXTURE,
                 prompt_asset=_SKILL_PROMPT_ANCHOR,
                 eval_fixture=_SKILL_EVAL_FIXTURE,
                 tags=["budget", "quotes", "evidence"],
@@ -227,6 +235,7 @@ def _default_skill_contracts() -> list[SkillContract]:
                 owner="budget-subagent",
                 version="2026.03",
                 docs_path=_SKILL_CATALOG_DOC,
+                test_fixture=_SKILL_TEST_FIXTURE,
                 prompt_asset=_SKILL_PROMPT_ANCHOR,
                 eval_fixture=_SKILL_EVAL_FIXTURE,
                 tags=["budget", "aggregation", "artifact-first"],
@@ -257,6 +266,7 @@ def _default_skill_contracts() -> list[SkillContract]:
                 owner="planning-subagent",
                 version="2026.03",
                 docs_path=_SKILL_CATALOG_DOC,
+                test_fixture=_SKILL_TEST_FIXTURE,
                 prompt_asset=_SKILL_PROMPT_ANCHOR,
                 eval_fixture=_SKILL_EVAL_FIXTURE,
                 tags=["planning", "itinerary", "artifact-first"],
@@ -287,6 +297,7 @@ def _default_skill_contracts() -> list[SkillContract]:
                 owner="verification-subagent",
                 version="2026.03",
                 docs_path=_SKILL_CATALOG_DOC,
+                test_fixture=_SKILL_TEST_FIXTURE,
                 prompt_asset=_SKILL_PROMPT_ANCHOR,
                 eval_fixture=_SKILL_EVAL_FIXTURE,
                 tags=["verification", "tips", "policy"],

@@ -25,6 +25,7 @@ STATIC_TARGETS = (
     "scripts/export_openapi_snapshot.py",
     "scripts/export_release_manifest.py",
     "scripts/release_harness_scorecard.py",
+    "scripts/skills_market_audit.py",
     "scripts/export_support_bundle.py",
     "scripts/export_sse_contract_snapshot.py",
     "scripts/runtime_backup.py",
@@ -57,6 +58,7 @@ Tasks:
   docstring              Run Python docstring audit.
   complexity             Run hotspot complexity budget gate.
   decision-records       Run ADR / RFC / design-review audit.
+  skills-market          Run the governed skills market audit.
   snapshots              Export OpenAPI and SSE contract snapshots.
   release-manifest       Export a local release manifest.
   support-bundle         Export a runtime support bundle.
@@ -235,6 +237,12 @@ def run_decision_records(python_executable: str) -> None:
     """Execute the strict ADR/RFC/design-review structure audit."""
 
     run_command([python_executable, "scripts/decision_record_audit.py", "--strict"])
+
+
+def run_skills_market_audit(python_executable: str) -> None:
+    """Execute the strict governed skills-market audit."""
+
+    run_command([python_executable, "scripts/skills_market_audit.py", "--strict"])
 
 
 def run_snapshots(python_executable: str) -> None:
@@ -429,6 +437,8 @@ def main() -> int:
         run_complexity_budget(python_executable)
     elif task == "decision-records":
         run_decision_records(python_executable)
+    elif task == "skills-market":
+        run_skills_market_audit(python_executable)
     elif task == "snapshots":
         run_snapshots(python_executable)
     elif task == "release-manifest":
@@ -441,6 +451,7 @@ def main() -> int:
         run_docstring_audit(python_executable)
         run_complexity_budget(python_executable)
         run_decision_records(python_executable)
+        run_skills_market_audit(python_executable)
         run_command([python_executable, "scripts/runtime_doctor.py", "--json"])
         run_snapshots(python_executable)
         run_release_harness_scorecard(python_executable)
