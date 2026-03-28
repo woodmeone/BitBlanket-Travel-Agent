@@ -20,6 +20,8 @@ from .supervisor_orchestration import (
     SupervisorPlanPreview,
     SupervisorPlanPreviewRequest,
     SupervisorRunRequest,
+    SupervisorToolHealthDiagnostics,
+    SupervisorToolHealthEntry,
     SupervisorRuntimeContext,
 )
 
@@ -41,5 +43,7 @@ __all__ = [
     "SupervisorPlanPreview",
     "SupervisorPlanPreviewRequest",
     "SupervisorRunRequest",
+    "SupervisorToolHealthDiagnostics",
+    "SupervisorToolHealthEntry",
     "SupervisorRuntimeContext",
 ]

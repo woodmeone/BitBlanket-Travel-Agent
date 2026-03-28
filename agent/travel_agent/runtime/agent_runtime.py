@@ -18,6 +18,7 @@ from ..contracts import (
     SupervisorPlanPreview,
     SupervisorPlanPreviewRequest,
     SupervisorRunRequest,
+    SupervisorToolHealthDiagnostics,
     SupervisorRuntimeContext,
 )
 from ..graph.state import TRAVEL_AGENT_SYSTEM_PROMPT
@@ -190,7 +191,7 @@ class AgentRuntime:
 
     def get_tool_health_diagnostics(self) -> dict[str, Any]:
         """Return tool diagnostics plus phase-1 skill and subagent metadata."""
-        diagnostics = dict(self.legacy_bridge.get_tool_health_diagnostics())
+        diagnostics = _coerce_tool_health_diagnostics_dict(self.legacy_bridge.get_tool_health_diagnostics())
         diagnostics["skills"] = self.skill_registry.to_dict()
         diagnostics["subagents"] = list(self.subagents)
         diagnostics["subagent_skills"] = {
@@ -439,3 +440,10 @@ def _coerce_plan_preview_dict(preview: Any) -> dict[str, Any]:
     if isinstance(preview, SupervisorPlanPreview):
         return preview.to_dict()
     return dict(preview) if isinstance(preview, dict) else {}
+
+
+def _coerce_tool_health_diagnostics_dict(diagnostics: Any) -> dict[str, Any]:
+    """Return a dictionary view for either the diagnostics contract or a compatibility dict."""
+    if isinstance(diagnostics, SupervisorToolHealthDiagnostics):
+        return diagnostics.to_dict()
+    return dict(diagnostics) if isinstance(diagnostics, dict) else {}

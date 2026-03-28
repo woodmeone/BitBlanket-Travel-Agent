@@ -8,6 +8,7 @@ from ..contracts import (
     SupervisorPlanPreview,
     SupervisorPlanPreviewRequest,
     SupervisorRunRequest,
+    SupervisorToolHealthDiagnostics,
     SupervisorRuntimeContext,
 )
 
@@ -33,7 +34,7 @@ class LegacyRuntimeBridge(Protocol):
     ) -> SupervisorPlanPreview:
         """Return one memory-aware plan preview from the legacy graph path."""
 
-    def get_tool_health_diagnostics(self) -> dict[str, Any]:
+    def get_tool_health_diagnostics(self) -> SupervisorToolHealthDiagnostics:
         """Return legacy graph tool-health diagnostics."""
 
 
@@ -63,8 +64,8 @@ class DefaultLegacyRuntimeBridge:
 
         return generate_supervisor_plan_preview(request=request, context=context)
 
-    def get_tool_health_diagnostics(self) -> dict[str, Any]:
+    def get_tool_health_diagnostics(self) -> SupervisorToolHealthDiagnostics:
         """Return tool-health diagnostics from the legacy graph compatibility path."""
-        from ..graph.legacy_runtime import get_tool_health_diagnostics
+        from ..graph.legacy_runtime import collect_supervisor_tool_health_diagnostics
 
-        return get_tool_health_diagnostics()
+        return collect_supervisor_tool_health_diagnostics()

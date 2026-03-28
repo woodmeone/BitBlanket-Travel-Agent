@@ -9,6 +9,7 @@ from agent.travel_agent.contracts import (
     SupervisorPlanPreview,
     SupervisorPlanPreviewRequest,
     SupervisorRunRequest,
+    SupervisorToolHealthDiagnostics,
     SupervisorRuntimeContext,
 )
 from agent.travel_agent.graph import legacy_runtime
@@ -168,3 +169,56 @@ def test_default_legacy_runtime_bridge_delegates_to_contract_shim(monkeypatch):
     assert observed["stream_context"] is context
     assert observed["preview_request"] is preview_request
     assert observed["preview_context"] is context
+
+
+def test_collect_supervisor_tool_health_diagnostics_uses_explicit_contract(monkeypatch):
+    """Legacy runtime diagnostics shim should normalize raw monitoring dictionaries into one contract."""
+
+    def _fake_get_tool_health_diagnostics():
+        return {
+            "runtime_config": {"stream_events_version": "v2"},
+            "tool_count": 1,
+            "open_circuit_count": 1,
+            "tools": {
+                "search_cities": {
+                    "consecutive_failures": 2,
+                    "open_until": 123.5,
+                    "is_circuit_open": True,
+                    "cooldown_remaining_seconds": 12,
+                }
+            },
+        }
+
+    monkeypatch.setattr(
+        legacy_runtime,
+        "get_tool_health_diagnostics",
+        _fake_get_tool_health_diagnostics,
+    )
+
+    diagnostics = legacy_runtime.collect_supervisor_tool_health_diagnostics()
+
+    assert isinstance(diagnostics, SupervisorToolHealthDiagnostics)
+    assert diagnostics.runtime_config["stream_events_version"] == "v2"
+    assert diagnostics.tool_count == 1
+    assert diagnostics.open_circuit_count == 1
+    assert diagnostics.tools["search_cities"].consecutive_failures == 2
+    assert diagnostics.tools["search_cities"].is_circuit_open is True
+
+
+def test_default_legacy_runtime_bridge_returns_tool_health_contract(monkeypatch):
+    """Bridge should delegate tool-health diagnostics to the typed legacy-runtime seam."""
+    expected = SupervisorToolHealthDiagnostics(
+        runtime_config={"stream_events_version": "v1"},
+        tool_count=2,
+        open_circuit_count=0,
+    )
+
+    monkeypatch.setattr(
+        legacy_runtime,
+        "collect_supervisor_tool_health_diagnostics",
+        lambda: expected,
+    )
+
+    diagnostics = DefaultLegacyRuntimeBridge().get_tool_health_diagnostics()
+
+    assert diagnostics is expected

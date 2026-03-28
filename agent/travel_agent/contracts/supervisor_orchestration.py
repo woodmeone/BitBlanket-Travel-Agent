@@ -1,4 +1,4 @@
-"""Contracts that describe supervisor runtime requests, preview results, and shared execution context."""
+"""Contracts that describe supervisor runtime requests, preview results, health diagnostics, and shared execution context."""
 
 from __future__ import annotations
 
@@ -88,6 +88,73 @@ class SupervisorPlanPreview:
         }
 
 
+@dataclass(slots=True)
+class SupervisorToolHealthEntry:
+    """Describe one normalized tool-health snapshot inside the legacy runtime seam."""
+
+    consecutive_failures: int = 0
+    open_until: float = 0.0
+    is_circuit_open: bool = False
+    cooldown_remaining_seconds: int = 0
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "SupervisorToolHealthEntry":
+        """Build one tool-health entry from a loose monitoring dictionary."""
+        item = dict(payload) if isinstance(payload, dict) else {}
+        return cls(
+            consecutive_failures=_coerce_int(item.get("consecutive_failures")),
+            open_until=_coerce_float(item.get("open_until")),
+            is_circuit_open=bool(item.get("is_circuit_open")),
+            cooldown_remaining_seconds=_coerce_int(item.get("cooldown_remaining_seconds")),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the JSON-serializable tool-health snapshot."""
+        return {
+            "consecutive_failures": self.consecutive_failures,
+            "open_until": self.open_until,
+            "is_circuit_open": self.is_circuit_open,
+            "cooldown_remaining_seconds": self.cooldown_remaining_seconds,
+        }
+
+
+@dataclass(slots=True)
+class SupervisorToolHealthDiagnostics:
+    """Describe the normalized tool-health diagnostics returned by the legacy runtime seam."""
+
+    runtime_config: dict[str, Any] = field(default_factory=dict)
+    tool_count: int = 0
+    open_circuit_count: int = 0
+    tools: dict[str, SupervisorToolHealthEntry] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "SupervisorToolHealthDiagnostics":
+        """Build one diagnostics contract from a legacy monitoring dictionary."""
+        diagnostics = dict(payload) if isinstance(payload, dict) else {}
+        raw_tools = diagnostics.get("tools")
+        tools = {
+            str(name): SupervisorToolHealthEntry.from_dict(item)
+            for name, item in dict(raw_tools).items()
+        } if isinstance(raw_tools, dict) else {}
+        return cls(
+            runtime_config=_copy_dict(diagnostics.get("runtime_config")),
+            tool_count=_coerce_int(diagnostics.get("tool_count")),
+            open_circuit_count=_coerce_int(diagnostics.get("open_circuit_count")),
+            tools=tools,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the JSON-serializable diagnostics payload for higher-level runtime layers."""
+        return {
+            "runtime_config": _copy_dict(self.runtime_config),
+            "tool_count": self.tool_count,
+            "open_circuit_count": self.open_circuit_count,
+            "tools": {
+                name: item.to_dict() for name, item in self.tools.items()
+            },
+        }
+
+
 def _coerce_text(value: Any, default: str = "") -> str:
     """Normalize an optional runtime value into text."""
     if value is None:
@@ -100,6 +167,22 @@ def _coerce_optional_text(value: Any) -> str | None:
     """Normalize an optional runtime value into text or ``None``."""
     text = _coerce_text(value)
     return text or None
+
+
+def _coerce_int(value: Any, default: int = 0) -> int:
+    """Normalize a loose numeric value into an integer."""
+    try:
+        return int(value)
+    except Exception:
+        return default
+
+
+def _coerce_float(value: Any, default: float = 0.0) -> float:
+    """Normalize a loose numeric value into a float."""
+    try:
+        return float(value)
+    except Exception:
+        return default
 
 
 def _copy_dict(value: Any) -> dict[str, Any]:

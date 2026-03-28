@@ -17,6 +17,7 @@ from ..contracts import (
     SupervisorRunRequest,
     SupervisorRuntimeContext,
     SupervisorStageEvent,
+    SupervisorToolHealthDiagnostics,
     SupervisorToolEndEvent,
     SupervisorToolStartEvent,
 )
@@ -67,6 +68,11 @@ def generate_supervisor_plan_preview(
             routing_llm=context.routing_llm,
         )
     )
+
+
+def collect_supervisor_tool_health_diagnostics() -> SupervisorToolHealthDiagnostics:
+    """Return the typed legacy-runtime diagnostics contract used by the bridge seam."""
+    return SupervisorToolHealthDiagnostics.from_dict(get_tool_health_diagnostics())
 
 
 def _extract_text_from_chunk(chunk: Any) -> str:
