@@ -70,5 +70,10 @@ observability:
         assert "contracts/sse-contract.snapshot.json" in names
 
         manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
-        assert manifest["doctor_status"] == "ok"
-        assert manifest["release_manifest_exists"] is True
+        assert manifest["runtime_health"]["doctor_status"] == "ok"
+        assert manifest["runtime_health"]["runtime_files_count"] >= 1
+        assert manifest["release_evidence"]["release_manifest_exists"] is True
+        assert manifest["delivery_evidence"]["contract_snapshots"] == [
+            "openapi.snapshot.json",
+            "sse-contract.snapshot.json",
+        ]

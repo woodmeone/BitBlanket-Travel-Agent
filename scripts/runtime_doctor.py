@@ -30,6 +30,7 @@ ensure_project_paths = _bootstrap_paths.ensure_project_paths
 ensure_project_paths()
 
 from scripts.runtime_data_utils import DEFAULT_BACKUP_DIR, ROOT, discover_runtime_files
+from scripts.runtime_ops_contracts import RuntimeDoctorCheck, RuntimeDoctorReport, RuntimeDoctorSummary
 
 
 DEFAULT_OPENAPI_SNAPSHOT = ROOT / "docs" / "reference" / "openapi.snapshot.json"
@@ -41,14 +42,9 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _build_check(name: str, status: str, message: str, **details: Any) -> dict[str, Any]:
+def _build_check(name: str, status: str, message: str, **details: Any) -> RuntimeDoctorCheck:
     """Build one normalized diagnostic check record."""
-    return {
-        "name": name,
-        "status": status,
-        "message": message,
-        "details": details,
-    }
+    return RuntimeDoctorCheck(name=name, status=status, message=message, details=details)
 
 
 def _load_yaml_mapping(path: Path) -> dict[str, Any]:
@@ -67,7 +63,7 @@ def _get_mapping_child(payload: Mapping[str, Any], key: str) -> dict[str, Any]:
     return {}
 
 
-def _check_server_config(path: Path) -> dict[str, Any]:
+def _check_server_config(path: Path) -> RuntimeDoctorCheck:
     """Inspect server config presence and top-level runtime fields."""
     if not path.exists():
         return _build_check(
@@ -107,7 +103,7 @@ def _check_server_config(path: Path) -> dict[str, Any]:
     )
 
 
-def _check_llm_config(path: Path) -> dict[str, Any]:
+def _check_llm_config(path: Path) -> RuntimeDoctorCheck:
     """Inspect llm config structure and minimum active-model readiness."""
     if not path.exists():
         return _build_check(
@@ -168,7 +164,7 @@ def _check_llm_config(path: Path) -> dict[str, Any]:
     )
 
 
-def _check_data_dir(path: Path) -> dict[str, Any]:
+def _check_data_dir(path: Path) -> RuntimeDoctorCheck:
     """Verify runtime data directory is writable."""
     try:
         path.mkdir(parents=True, exist_ok=True)
@@ -184,7 +180,7 @@ def _check_data_dir(path: Path) -> dict[str, Any]:
         )
 
 
-def _check_runtime_files(project_root: Path) -> dict[str, Any]:
+def _check_runtime_files(project_root: Path) -> RuntimeDoctorCheck:
     """Summarize known runtime files currently present under the project root."""
     try:
         files = discover_runtime_files(project_root)
@@ -211,7 +207,7 @@ def _check_runtime_files(project_root: Path) -> dict[str, Any]:
     )
 
 
-def _check_backups(path: Path) -> dict[str, Any]:
+def _check_backups(path: Path) -> RuntimeDoctorCheck:
     """Inspect runtime backup archive inventory."""
     try:
         path.mkdir(parents=True, exist_ok=True)
@@ -230,7 +226,7 @@ def _check_backups(path: Path) -> dict[str, Any]:
     )
 
 
-def _check_json_snapshot(name: str, path: Path) -> dict[str, Any]:
+def _check_json_snapshot(name: str, path: Path) -> RuntimeDoctorCheck:
     """Validate one JSON contract snapshot file."""
     if not path.exists():
         return _build_check(name, "degraded", "Snapshot file is missing.", path=str(path), exists=False)
@@ -258,23 +254,23 @@ def _check_json_snapshot(name: str, path: Path) -> dict[str, Any]:
     )
 
 
-def _check_contract_snapshots(openapi_snapshot: Path, sse_snapshot: Path) -> dict[str, Any]:
+def _check_contract_snapshots(openapi_snapshot: Path, sse_snapshot: Path) -> RuntimeDoctorCheck:
     """Validate OpenAPI and SSE contract snapshot files."""
     openapi_check = _check_json_snapshot("openapi_snapshot", openapi_snapshot)
     sse_check = _check_json_snapshot("sse_snapshot", sse_snapshot)
-    overall_status = "ok" if all(item["status"] == "ok" for item in (openapi_check, sse_check)) else "degraded"
+    overall_status = "ok" if all(item.status == "ok" for item in (openapi_check, sse_check)) else "degraded"
     return _build_check(
         "contract_snapshots",
         overall_status,
         "Contract snapshots validated." if overall_status == "ok" else "One or more contract snapshots need attention.",
         snapshots={
-            "openapi": openapi_check,
-            "sse": sse_check,
+            "openapi": openapi_check.to_dict(),
+            "sse": sse_check.to_dict(),
         },
     )
 
 
-def _probe_http_endpoints(base_url: str, *, expect_metrics: bool) -> dict[str, Any]:
+def _probe_http_endpoints(base_url: str, *, expect_metrics: bool) -> RuntimeDoctorCheck:
     """Optionally probe live HTTP endpoints for health, readiness, and metrics."""
     checks: dict[str, dict[str, Any]] = {}
     statuses: list[str] = []
@@ -287,7 +283,12 @@ def _probe_http_endpoints(base_url: str, *, expect_metrics: bool) -> dict[str, A
     with httpx.Client(timeout=3.0) as client:
         for name, url in urls.items():
             if name == "metrics" and not expect_metrics:
-                checks[name] = _build_check(name, "ok", "Metrics probe skipped because metrics are disabled by config.", url=url)
+                checks[name] = _build_check(
+                    name,
+                    "ok",
+                    "Metrics probe skipped because metrics are disabled by config.",
+                    url=url,
+                ).to_dict()
                 statuses.append("ok")
                 continue
             try:
@@ -306,10 +307,10 @@ def _probe_http_endpoints(base_url: str, *, expect_metrics: bool) -> dict[str, A
                     url=url,
                     status_code=response.status_code,
                     content_type=response.headers.get("content-type", ""),
-                )
+                ).to_dict()
             except Exception as exc:
-                checks[name] = _build_check(name, "degraded", f"Probe failed: {exc}", url=url)
-            statuses.append(checks[name]["status"])
+                checks[name] = _build_check(name, "degraded", f"Probe failed: {exc}", url=url).to_dict()
+            statuses.append(str(checks[name]["status"]))
 
     overall_status = "ok" if all(status == "ok" for status in statuses) else "degraded"
     return _build_check(
@@ -335,7 +336,7 @@ def run_runtime_doctor(
     llm_config_path = project_root / "config" / "llm_config.yaml"
     data_dir = project_root / "data"
 
-    checks: dict[str, dict[str, Any]] = {
+    checks: dict[str, RuntimeDoctorCheck] = {
         "server_config": _check_server_config(server_config_path),
         "llm_config": _check_llm_config(llm_config_path),
         "data_dir": _check_data_dir(data_dir),
@@ -345,7 +346,7 @@ def run_runtime_doctor(
     }
 
     server_metrics_enabled = True
-    server_details = checks["server_config"].get("details", {})
+    server_details = checks["server_config"].details
     if isinstance(server_details, dict):
         server_metrics_enabled = bool(server_details.get("metrics_enabled", True))
 
@@ -353,9 +354,9 @@ def run_runtime_doctor(
         checks["http_probe"] = _probe_http_endpoints(base_url, expect_metrics=server_metrics_enabled)
 
     required_checks = {"llm_config", "data_dir"}
-    required_failed = any(checks[name]["status"] == "not_ready" for name in required_checks)
-    degraded = any(item["status"] == "degraded" for item in checks.values())
-    ok_checks = sum(1 for item in checks.values() if item["status"] == "ok")
+    required_failed = any(checks[name].status == "not_ready" for name in required_checks)
+    degraded = any(item.status == "degraded" for item in checks.values())
+    ok_checks = sum(1 for item in checks.values() if item.status == "ok")
 
     if required_failed:
         status = "not_ready"
@@ -364,30 +365,32 @@ def run_runtime_doctor(
     else:
         status = "ok"
 
-    return {
-        "status": status,
-        "checked_at": utc_now_iso(),
-        "project_root": str(project_root),
-        "summary": {
-            "checks_total": len(checks),
-            "checks_ok": ok_checks,
-            "checks_degraded": sum(1 for item in checks.values() if item["status"] == "degraded"),
-            "checks_not_ready": sum(1 for item in checks.values() if item["status"] == "not_ready"),
-        },
-        "checks": checks,
-    }
+    report = RuntimeDoctorReport(
+        status=status,
+        checked_at=utc_now_iso(),
+        project_root=str(project_root),
+        summary=RuntimeDoctorSummary(
+            checks_total=len(checks),
+            checks_ok=ok_checks,
+            checks_degraded=sum(1 for item in checks.values() if item.status == "degraded"),
+            checks_not_ready=sum(1 for item in checks.values() if item.status == "not_ready"),
+        ),
+        checks=checks,
+    )
+    return report.to_dict()
 
 
-def render_text_report(report: dict[str, Any]) -> str:
+def render_text_report(report: dict[str, Any] | RuntimeDoctorReport) -> str:
     """Render doctor report as human-readable text."""
+    normalized = report if isinstance(report, RuntimeDoctorReport) else RuntimeDoctorReport.from_dict(report)
     lines = [
-        f"Runtime doctor status: {report.get('status')}",
-        f"Checked at: {report.get('checked_at')}",
-        f"Project root: {report.get('project_root')}",
+        f"Runtime doctor status: {normalized.status}",
+        f"Checked at: {normalized.checked_at}",
+        f"Project root: {normalized.project_root}",
         "",
     ]
-    for name, check in report.get("checks", {}).items():
-        lines.append(f"[{check.get('status', 'unknown').upper()}] {name}: {check.get('message', '')}")
+    for name, check in normalized.checks.items():
+        lines.append(f"[{check.status.upper()}] {name}: {check.message}")
     return "\n".join(lines)
 
 

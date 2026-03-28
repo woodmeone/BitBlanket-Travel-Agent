@@ -23,9 +23,11 @@ STATIC_TARGETS = (
     "scripts/dev.py",
     "scripts/bootstrap.py",
     "scripts/export_openapi_snapshot.py",
+    "scripts/export_runtime_doctor_snapshot.py",
     "scripts/export_release_manifest.py",
     "scripts/release_harness_scorecard.py",
     "scripts/runtime_contract_audit.py",
+    "scripts/runtime_ops_contracts.py",
     "scripts/skills_market_audit.py",
     "scripts/export_support_bundle.py",
     "scripts/export_sse_contract_snapshot.py",
@@ -61,7 +63,7 @@ Tasks:
   decision-records       Run ADR / RFC / design-review audit.
   skills-market          Run the governed skills market audit.
   runtime-contracts      Run the typed runtime seam audit.
-  snapshots              Export OpenAPI and SSE contract snapshots.
+  snapshots              Export OpenAPI, SSE, and runtime-doctor contract snapshots.
   release-manifest       Export a local release manifest.
   support-bundle         Export a runtime support bundle.
   infra-check            Run local infra-quality checks, exports, and compose validation when Docker is available.
@@ -254,10 +256,11 @@ def run_runtime_contract_audit(python_executable: str) -> None:
 
 
 def run_snapshots(python_executable: str) -> None:
-    """Refresh OpenAPI and SSE contract snapshots."""
+    """Refresh OpenAPI, SSE, and runtime-doctor contract snapshots."""
 
     run_command([python_executable, "scripts/export_openapi_snapshot.py"])
     run_command([python_executable, "scripts/export_sse_contract_snapshot.py"])
+    run_command([python_executable, "scripts/export_runtime_doctor_snapshot.py"])
 
 
 def run_release_manifest(python_executable: str, args: argparse.Namespace) -> None:

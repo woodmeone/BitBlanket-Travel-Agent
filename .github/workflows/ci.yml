@@ -53,9 +53,11 @@ jobs:
             scripts/dev.py \
             scripts/bootstrap.py \
             scripts/export_openapi_snapshot.py \
+            scripts/export_runtime_doctor_snapshot.py \
             scripts/export_release_manifest.py \
             scripts/release_harness_scorecard.py \
             scripts/runtime_contract_audit.py \
+            scripts/runtime_ops_contracts.py \
             scripts/skills_market_audit.py \
             scripts/export_support_bundle.py \
             scripts/export_sse_contract_snapshot.py \
@@ -79,9 +81,11 @@ jobs:
             scripts/dev.py \
             scripts/bootstrap.py \
             scripts/export_openapi_snapshot.py \
+            scripts/export_runtime_doctor_snapshot.py \
             scripts/export_release_manifest.py \
             scripts/release_harness_scorecard.py \
             scripts/runtime_contract_audit.py \
+            scripts/runtime_ops_contracts.py \
             scripts/skills_market_audit.py \
             scripts/export_support_bundle.py \
             scripts/export_sse_contract_snapshot.py \
@@ -127,6 +131,12 @@ jobs:
 
       - name: Verify SSE contract snapshot is up to date
         run: git diff --exit-code -- docs/reference/sse-contract.snapshot.json
+
+      - name: Export runtime doctor snapshot
+        run: python scripts/export_runtime_doctor_snapshot.py
+
+      - name: Verify runtime doctor snapshot is up to date
+        run: git diff --exit-code -- docs/reference/runtime-doctor.snapshot.json
 
       - name: Run benchmark report
         run: python scripts/agent_benchmark.py --output-dir docs/benchmarks
@@ -189,6 +199,7 @@ jobs:
             echo "- Secret scan: \`gitleaks dir /repo --config /repo/.gitleaks.toml\`"
             echo "- OpenAPI snapshot: \`docs/reference/openapi.snapshot.json\`"
             echo "- SSE snapshot: \`docs/reference/sse-contract.snapshot.json\`"
+            echo "- Runtime doctor snapshot: \`docs/reference/runtime-doctor.snapshot.json\`"
             echo "- Support bundle script: \`python scripts/export_support_bundle.py\`"
             echo "- Benchmark report: \`docs/benchmarks/agent_benchmark_latest.md\`"
             echo "- Trend report: \`docs/benchmarks/agent_benchmark_trend_latest.md\`"

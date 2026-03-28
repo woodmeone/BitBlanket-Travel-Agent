@@ -30,6 +30,13 @@ ensure_project_paths = _bootstrap_paths.ensure_project_paths
 ensure_project_paths()
 
 from scripts.runtime_data_utils import discover_runtime_files, snapshot_timestamp_slug
+from scripts.runtime_ops_contracts import (
+    RuntimeDoctorReport,
+    SupportBundleDeliveryEvidenceSection,
+    SupportBundleManifest,
+    SupportBundleReleaseEvidenceSection,
+    SupportBundleRuntimeHealthSection,
+)
 from scripts.runtime_doctor import render_text_report, run_runtime_doctor
 
 
@@ -88,25 +95,37 @@ def export_support_bundle(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    doctor_report = run_runtime_doctor(project_root=project_root, base_url=base_url)
+    doctor_report = RuntimeDoctorReport.from_dict(
+        run_runtime_doctor(project_root=project_root, base_url=base_url)
+    )
     runtime_files = discover_runtime_files(project_root)
     http_snapshot = _http_snapshot(base_url) if base_url else None
+    included_contract_snapshots = [
+        snapshot_name
+        for snapshot_name in ("openapi.snapshot.json", "sse-contract.snapshot.json")
+        if (project_root / "docs" / "reference" / snapshot_name).exists()
+    ]
 
     bundle_name = f"support_bundle_{snapshot_timestamp_slug()}.zip"
     bundle_path = output_dir / bundle_name
-    manifest = {
-        "created_at": utc_now_iso(),
-        "project_root": str(project_root),
-        "base_url": base_url,
-        "doctor_status": doctor_report.get("status"),
-        "runtime_files_count": len(runtime_files),
-        "includes_http_snapshot": http_snapshot is not None,
-        "release_manifest_exists": Path(release_manifest_path).exists(),
-    }
+    manifest = SupportBundleManifest(
+        created_at=utc_now_iso(),
+        project_root=str(project_root),
+        base_url=base_url,
+        runtime_health=SupportBundleRuntimeHealthSection.from_doctor_report(doctor_report),
+        release_evidence=SupportBundleReleaseEvidenceSection(
+            release_manifest_exists=Path(release_manifest_path).exists(),
+            release_manifest_path=str(release_manifest_path) if Path(release_manifest_path).exists() else None,
+        ),
+        delivery_evidence=SupportBundleDeliveryEvidenceSection(
+            contract_snapshots=included_contract_snapshots,
+            includes_http_snapshot=http_snapshot is not None,
+        ),
+    )
 
     with zipfile.ZipFile(bundle_path, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
-        archive.writestr("doctor-report.json", json.dumps(doctor_report, ensure_ascii=False, indent=2) + "\n")
+        archive.writestr("manifest.json", json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2) + "\n")
+        archive.writestr("doctor-report.json", json.dumps(doctor_report.to_dict(), ensure_ascii=False, indent=2) + "\n")
         archive.writestr("doctor-report.txt", render_text_report(doctor_report) + "\n")
         archive.writestr(
             "runtime-files.json",

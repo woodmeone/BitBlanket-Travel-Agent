@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import scripts.runtime_doctor as runtime_doctor
+from scripts.runtime_ops_contracts import RuntimeDoctorReport
 from scripts.runtime_doctor import run_runtime_doctor
 
 
@@ -60,6 +61,9 @@ models:
     assert report["checks"]["llm_config"]["status"] == "ok"
     assert report["checks"]["contract_snapshots"]["status"] == "ok"
     assert report["checks"]["backups"]["details"]["archive_count"] == 1
+    normalized = RuntimeDoctorReport.from_dict(report)
+    assert normalized.summary.checks_total >= 6
+    assert normalized.checks["server_config"].details["web_port"] == 38000
 
 
 def test_runtime_doctor_reports_not_ready_when_llm_config_missing(tmp_path):
