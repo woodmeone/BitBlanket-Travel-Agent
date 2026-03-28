@@ -168,6 +168,7 @@ python scripts/dev.py help
 
 配套的结构审计脚本是 [`scripts/decision_record_audit.py`](/D:/moyuan/moyuan-travel-agent/scripts/decision_record_audit.py)，当前已接入本地 `python scripts/dev.py infra-check` 和 CI。
 配套的 skills 四件套审计脚本是 [`scripts/skills_market_audit.py`](/D:/moyuan/moyuan-travel-agent/scripts/skills_market_audit.py)，当前也已接入本地 `python scripts/dev.py infra-check` 和 CI。
+配套的 runtime seam 审计脚本是 [`scripts/runtime_contract_audit.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_contract_audit.py)，当前会固定 `AgentRuntime -> legacy_bridge -> legacy_runtime` 的 typed contract 边界，并已接入本地 `python scripts/dev.py infra-check` 和 CI。
 
 ### `config/`
 

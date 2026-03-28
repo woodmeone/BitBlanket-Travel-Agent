@@ -44,7 +44,7 @@
 - `我要看仓库规范 / 命令入口 / 容器校验`：
   优先看 [getting-started/development-workflow.md](getting-started/development-workflow.md)、[reference/project-structure.md](reference/project-structure.md)、[architecture/infrastructure-foundations.md](architecture/infrastructure-foundations.md)
 - `我要发起大改动 / 补 ADR / 写设计评审`：
-  优先看 [governance/README.md](governance/README.md)、[architecture/harness-engineering-next-cycle-roadmap.md](architecture/harness-engineering-next-cycle-roadmap.md)
+  优先看 [governance/README.md](governance/README.md)、[architecture/harness-engineering-runtime-source-roadmap.md](architecture/harness-engineering-runtime-source-roadmap.md)
 - `我要做 Agent 架构升级 / agent-subagent-skills 规划`：
   优先看 [architecture/agent-subagent-skills-architecture-roadmap.md](architecture/agent-subagent-skills-architecture-roadmap.md)、[architecture/system-architecture.md](architecture/system-architecture.md)、[teaching/04-agent-core-tools-memory-checkpoint.md](teaching/04-agent-core-tools-memory-checkpoint.md)
 - `我要接新 skill / 看 skills market 规范`：
@@ -79,7 +79,7 @@
 ### Architecture
 
 - [architecture/system-architecture.md](architecture/system-architecture.md): 整体系统架构与链路说明
-- [architecture/harness-engineering-next-cycle-roadmap.md](architecture/harness-engineering-next-cycle-roadmap.md): 已完成基线重构后的下一阶段 Harness Engineering 活动规划
+- [architecture/harness-engineering-runtime-source-roadmap.md](architecture/harness-engineering-runtime-source-roadmap.md): 当前活动规划，聚焦 typed runtime seam、runtime source 替换与 ops/delivery contract 收口
 - [architecture/agent-subagent-skills-architecture-roadmap.md](architecture/agent-subagent-skills-architecture-roadmap.md): Agent 应用层与 `Supervisor -> Subagents -> Skills` 演进路线图
 - [architecture/infrastructure-foundations.md](architecture/infrastructure-foundations.md): 运行与部署、配置、readiness、CI、trace、metrics 总览
 - [architecture/data-storage.md](architecture/data-storage.md): 数据落盘与持久化策略
@@ -131,6 +131,7 @@
 - `reference/complexity-budget.json`: 当前热点文件复杂度预算基线
 - `scripts/decision_record_audit.py`: ADR / RFC / Design Review 记录结构审计脚本
 - `scripts/skills_market_audit.py`: 审计默认 skills market 是否补齐 `schema + tests + docs + eval` 四件套
+- `scripts/runtime_contract_audit.py`: 审计 `AgentRuntime -> legacy_bridge -> legacy_runtime` 的 typed seam 是否保持显式 contract
 - `compose.yaml` / `Dockerfile*`: 支持通过 `PYTHON_BASE_IMAGE`、`NODE_BASE_IMAGE` 切换基础镜像
 - [benchmarks/agent_benchmark_latest.md](benchmarks/agent_benchmark_latest.md): 最新 benchmark 报告
 - [benchmarks/agent_benchmark_trend_latest.md](benchmarks/agent_benchmark_trend_latest.md): benchmark 趋势报告

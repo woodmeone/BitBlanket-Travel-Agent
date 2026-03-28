@@ -127,6 +127,7 @@ moyuan-travel-agent/
 - `scripts/complexity_budget.py` 现在会对高复杂度热点文件执行“只减不增”的行数预算门禁，并用 `docs/reference/complexity-budget.json` 记录当前预算基线；`--strict` 会拦截热点文件无序膨胀
 - `docs/governance/` 现在统一承接 `ADR / RFC / Design Review` 流程，配套 `scripts/decision_record_audit.py` 会检查记录模板和必填章节，避免跨层设计决策再次漂回口头约定
 - `scripts/skills_market_audit.py` 现在会强制默认 `skills market` 满足 `schema + tests + docs + eval` 四件套，并检查 `docs_path / test_fixture / eval_fixture / onboarding_doc` 是否可追溯
+- `scripts/runtime_contract_audit.py` 现在会守住 `AgentRuntime -> legacy_bridge -> legacy_runtime` 这条 typed seam，避免 runtime 兼容层重新退化回散落的 loose kwargs 和直接 graph import
 - `frontend/src/components/MessageList.tsx` 负责消息区装配，渲染与诊断逻辑落在 `frontend/src/components/message-list/`
 - `frontend/src/components/TravelPlanToolkit.tsx` 负责 trip-plan workspace 装配，`travel-plan-toolkit/sections.tsx` 已退化成 facade，真实 itinerary / compare / practical 视图块落在 `frontend/src/components/travel-plan-toolkit/sections/`，而 export/share/favorites/route 这类动作编排已经下沉到 `travel-plan-toolkit/useTravelPlanToolkitActions.ts`
 - `frontend/src/components/travel-plan-toolkit/shared/artifact.ts` 负责统一的 artifact delivery descriptor，集中收口 overview 指标、destinations / budget / verification 摘要、分享文本、导出文件名和 HTML 交付内容；当 `TravelPlanToolkit` 已拿到结构化 artifact 时，overview、分享短链、图片导出和 share html 内容都会优先消费同一份 descriptor，而不是继续各自拼装
@@ -245,6 +246,7 @@ python scripts/dev.py container-smoke
 
 - `test`: 后端 `unit/local` + 前端 `lint/test/build`
 - `infra-check`: `ruff`、`mypy`、`docstring`、`complexity budget`、`decision records`、runtime doctor、契约快照、release harness scorecard、release manifest，以及在 Docker 可用时附带 compose 渲染校验
+  同时会执行 `runtime_contract_audit --strict`，固定 supervisor/runtime seam 的显式 contract
   当前 `runtime_doctor` 遇到被占用的 runtime 文件会返回 `degraded` 检查项，而不是直接中断整条治理链
 - `compose-config`: 渲染默认和 `observability` profile 的 Compose 配置
 - `container-smoke`: 本地构建 backend / frontend 镜像
@@ -427,7 +429,8 @@ python scripts/docstring_audit.py --strict
 python scripts/complexity_budget.py --strict
 python scripts/decision_record_audit.py --strict
 python scripts/skills_market_audit.py --strict
-mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
+python scripts/runtime_contract_audit.py --strict
+mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_openapi_snapshot.py scripts/export_release_manifest.py scripts/release_harness_scorecard.py scripts/runtime_contract_audit.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
 ```
 
 其中 `python scripts/docstring_audit.py --strict` 当前会同时检查两类问题：
@@ -518,7 +521,7 @@ mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_o
 - `我要看部署 / 配置 / readiness / trace / CI`：
   优先看 [docs/architecture/infrastructure-foundations.md](docs/architecture/infrastructure-foundations.md)、[docs/reference/configuration-reference.md](docs/reference/configuration-reference.md)、[docs/testing/testing-guide.md](docs/testing/testing-guide.md)
 - `我要发起大改动 / 补 ADR / 写设计评审`：
-  优先看 [docs/governance/README.md](docs/governance/README.md)、[docs/architecture/harness-engineering-next-cycle-roadmap.md](docs/architecture/harness-engineering-next-cycle-roadmap.md)
+  优先看 [docs/governance/README.md](docs/governance/README.md)、[docs/architecture/harness-engineering-runtime-source-roadmap.md](docs/architecture/harness-engineering-runtime-source-roadmap.md)
 - `我要接一个新的 skill / 看 skills market 约束`：
   优先看 [docs/reference/skills-market-catalog.md](docs/reference/skills-market-catalog.md)、[docs/governance/skills-market-onboarding.md](docs/governance/skills-market-onboarding.md)、[docs/teaching/04-agent-core-tools-memory-checkpoint.md](docs/teaching/04-agent-core-tools-memory-checkpoint.md)
 - `面试前 2 小时复习`：
