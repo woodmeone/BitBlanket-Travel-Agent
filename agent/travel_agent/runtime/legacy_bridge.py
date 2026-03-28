@@ -46,20 +46,9 @@ class DefaultLegacyRuntimeBridge:
         context: SupervisorRuntimeContext,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Yield runtime events from the legacy memory-aware streaming entrypoint."""
-        from ..graph.legacy_runtime import run_travel_agent_streaming_with_memory
+        from ..graph.legacy_runtime import stream_supervisor_run
 
-        async for event in run_travel_agent_streaming_with_memory(
-            user_message=request.user_message,
-            llm=context.llm,
-            tools=context.tools,
-            session_id=request.session_id,
-            memory_manager=context.memory_manager,
-            system_prompt=request.system_prompt,
-            persist_memory=request.persist_memory,
-            run_id=request.run_id,
-            chat_mode=request.chat_mode,
-            routing_llm=context.routing_llm,
-        ):
+        async for event in stream_supervisor_run(request=request, context=context):
             yield event
 
     def generate_plan_preview_with_memory(
@@ -69,18 +58,9 @@ class DefaultLegacyRuntimeBridge:
         context: SupervisorRuntimeContext,
     ) -> dict[str, Any]:
         """Return legacy graph plan preview data without exposing builder imports upstream."""
-        from ..graph.legacy_runtime import generate_plan_preview_with_memory
+        from ..graph.legacy_runtime import generate_supervisor_plan_preview
 
-        return generate_plan_preview_with_memory(
-            user_message=request.user_message,
-            llm=context.llm,
-            tools=context.tools,
-            session_id=request.session_id,
-            memory_manager=context.memory_manager,
-            system_prompt=request.system_prompt,
-            chat_mode=request.chat_mode,
-            routing_llm=context.routing_llm,
-        )
+        return generate_supervisor_plan_preview(request=request, context=context)
 
     def get_tool_health_diagnostics(self) -> dict[str, Any]:
         """Return tool-health diagnostics from the legacy graph compatibility path."""

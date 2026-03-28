@@ -11,7 +11,10 @@ from langchain_core.tools import Tool
 from ..contracts import (
     SupervisorChunkEvent,
     SupervisorDoneEvent,
+    SupervisorPlanPreviewRequest,
     SupervisorReasoningEvent,
+    SupervisorRunRequest,
+    SupervisorRuntimeContext,
     SupervisorStageEvent,
     SupervisorToolEndEvent,
     SupervisorToolStartEvent,
@@ -22,6 +25,45 @@ from .state import TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_state
 
 TOOL_RESULT_PREVIEW_LIMIT = 200
 _DEFAULT_CHECKPOINTER = None
+
+
+async def stream_supervisor_run(
+    *,
+    request: SupervisorRunRequest,
+    context: SupervisorRuntimeContext,
+):
+    """Bridge one supervisor-stream request into the legacy graph runtime shim."""
+    async for event in run_travel_agent_streaming_with_memory(
+        user_message=request.user_message,
+        llm=context.llm,
+        tools=context.tools,
+        session_id=request.session_id,
+        memory_manager=context.memory_manager,
+        system_prompt=request.system_prompt,
+        persist_memory=request.persist_memory,
+        run_id=request.run_id,
+        chat_mode=request.chat_mode,
+        routing_llm=context.routing_llm,
+    ):
+        yield event
+
+
+def generate_supervisor_plan_preview(
+    *,
+    request: SupervisorPlanPreviewRequest,
+    context: SupervisorRuntimeContext,
+) -> dict[str, Any]:
+    """Bridge one supervisor preview request into the legacy graph runtime shim."""
+    return generate_plan_preview_with_memory(
+        user_message=request.user_message,
+        llm=context.llm,
+        tools=context.tools,
+        session_id=request.session_id,
+        memory_manager=context.memory_manager,
+        system_prompt=request.system_prompt,
+        chat_mode=request.chat_mode,
+        routing_llm=context.routing_llm,
+    )
 
 
 def _extract_text_from_chunk(chunk: Any) -> str:
