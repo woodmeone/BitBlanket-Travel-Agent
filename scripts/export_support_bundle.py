@@ -31,6 +31,8 @@ ensure_project_paths()
 
 from scripts.runtime_data_utils import discover_runtime_files, snapshot_timestamp_slug
 from scripts.runtime_ops_contracts import (
+    ReleaseHarnessScorecard,
+    ReleaseManifest,
     RuntimeDoctorReport,
     SupportBundleDeliveryEvidenceSection,
     SupportBundleManifest,
@@ -42,6 +44,7 @@ from scripts.runtime_doctor import render_text_report, run_runtime_doctor
 
 DEFAULT_OUTPUT_DIR = ROOT / "artifacts" / "support"
 DEFAULT_RELEASE_MANIFEST = ROOT / "artifacts" / "release" / "release-manifest.json"
+DEFAULT_RELEASE_SCORECARD = ROOT / "docs" / "benchmarks" / "release_harness_scorecard_latest.json"
 
 
 def utc_now_iso() -> str:
@@ -89,6 +92,7 @@ def export_support_bundle(
     output_dir: Path = DEFAULT_OUTPUT_DIR,
     base_url: str | None = None,
     release_manifest_path: Path = DEFAULT_RELEASE_MANIFEST,
+    release_scorecard_path: Path = DEFAULT_RELEASE_SCORECARD,
 ) -> Path:
     """Export a zip bundle containing runtime diagnostics and supporting artifacts."""
     project_root = Path(project_root)
@@ -100,6 +104,16 @@ def export_support_bundle(
     )
     runtime_files = discover_runtime_files(project_root)
     http_snapshot = _http_snapshot(base_url) if base_url else None
+    release_manifest = None
+    if Path(release_manifest_path).exists():
+        release_manifest = ReleaseManifest.from_dict(
+            json.loads(Path(release_manifest_path).read_text(encoding="utf-8"))
+        )
+    release_scorecard = None
+    if Path(release_scorecard_path).exists():
+        release_scorecard = ReleaseHarnessScorecard.from_dict(
+            json.loads(Path(release_scorecard_path).read_text(encoding="utf-8"))
+        )
     included_contract_snapshots = [
         snapshot_name
         for snapshot_name in ("openapi.snapshot.json", "sse-contract.snapshot.json")
@@ -113,9 +127,11 @@ def export_support_bundle(
         project_root=str(project_root),
         base_url=base_url,
         runtime_health=SupportBundleRuntimeHealthSection.from_doctor_report(doctor_report),
-        release_evidence=SupportBundleReleaseEvidenceSection(
-            release_manifest_exists=Path(release_manifest_path).exists(),
-            release_manifest_path=str(release_manifest_path) if Path(release_manifest_path).exists() else None,
+        release_evidence=SupportBundleReleaseEvidenceSection.from_release_artifacts(
+            manifest=release_manifest,
+            manifest_path=str(release_manifest_path),
+            scorecard=release_scorecard,
+            scorecard_path=str(release_scorecard_path),
         ),
         delivery_evidence=SupportBundleDeliveryEvidenceSection(
             contract_snapshots=included_contract_snapshots,
@@ -147,6 +163,8 @@ def export_support_bundle(
 
         if Path(release_manifest_path).exists():
             archive.write(release_manifest_path, arcname="release-manifest.json")
+        if Path(release_scorecard_path).exists():
+            archive.write(release_scorecard_path, arcname="release-harness-scorecard.json")
 
         for snapshot_name in ("openapi.snapshot.json", "sse-contract.snapshot.json"):
             snapshot_path = project_root / "docs" / "reference" / snapshot_name
@@ -194,6 +212,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=str(DEFAULT_RELEASE_MANIFEST),
         help="Path to an existing release manifest included in the bundle when present.",
     )
+    parser.add_argument(
+        "--release-scorecard",
+        default=str(DEFAULT_RELEASE_SCORECARD),
+        help="Path to an existing release harness scorecard included in the bundle when present.",
+    )
     return parser
 
 
@@ -205,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
         output_dir=Path(args.output_dir),
         base_url=str(args.base_url) if args.base_url else None,
         release_manifest_path=Path(args.release_manifest),
+        release_scorecard_path=Path(args.release_scorecard),
     )
     print(f"Support bundle exported to: {bundle_path}")
     return 0

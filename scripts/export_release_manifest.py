@@ -9,7 +9,6 @@ import importlib.util
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 if __package__:
     _bootstrap_paths = importlib.import_module(f"{__package__}.bootstrap_paths")
@@ -26,6 +25,13 @@ ensure_project_paths = _bootstrap_paths.ensure_project_paths
 ensure_project_paths()
 
 from moyuan_web.app_meta import APP_NAME, APP_VERSION
+from scripts.runtime_ops_contracts import (
+    ReleaseApplicationEntry,
+    ReleaseManifest,
+    ReleaseManifestQuality,
+    ReleaseManifestSource,
+    ReleaseQualityArtifacts,
+)
 
 
 DEFAULT_OUTPUT = ROOT / "artifacts" / "release" / "release-manifest.json"
@@ -63,32 +69,32 @@ def export_release_manifest(
     """Write one release manifest that release workflows can upload and publish."""
     owner = owner.strip().lower()
     registry = registry.rstrip("/")
-    manifest: dict[str, Any] = {
-        "created_at": utc_now_iso(),
-        "source": {
-            "git_sha": git_sha,
-            "git_ref": git_ref,
+    manifest = ReleaseManifest(
+        created_at=utc_now_iso(),
+        source=ReleaseManifestSource(
+            git_sha=git_sha,
+            git_ref=git_ref,
+        ),
+        applications={
+            "backend": ReleaseApplicationEntry(
+                name=APP_NAME,
+                version=APP_VERSION,
+                image=f"{registry}/{owner}/moyuan-travel-agent-backend",
+            ),
+            "frontend": ReleaseApplicationEntry(
+                name="moyuan-travel-agent-frontend",
+                version=_load_frontend_version(ROOT),
+                image=f"{registry}/{owner}/moyuan-travel-agent-frontend",
+            ),
         },
-        "applications": {
-            "backend": {
-                "name": APP_NAME,
-                "version": APP_VERSION,
-                "image": f"{registry}/{owner}/moyuan-travel-agent-backend",
-            },
-            "frontend": {
-                "name": "moyuan-travel-agent-frontend",
-                "version": _load_frontend_version(ROOT),
-                "image": f"{registry}/{owner}/moyuan-travel-agent-frontend",
-            },
-        },
-        "quality": {
-            "release_check_command": "python scripts/release_harness_scorecard.py --strict",
-            "artifacts": dict(QUALITY_ARTIFACTS),
-        },
-    }
+        quality=ReleaseManifestQuality(
+            release_check_command="python scripts/release_harness_scorecard.py --strict",
+            artifacts=ReleaseQualityArtifacts.from_dict(QUALITY_ARTIFACTS),
+        ),
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     return output_path

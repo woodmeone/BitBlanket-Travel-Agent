@@ -34,6 +34,16 @@ warnings.filterwarnings(
 
 ensure_project_paths()
 
+from scripts.runtime_ops_contracts import (
+    ReleaseHarnessBenchmarkSection,
+    ReleaseHarnessDeliverySection,
+    ReleaseHarnessFinding,
+    ReleaseHarnessScorecard,
+    ReleaseHarnessSkillsSection,
+    ReleaseHarnessSubagentsSection,
+    ReleaseHarnessSummary,
+)
+
 DEFAULT_OUTPUT_DIR = ROOT / "docs" / "benchmarks"
 DEFAULT_BENCHMARK_REPORT = ROOT / "docs" / "benchmarks" / "agent_benchmark_latest.json"
 DEFAULT_GOLDEN_REPORT = ROOT / "docs" / "benchmarks" / "agent_golden_eval_latest.json"
@@ -96,7 +106,7 @@ def _load_text(path: Path) -> str:
 
 
 def _append_finding(
-    findings: list[dict[str, str]],
+    findings: list[ReleaseHarnessFinding],
     *,
     severity: str,
     category: str,
@@ -104,11 +114,11 @@ def _append_finding(
 ) -> None:
     """Append one normalized finding entry."""
     findings.append(
-        {
-            "severity": severity,
-            "category": category,
-            "message": message,
-        }
+        ReleaseHarnessFinding(
+            severity=severity,
+            category=category,
+            message=message,
+        )
     )
 
 
@@ -123,8 +133,8 @@ def _build_benchmark_summary(
     *,
     golden_report: Path,
     benchmark_report: Path,
-    findings: list[dict[str, str]],
-) -> dict[str, Any]:
+    findings: list[ReleaseHarnessFinding],
+) -> ReleaseHarnessBenchmarkSection:
     """Build the golden/benchmark summary shown in the release scorecard."""
     golden = _load_json(golden_report)
     benchmark = _load_json(benchmark_report)
@@ -171,22 +181,22 @@ def _build_benchmark_summary(
             ),
         )
 
-    return {
-        "golden_report": _repo_relative_text(golden_report),
-        "benchmark_report": _repo_relative_text(benchmark_report),
-        "golden_pass_rate": golden_pass_rate,
-        "golden_hallucination_rate": golden_hallucination_rate,
-        "benchmark_success_rate": benchmark_success_rate,
-        "benchmark_hallucination_rate": benchmark_hallucination_rate,
-        "fallback_steps_total": fallback_steps_total,
-    }
+    return ReleaseHarnessBenchmarkSection(
+        golden_report=_repo_relative_text(golden_report),
+        benchmark_report=_repo_relative_text(benchmark_report),
+        golden_pass_rate=golden_pass_rate,
+        golden_hallucination_rate=golden_hallucination_rate,
+        benchmark_success_rate=benchmark_success_rate,
+        benchmark_hallucination_rate=benchmark_hallucination_rate,
+        fallback_steps_total=fallback_steps_total,
+    )
 
 
 def _build_subagent_summary(
     *,
     scorecard_report: Path,
-    findings: list[dict[str, str]],
-) -> dict[str, Any]:
+    findings: list[ReleaseHarnessFinding],
+) -> ReleaseHarnessSubagentsSection:
     """Build one subagent collaboration summary from the replay-backed scorecard."""
     payload = _load_json(scorecard_report)
     aggregate = payload.get("aggregate", {}) if isinstance(payload, dict) else {}
@@ -224,22 +234,22 @@ def _build_subagent_summary(
             message=f"subagent scorecard still reports {mismatch_subagents} mismatch subagent(s)",
         )
 
-    return {
-        "scorecard_report": _repo_relative_text(scorecard_report),
-        "expected_subagents": list(expected_subagents),
-        "observed_subagents": list(observed_subagents),
-        "healthy_subagents": healthy_subagents,
-        "partial_subagents": partial_subagents,
-        "missing_subagents": missing_subagents,
-        "mismatch_subagents": mismatch_subagents,
-    }
+    return ReleaseHarnessSubagentsSection(
+        scorecard_report=_repo_relative_text(scorecard_report),
+        expected_subagents=list(expected_subagents),
+        observed_subagents=list(observed_subagents),
+        healthy_subagents=healthy_subagents,
+        partial_subagents=partial_subagents,
+        missing_subagents=missing_subagents,
+        mismatch_subagents=mismatch_subagents,
+    )
 
 
 def _build_delivery_summary(
     *,
     delivery_snapshot: Path,
-    findings: list[dict[str, str]],
-) -> dict[str, Any]:
+    findings: list[ReleaseHarnessFinding],
+) -> ReleaseHarnessDeliverySection:
     """Build one delivery harness summary from the committed HTML snapshot fixture."""
     snapshot_text = _load_text(delivery_snapshot)
     modes = sorted(set(re.findall(r"replays ([a-z]+) mode", snapshot_text)))
@@ -261,19 +271,19 @@ def _build_delivery_summary(
             message="delivery snapshot is missing the expected Moyuan Travel Agent branding",
         )
 
-    return {
-        "snapshot_path": _repo_relative_text(delivery_snapshot),
-        "modes_covered": modes,
-        "expected_modes": list(EXPECTED_DELIVERY_MODES),
-        "branding_present": has_branding,
-    }
+    return ReleaseHarnessDeliverySection(
+        snapshot_path=_repo_relative_text(delivery_snapshot),
+        modes_covered=modes,
+        expected_modes=list(EXPECTED_DELIVERY_MODES),
+        branding_present=has_branding,
+    )
 
 
 def _build_skills_summary(
     *,
     skills_catalog: Path,
-    findings: list[dict[str, str]],
-) -> dict[str, Any]:
+    findings: list[ReleaseHarnessFinding],
+) -> ReleaseHarnessSkillsSection:
     """Build one governed skills-market summary for release checks."""
     catalog_text = _load_text(skills_catalog)
     skills = _load_default_skills()
@@ -324,15 +334,15 @@ def _build_skills_summary(
             message="skills catalog is missing the selection policy section",
         )
 
-    return {
-        "skills_catalog": _repo_relative_text(skills_catalog),
-        "total_skills": len(skills),
-        "docs_covered": docs_covered,
-        "eval_covered": eval_covered,
-        "selection_policy_covered": selection_policy_covered,
-        "allowed_subagents_covered": onboarding_complete,
-        "skill_names": [skill.name for skill in skills],
-    }
+    return ReleaseHarnessSkillsSection(
+        skills_catalog=_repo_relative_text(skills_catalog),
+        total_skills=len(skills),
+        docs_covered=docs_covered,
+        eval_covered=eval_covered,
+        selection_policy_covered=selection_policy_covered,
+        allowed_subagents_covered=onboarding_complete,
+        skill_names=[skill.name for skill in skills],
+    )
 
 
 def build_release_harness_scorecard(
@@ -344,7 +354,7 @@ def build_release_harness_scorecard(
     skills_catalog: Path = DEFAULT_SKILLS_CATALOG,
 ) -> dict[str, Any]:
     """Build one release-harness scorecard from committed benchmark and governance artifacts."""
-    findings: list[dict[str, str]] = []
+    findings: list[ReleaseHarnessFinding] = []
 
     benchmark_summary = _build_benchmark_summary(
         golden_report=golden_report,
@@ -364,84 +374,84 @@ def build_release_harness_scorecard(
         findings=findings,
     )
 
-    errors = [finding for finding in findings if finding["severity"] == "error"]
-    warnings_found = [finding for finding in findings if finding["severity"] == "warning"]
+    errors = [finding for finding in findings if finding.severity == "error"]
+    warnings_found = [finding for finding in findings if finding.severity == "warning"]
     status = "pass"
     if errors:
         status = "fail"
     elif warnings_found:
         status = "warn"
 
-    return {
-        "generated_at": utc_now_iso(),
-        "status": status,
-        "summary": {
-            "error_count": len(errors),
-            "warning_count": len(warnings_found),
-        },
-        "benchmark": benchmark_summary,
-        "subagents": subagent_summary,
-        "delivery": delivery_summary,
-        "skills": skills_summary,
-        "findings": findings,
-    }
+    return ReleaseHarnessScorecard(
+        generated_at=utc_now_iso(),
+        status=status,
+        summary=ReleaseHarnessSummary(
+            error_count=len(errors),
+            warning_count=len(warnings_found),
+        ),
+        benchmark=benchmark_summary,
+        subagents=subagent_summary,
+        delivery=delivery_summary,
+        skills=skills_summary,
+        findings=findings,
+    ).to_dict()
 
 
-def _render_markdown(scorecard: dict[str, Any]) -> str:
+def _render_markdown(scorecard: dict[str, Any] | ReleaseHarnessScorecard) -> str:
     """Render one markdown summary for the release harness scorecard."""
-    summary = scorecard.get("summary", {})
-    benchmark = scorecard.get("benchmark", {})
-    subagents = scorecard.get("subagents", {})
-    delivery = scorecard.get("delivery", {})
-    skills = scorecard.get("skills", {})
+    normalized = scorecard if isinstance(scorecard, ReleaseHarnessScorecard) else ReleaseHarnessScorecard.from_dict(scorecard)
+    summary = normalized.summary
+    benchmark = normalized.benchmark
+    subagents = normalized.subagents
+    delivery = normalized.delivery
+    skills = normalized.skills
 
     lines = [
         "# Release Harness Scorecard",
         "",
-        f"- generated_at: `{scorecard.get('generated_at', 'unknown')}`",
-        f"- status: `{scorecard.get('status', 'unknown')}`",
-        f"- errors: `{summary.get('error_count', 0)}`",
-        f"- warnings: `{summary.get('warning_count', 0)}`",
+        f"- generated_at: `{normalized.generated_at or 'unknown'}`",
+        f"- status: `{normalized.status or 'unknown'}`",
+        f"- errors: `{summary.error_count}`",
+        f"- warnings: `{summary.warning_count}`",
         "",
         "## Benchmark",
         "",
-        f"- golden pass rate: `{benchmark.get('golden_pass_rate', 0.0):.4f}`",
-        f"- golden hallucination rate: `{benchmark.get('golden_hallucination_rate', 0.0):.4f}`",
-        f"- benchmark success rate: `{benchmark.get('benchmark_success_rate', 0.0):.4f}`",
-        f"- benchmark fallback steps total: `{benchmark.get('fallback_steps_total', 0)}`",
+        f"- golden pass rate: `{benchmark.golden_pass_rate:.4f}`",
+        f"- golden hallucination rate: `{benchmark.golden_hallucination_rate:.4f}`",
+        f"- benchmark success rate: `{benchmark.benchmark_success_rate:.4f}`",
+        f"- benchmark fallback steps total: `{benchmark.fallback_steps_total}`",
         "",
         "## Subagents",
         "",
-        f"- expected: `{subagents.get('expected_subagents', [])}`",
-        f"- observed: `{subagents.get('observed_subagents', [])}`",
+        f"- expected: `{subagents.expected_subagents}`",
+        f"- observed: `{subagents.observed_subagents}`",
         f"- healthy / partial / missing / mismatch: "
-        f"`{subagents.get('healthy_subagents', 0)} / {subagents.get('partial_subagents', 0)} / "
-        f"{subagents.get('missing_subagents', 0)} / {subagents.get('mismatch_subagents', 0)}`",
+        f"`{subagents.healthy_subagents} / {subagents.partial_subagents} / "
+        f"{subagents.missing_subagents} / {subagents.mismatch_subagents}`",
         "",
         "## Delivery",
         "",
-        f"- snapshot: `{delivery.get('snapshot_path', '')}`",
-        f"- replay modes: `{delivery.get('modes_covered', [])}`",
-        f"- branding present: `{delivery.get('branding_present', False)}`",
+        f"- snapshot: `{delivery.snapshot_path}`",
+        f"- replay modes: `{delivery.modes_covered}`",
+        f"- branding present: `{delivery.branding_present}`",
         "",
         "## Skills",
         "",
-        f"- total skills: `{skills.get('total_skills', 0)}`",
-        f"- docs covered: `{skills.get('docs_covered', 0)}`",
-        f"- eval covered: `{skills.get('eval_covered', 0)}`",
-        f"- selection policy covered: `{skills.get('selection_policy_covered', 0)}`",
+        f"- total skills: `{skills.total_skills}`",
+        f"- docs covered: `{skills.docs_covered}`",
+        f"- eval covered: `{skills.eval_covered}`",
+        f"- selection policy covered: `{skills.selection_policy_covered}`",
         "",
         "## Findings",
         "",
     ]
-    findings = scorecard.get("findings", [])
-    if not findings:
+    if not normalized.findings:
         lines.append("- none")
     else:
-        for finding in findings:
+        for finding in normalized.findings:
             lines.append(
-                f"- `{finding.get('severity', 'unknown')}` "
-                f"`{finding.get('category', 'unknown')}`: {finding.get('message', '')}"
+                f"- `{finding.severity or 'unknown'}` "
+                f"`{finding.category or 'unknown'}`: {finding.message}"
             )
     lines.append("")
     return "\n".join(lines)

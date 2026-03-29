@@ -29,6 +29,12 @@ def _copy_str_list(value: Any) -> list[str]:
     return [str(item) for item in value]
 
 
+def _copy_list(value: Any) -> list[Any]:
+    """Return one shallow builtin list copy."""
+
+    return list(value) if isinstance(value, list) else []
+
+
 @dataclass(slots=True)
 class RuntimeDoctorCheck:
     """Describe one normalized runtime-doctor check."""
@@ -140,6 +146,438 @@ class RuntimeDoctorReport:
 
 
 @dataclass(slots=True)
+class ReleaseManifestSource:
+    """Describe source-control metadata embedded in the release manifest."""
+
+    git_sha: str
+    git_ref: str
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ReleaseManifestSource":
+        """Build one source metadata contract from a loose dictionary payload."""
+
+        item = dict(payload) if isinstance(payload, dict) else {}
+        return cls(
+            git_sha=_coerce_text(item.get("git_sha")),
+            git_ref=_coerce_text(item.get("git_ref")),
+        )
+
+    def to_dict(self) -> dict[str, str]:
+        """Return one JSON-serializable source metadata payload."""
+
+        return {
+            "git_sha": self.git_sha,
+            "git_ref": self.git_ref,
+        }
+
+
+@dataclass(slots=True)
+class ReleaseApplicationEntry:
+    """Describe one deployable application entry inside the release manifest."""
+
+    name: str
+    version: str
+    image: str
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ReleaseApplicationEntry":
+        """Build one application entry from a loose manifest payload."""
+
+        item = dict(payload) if isinstance(payload, dict) else {}
+        return cls(
+            name=_coerce_text(item.get("name")),
+            version=_coerce_text(item.get("version")),
+            image=_coerce_text(item.get("image")),
+        )
+
+    def to_dict(self) -> dict[str, str]:
+        """Return one JSON-serializable application manifest entry."""
+
+        return {
+            "name": self.name,
+            "version": self.version,
+            "image": self.image,
+        }
+
+
+@dataclass(slots=True)
+class ReleaseQualityArtifacts:
+    """Describe quality evidence references embedded in the release manifest."""
+
+    benchmark_report: str = ""
+    golden_eval_report: str = ""
+    subagent_scorecard_report: str = ""
+    release_harness_scorecard_report: str = ""
+    delivery_snapshot: str = ""
+    skills_catalog: str = ""
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ReleaseQualityArtifacts":
+        """Build one artifact-reference contract from a loose payload."""
+
+        item = dict(payload) if isinstance(payload, dict) else {}
+        return cls(
+            benchmark_report=_coerce_text(item.get("benchmark_report")),
+            golden_eval_report=_coerce_text(item.get("golden_eval_report")),
+            subagent_scorecard_report=_coerce_text(item.get("subagent_scorecard_report")),
+            release_harness_scorecard_report=_coerce_text(item.get("release_harness_scorecard_report")),
+            delivery_snapshot=_coerce_text(item.get("delivery_snapshot")),
+            skills_catalog=_coerce_text(item.get("skills_catalog")),
+        )
+
+    def to_dict(self) -> dict[str, str]:
+        """Return one JSON-serializable artifact-reference payload."""
+
+        return {
+            "benchmark_report": self.benchmark_report,
+            "golden_eval_report": self.golden_eval_report,
+            "subagent_scorecard_report": self.subagent_scorecard_report,
+            "release_harness_scorecard_report": self.release_harness_scorecard_report,
+            "delivery_snapshot": self.delivery_snapshot,
+            "skills_catalog": self.skills_catalog,
+        }
+
+    def count(self) -> int:
+        """Return the number of populated quality artifact references."""
+
+        return sum(1 for value in self.to_dict().values() if str(value).strip())
+
+
+@dataclass(slots=True)
+class ReleaseManifestQuality:
+    """Describe release-quality evidence embedded in the release manifest."""
+
+    release_check_command: str
+    artifacts: ReleaseQualityArtifacts
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ReleaseManifestQuality":
+        """Build one release-quality contract from a loose payload."""
+
+        item = dict(payload) if isinstance(payload, dict) else {}
+        return cls(
+            release_check_command=_coerce_text(item.get("release_check_command")),
+            artifacts=ReleaseQualityArtifacts.from_dict(_copy_dict(item.get("artifacts"))),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return one JSON-serializable release-quality payload."""
+
+        return {
+            "release_check_command": self.release_check_command,
+            "artifacts": self.artifacts.to_dict(),
+        }
+
+
+@dataclass(slots=True)
+class ReleaseManifest:
+    """Describe the release-manifest contract used by release evidence tooling."""
+
+    created_at: str
+    source: ReleaseManifestSource
+    applications: dict[str, ReleaseApplicationEntry] = field(default_factory=dict)
+    quality: ReleaseManifestQuality = field(
+        default_factory=lambda: ReleaseManifestQuality(
+            release_check_command="",
+            artifacts=ReleaseQualityArtifacts(),
+        )
+    )
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ReleaseManifest":
+        """Build one release-manifest contract from a loose payload."""
+
+        item = dict(payload) if isinstance(payload, dict) else {}
+        raw_applications = item.get("applications")
+        applications = (
+            {
+                str(name): ReleaseApplicationEntry.from_dict(application_payload)
+                for name, application_payload in dict(raw_applications).items()
+            }
+            if isinstance(raw_applications, dict)
+            else {}
+        )
+        return cls(
+            created_at=_coerce_text(item.get("created_at")),
+            source=ReleaseManifestSource.from_dict(_copy_dict(item.get("source"))),
+            applications=applications,
+            quality=ReleaseManifestQuality.from_dict(_copy_dict(item.get("quality"))),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return one JSON-serializable release-manifest payload."""
+
+        return {
+            "created_at": self.created_at,
+            "source": self.source.to_dict(),
+            "applications": {
+                name: entry.to_dict() for name, entry in self.applications.items()
+            },
+            "quality": self.quality.to_dict(),
+        }
+
+
+@dataclass(slots=True)
+class ReleaseHarnessFinding:
+    """Describe one release-harness finding."""
+
+    severity: str
+    category: str
+    message: str
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ReleaseHarnessFinding":
+        """Build one finding contract from a loose payload."""
+
+        item = dict(payload) if isinstance(payload, dict) else {}
+        return cls(
+            severity=_coerce_text(item.get("severity")),
+            category=_coerce_text(item.get("category")),
+            message=_coerce_text(item.get("message")),
+        )
+
+    def to_dict(self) -> dict[str, str]:
+        """Return one JSON-serializable finding payload."""
+
+        return {
+            "severity": self.severity,
+            "category": self.category,
+            "message": self.message,
+        }
+
+
+@dataclass(slots=True)
+class ReleaseHarnessSummary:
+    """Describe aggregate release-harness finding counters."""
+
+    error_count: int = 0
+    warning_count: int = 0
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ReleaseHarnessSummary":
+        """Build one summary contract from a loose payload."""
+
+        item = dict(payload) if isinstance(payload, dict) else {}
+        return cls(
+            error_count=int(item.get("error_count", 0) or 0),
+            warning_count=int(item.get("warning_count", 0) or 0),
+        )
+
+    def to_dict(self) -> dict[str, int]:
+        """Return one JSON-serializable summary payload."""
+
+        return {
+            "error_count": self.error_count,
+            "warning_count": self.warning_count,
+        }
+
+
+@dataclass(slots=True)
+class ReleaseHarnessBenchmarkSection:
+    """Describe benchmark evidence embedded in the release scorecard."""
+
+    golden_report: str = ""
+    benchmark_report: str = ""
+    golden_pass_rate: float = 0.0
+    golden_hallucination_rate: float = 0.0
+    benchmark_success_rate: float = 0.0
+    benchmark_hallucination_rate: float = 0.0
+    fallback_steps_total: int = 0
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ReleaseHarnessBenchmarkSection":
+        """Build one benchmark section from a loose payload."""
+
+        item = dict(payload) if isinstance(payload, dict) else {}
+        return cls(
+            golden_report=_coerce_text(item.get("golden_report")),
+            benchmark_report=_coerce_text(item.get("benchmark_report")),
+            golden_pass_rate=float(item.get("golden_pass_rate", 0.0) or 0.0),
+            golden_hallucination_rate=float(item.get("golden_hallucination_rate", 0.0) or 0.0),
+            benchmark_success_rate=float(item.get("benchmark_success_rate", 0.0) or 0.0),
+            benchmark_hallucination_rate=float(item.get("benchmark_hallucination_rate", 0.0) or 0.0),
+            fallback_steps_total=int(item.get("fallback_steps_total", 0) or 0),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return one JSON-serializable benchmark section."""
+
+        return {
+            "golden_report": self.golden_report,
+            "benchmark_report": self.benchmark_report,
+            "golden_pass_rate": self.golden_pass_rate,
+            "golden_hallucination_rate": self.golden_hallucination_rate,
+            "benchmark_success_rate": self.benchmark_success_rate,
+            "benchmark_hallucination_rate": self.benchmark_hallucination_rate,
+            "fallback_steps_total": self.fallback_steps_total,
+        }
+
+
+@dataclass(slots=True)
+class ReleaseHarnessSubagentsSection:
+    """Describe subagent evidence embedded in the release scorecard."""
+
+    scorecard_report: str = ""
+    expected_subagents: list[str] = field(default_factory=list)
+    observed_subagents: list[str] = field(default_factory=list)
+    healthy_subagents: int = 0
+    partial_subagents: int = 0
+    missing_subagents: int = 0
+    mismatch_subagents: int = 0
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ReleaseHarnessSubagentsSection":
+        """Build one subagent section from a loose payload."""
+
+        item = dict(payload) if isinstance(payload, dict) else {}
+        return cls(
+            scorecard_report=_coerce_text(item.get("scorecard_report")),
+            expected_subagents=_copy_str_list(item.get("expected_subagents")),
+            observed_subagents=_copy_str_list(item.get("observed_subagents")),
+            healthy_subagents=int(item.get("healthy_subagents", 0) or 0),
+            partial_subagents=int(item.get("partial_subagents", 0) or 0),
+            missing_subagents=int(item.get("missing_subagents", 0) or 0),
+            mismatch_subagents=int(item.get("mismatch_subagents", 0) or 0),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return one JSON-serializable subagent section."""
+
+        return {
+            "scorecard_report": self.scorecard_report,
+            "expected_subagents": list(self.expected_subagents),
+            "observed_subagents": list(self.observed_subagents),
+            "healthy_subagents": self.healthy_subagents,
+            "partial_subagents": self.partial_subagents,
+            "missing_subagents": self.missing_subagents,
+            "mismatch_subagents": self.mismatch_subagents,
+        }
+
+
+@dataclass(slots=True)
+class ReleaseHarnessDeliverySection:
+    """Describe delivery evidence embedded in the release scorecard."""
+
+    snapshot_path: str = ""
+    modes_covered: list[str] = field(default_factory=list)
+    expected_modes: list[str] = field(default_factory=list)
+    branding_present: bool = False
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ReleaseHarnessDeliverySection":
+        """Build one delivery section from a loose payload."""
+
+        item = dict(payload) if isinstance(payload, dict) else {}
+        return cls(
+            snapshot_path=_coerce_text(item.get("snapshot_path")),
+            modes_covered=_copy_str_list(item.get("modes_covered")),
+            expected_modes=_copy_str_list(item.get("expected_modes")),
+            branding_present=bool(item.get("branding_present")),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return one JSON-serializable delivery section."""
+
+        return {
+            "snapshot_path": self.snapshot_path,
+            "modes_covered": list(self.modes_covered),
+            "expected_modes": list(self.expected_modes),
+            "branding_present": self.branding_present,
+        }
+
+
+@dataclass(slots=True)
+class ReleaseHarnessSkillsSection:
+    """Describe governed skills evidence embedded in the release scorecard."""
+
+    skills_catalog: str = ""
+    total_skills: int = 0
+    docs_covered: int = 0
+    eval_covered: int = 0
+    selection_policy_covered: int = 0
+    allowed_subagents_covered: int = 0
+    skill_names: list[str] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ReleaseHarnessSkillsSection":
+        """Build one skills section from a loose payload."""
+
+        item = dict(payload) if isinstance(payload, dict) else {}
+        return cls(
+            skills_catalog=_coerce_text(item.get("skills_catalog")),
+            total_skills=int(item.get("total_skills", 0) or 0),
+            docs_covered=int(item.get("docs_covered", 0) or 0),
+            eval_covered=int(item.get("eval_covered", 0) or 0),
+            selection_policy_covered=int(item.get("selection_policy_covered", 0) or 0),
+            allowed_subagents_covered=int(item.get("allowed_subagents_covered", 0) or 0),
+            skill_names=_copy_str_list(item.get("skill_names")),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return one JSON-serializable skills section."""
+
+        return {
+            "skills_catalog": self.skills_catalog,
+            "total_skills": self.total_skills,
+            "docs_covered": self.docs_covered,
+            "eval_covered": self.eval_covered,
+            "selection_policy_covered": self.selection_policy_covered,
+            "allowed_subagents_covered": self.allowed_subagents_covered,
+            "skill_names": list(self.skill_names),
+        }
+
+
+@dataclass(slots=True)
+class ReleaseHarnessScorecard:
+    """Describe the release-harness scorecard contract."""
+
+    generated_at: str
+    status: str
+    summary: ReleaseHarnessSummary
+    benchmark: ReleaseHarnessBenchmarkSection
+    subagents: ReleaseHarnessSubagentsSection
+    delivery: ReleaseHarnessDeliverySection
+    skills: ReleaseHarnessSkillsSection
+    findings: list[ReleaseHarnessFinding] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ReleaseHarnessScorecard":
+        """Build one scorecard contract from a loose payload."""
+
+        item = dict(payload) if isinstance(payload, dict) else {}
+        raw_findings = item.get("findings")
+        findings = [
+            ReleaseHarnessFinding.from_dict(finding)
+            for finding in _copy_list(raw_findings)
+            if isinstance(finding, dict)
+        ]
+        return cls(
+            generated_at=_coerce_text(item.get("generated_at")),
+            status=_coerce_text(item.get("status")),
+            summary=ReleaseHarnessSummary.from_dict(_copy_dict(item.get("summary"))),
+            benchmark=ReleaseHarnessBenchmarkSection.from_dict(_copy_dict(item.get("benchmark"))),
+            subagents=ReleaseHarnessSubagentsSection.from_dict(_copy_dict(item.get("subagents"))),
+            delivery=ReleaseHarnessDeliverySection.from_dict(_copy_dict(item.get("delivery"))),
+            skills=ReleaseHarnessSkillsSection.from_dict(_copy_dict(item.get("skills"))),
+            findings=findings,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return one JSON-serializable scorecard payload."""
+
+        return {
+            "generated_at": self.generated_at,
+            "status": self.status,
+            "summary": self.summary.to_dict(),
+            "benchmark": self.benchmark.to_dict(),
+            "subagents": self.subagents.to_dict(),
+            "delivery": self.delivery.to_dict(),
+            "skills": self.skills.to_dict(),
+            "findings": [finding.to_dict() for finding in self.findings],
+        }
+
+
+@dataclass(slots=True)
 class SupportBundleRuntimeHealthSection:
     """Describe runtime-health evidence embedded in the support-bundle manifest."""
 
@@ -183,6 +621,34 @@ class SupportBundleReleaseEvidenceSection:
 
     release_manifest_exists: bool
     release_manifest_path: str | None = None
+    release_manifest_git_sha: str | None = None
+    release_manifest_git_ref: str | None = None
+    release_scorecard_exists: bool = False
+    release_scorecard_path: str | None = None
+    release_scorecard_status: str | None = None
+    quality_artifact_count: int = 0
+
+    @classmethod
+    def from_release_artifacts(
+        cls,
+        *,
+        manifest: ReleaseManifest | None,
+        manifest_path: str | None,
+        scorecard: ReleaseHarnessScorecard | None,
+        scorecard_path: str | None,
+    ) -> "SupportBundleReleaseEvidenceSection":
+        """Build release-evidence metadata from typed release manifest and scorecard contracts."""
+
+        return cls(
+            release_manifest_exists=manifest is not None,
+            release_manifest_path=manifest_path if manifest is not None else None,
+            release_manifest_git_sha=manifest.source.git_sha if manifest is not None else None,
+            release_manifest_git_ref=manifest.source.git_ref if manifest is not None else None,
+            release_scorecard_exists=scorecard is not None,
+            release_scorecard_path=scorecard_path if scorecard is not None else None,
+            release_scorecard_status=scorecard.status if scorecard is not None else None,
+            quality_artifact_count=manifest.quality.artifacts.count() if manifest is not None else 0,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """Return one JSON-serializable release-evidence manifest section."""
@@ -190,6 +656,12 @@ class SupportBundleReleaseEvidenceSection:
         return {
             "release_manifest_exists": self.release_manifest_exists,
             "release_manifest_path": self.release_manifest_path,
+            "release_manifest_git_sha": self.release_manifest_git_sha,
+            "release_manifest_git_ref": self.release_manifest_git_ref,
+            "release_scorecard_exists": self.release_scorecard_exists,
+            "release_scorecard_path": self.release_scorecard_path,
+            "release_scorecard_status": self.release_scorecard_status,
+            "quality_artifact_count": self.quality_artifact_count,
         }
 
 
@@ -242,6 +714,12 @@ class SupportBundleManifest:
             release_evidence=SupportBundleReleaseEvidenceSection(
                 release_manifest_exists=bool(release_evidence.get("release_manifest_exists")),
                 release_manifest_path=_coerce_text(release_evidence.get("release_manifest_path")) or None,
+                release_manifest_git_sha=_coerce_text(release_evidence.get("release_manifest_git_sha")) or None,
+                release_manifest_git_ref=_coerce_text(release_evidence.get("release_manifest_git_ref")) or None,
+                release_scorecard_exists=bool(release_evidence.get("release_scorecard_exists")),
+                release_scorecard_path=_coerce_text(release_evidence.get("release_scorecard_path")) or None,
+                release_scorecard_status=_coerce_text(release_evidence.get("release_scorecard_status")) or None,
+                quality_artifact_count=int(release_evidence.get("quality_artifact_count", 0) or 0),
             ),
             delivery_evidence=SupportBundleDeliveryEvidenceSection(
                 contract_snapshots=_copy_str_list(delivery_evidence.get("contract_snapshots")),
