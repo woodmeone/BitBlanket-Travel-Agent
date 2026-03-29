@@ -15,6 +15,7 @@ CONTRACT_PATH = ROOT / "agent" / "travel_agent" / "contracts" / "supervisor_orch
 LEGACY_BRIDGE_PATH = ROOT / "agent" / "travel_agent" / "runtime" / "legacy_bridge.py"
 LEGACY_RUNTIME_PATH = ROOT / "agent" / "travel_agent" / "graph" / "legacy_runtime.py"
 RUNTIME_SOURCES_PATH = ROOT / "agent" / "travel_agent" / "runtime_sources.py"
+RUNTIME_EVENT_EMITTERS_PATH = ROOT / "agent" / "travel_agent" / "runtime_event_emitters.py"
 AGENT_RUNTIME_PATH = ROOT / "agent" / "travel_agent" / "runtime" / "agent_runtime.py"
 
 REQUIRED_CONTRACTS = (
@@ -31,6 +32,17 @@ REQUIRED_RUNTIME_SOURCE_FUNCTIONS = (
     "build_memory_plan_preview_source",
     "build_supervisor_streaming_source",
     "build_supervisor_plan_preview_source",
+)
+REQUIRED_RUNTIME_EVENT_EMITTER_METHODS = (
+    "emit_initial",
+    "emit_node_start",
+    "emit_chat_chunk",
+    "emit_tool_start",
+    "emit_tool_end",
+    "record_chain_output",
+    "interrupted_answer",
+    "persisted_answer",
+    "emit_completion_events",
 )
 
 
@@ -387,6 +399,7 @@ def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]
         "build_memory_plan_preview_source",
         "_stream_graph_source",
         "_generate_plan_preview_from_source",
+        "LegacySupervisorEventEmitter",
     )
     for token in required_adapter_tokens:
         if token not in source:
@@ -402,6 +415,15 @@ def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]
         "AgentStateWithMemory",
         "get_agent_memory_manager",
         "from .memory_integration import",
+        "SupervisorStageEvent",
+        "SupervisorReasoningEvent",
+        "SupervisorChunkEvent",
+        "SupervisorToolStartEvent",
+        "SupervisorToolEndEvent",
+        "SupervisorDoneEvent",
+        "_NODE_STAGE_CONFIG",
+        "_normalize_done_payload",
+        "_iter_node_stage_events",
     )
     for token in forbidden_tokens:
         if token in source:
@@ -412,6 +434,15 @@ def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]
                     detail=f"legacy runtime must not assemble memory state directly via `{token}`",
                 )
             )
+
+    if "from ..runtime_event_emitters import" not in source:
+        findings.append(
+            RuntimeContractAuditFinding(
+                path=_repo_relative(path),
+                symbol="legacy_runtime",
+                detail="legacy runtime must import runtime event emitters",
+            )
+        )
 
     return findings
 
@@ -447,6 +478,54 @@ def audit_runtime_sources_module(path: Path) -> list[RuntimeContractAuditFinding
                     path=_repo_relative(path),
                     symbol=token,
                     detail="runtime source adapters are missing a required seam dependency",
+                )
+            )
+
+    return findings
+
+
+def audit_runtime_event_emitters_module(path: Path) -> list[RuntimeContractAuditFinding]:
+    """Audit the dedicated runtime event emitter layer used by the compatibility shim."""
+
+    module = _load_module_ast(path)
+    source = path.read_text(encoding="utf-8")
+    findings: list[RuntimeContractAuditFinding] = []
+
+    emitter_class = _find_class(module, "LegacySupervisorEventEmitter")
+    if emitter_class is None:
+        findings.append(
+            RuntimeContractAuditFinding(
+                path=_repo_relative(path),
+                symbol="LegacySupervisorEventEmitter",
+                detail="missing runtime event emitter class",
+            )
+        )
+        return findings
+
+    for method_name in REQUIRED_RUNTIME_EVENT_EMITTER_METHODS:
+        if _find_function(module, method_name, class_name="LegacySupervisorEventEmitter") is None:
+            _add_missing_function_finding(
+                findings,
+                path,
+                symbol=f"LegacySupervisorEventEmitter.{method_name}",
+                detail="missing runtime event emitter method",
+            )
+
+    required_tokens = (
+        "SupervisorStageEvent",
+        "SupervisorReasoningEvent",
+        "SupervisorChunkEvent",
+        "SupervisorToolStartEvent",
+        "SupervisorToolEndEvent",
+        "SupervisorDoneEvent",
+    )
+    for token in required_tokens:
+        if token not in source:
+            findings.append(
+                RuntimeContractAuditFinding(
+                    path=_repo_relative(path),
+                    symbol=token,
+                    detail="runtime event emitters are missing a required contract dependency",
                 )
             )
 
@@ -511,6 +590,7 @@ def build_runtime_contract_audit_report(root: Path = ROOT) -> dict[str, Any]:
         _repo_relative(LEGACY_BRIDGE_PATH): audit_legacy_bridge_module(LEGACY_BRIDGE_PATH),
         _repo_relative(LEGACY_RUNTIME_PATH): audit_legacy_runtime_module(LEGACY_RUNTIME_PATH),
         _repo_relative(RUNTIME_SOURCES_PATH): audit_runtime_sources_module(RUNTIME_SOURCES_PATH),
+        _repo_relative(RUNTIME_EVENT_EMITTERS_PATH): audit_runtime_event_emitters_module(RUNTIME_EVENT_EMITTERS_PATH),
         _repo_relative(AGENT_RUNTIME_PATH): audit_agent_runtime_module(AGENT_RUNTIME_PATH),
     }
     findings = [

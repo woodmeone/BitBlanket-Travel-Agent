@@ -2,24 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from langchain_core.runnables import Runnable
 from langchain_core.tools import Tool
 
 from ..contracts import (
-    SupervisorChunkEvent,
-    SupervisorDoneEvent,
     SupervisorPlanPreview,
     SupervisorPlanPreviewRequest,
-    SupervisorReasoningEvent,
     SupervisorRunRequest,
     SupervisorRuntimeContext,
-    SupervisorStageEvent,
     SupervisorToolHealthDiagnostics,
-    SupervisorToolEndEvent,
-    SupervisorToolStartEvent,
 )
+from ..runtime_event_emitters import LegacySupervisorEventEmitter
 from ..runtime_sources import (
     LegacyGraphSourceAdapter,
     LegacyPlanPreviewSourceAdapter,
@@ -32,70 +27,6 @@ from ..runtime_sources import (
 from .nodes import AgentNodes
 from .runtime_config import get_runtime_config
 from .state import TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_state
-
-TOOL_RESULT_PREVIEW_LIMIT = 200
-_INCOMPLETE_ANSWER_FALLBACK = (
-    "The main steps are complete, but the current response may be truncated. "
-    "Tell me whether you want me to fill in the budget, itinerary, or hotel details first."
-)
-_NODE_STAGE_CONFIG: dict[str, dict[str, Any]] = {
-    "intent": {
-        "stage": "parse",
-        "progress": 10,
-        "label": "Analyze request",
-        "reasoning": "Analyzing user intent...",
-    },
-    "strategy": {
-        "stage": "parse",
-        "progress": 18,
-        "label": "Select strategy",
-        "reasoning": "Selecting the execution strategy...",
-    },
-    "plan": {
-        "stage": "query",
-        "progress": 25,
-        "label": "Build plan",
-        "subagent": "planning",
-        "reasoning": "Preparing the execution plan...",
-    },
-    "react": {
-        "stage": "query",
-        "progress": 25,
-        "label": "Run reactive planner",
-        "subagent": "planning",
-        "reasoning": "Preparing the reactive tool loop...",
-    },
-    "execute": {
-        "stage": "query",
-        "progress": 45,
-        "label": "Query data",
-        "subagent": "research",
-        "reasoning": "Running tools...",
-    },
-    "answer": {
-        "stage": "generate",
-        "progress": 80,
-        "label": "Draft answer",
-    },
-    "direct_answer": {
-        "stage": "generate",
-        "progress": 80,
-        "label": "Draft answer",
-    },
-    "verify": {
-        "stage": "generate",
-        "progress": 72,
-        "label": "Verify results",
-        "subagent": "verification",
-        "reasoning": "Checking price, policy, and date consistency...",
-    },
-    "self_check": {
-        "stage": "finalize",
-        "progress": 95,
-        "label": "Self check answer",
-    },
-}
-
 
 async def stream_supervisor_run(
     *,
@@ -157,37 +88,6 @@ def _extract_text_from_chunk(chunk: Any) -> str:
     return str(content)
 
 
-def _is_answer_complete(answer: str) -> bool:
-    """Heuristically detect whether generated answer text appears complete for early-stop control."""
-    text = str(answer or "").strip()
-    if len(text) < 8:
-        return False
-    return text[-1] in {".", "!", "?", "。", "！", "？"}
-
-
-def _iter_node_stage_events(node_name: str) -> tuple[str | None, int | None, list[dict[str, Any]]]:
-    """Map node-start events into normalized stage/reasoning payloads."""
-
-    config = _NODE_STAGE_CONFIG.get(node_name)
-    if not config:
-        return None, None, []
-
-    stage = str(config["stage"])
-    progress = int(config["progress"])
-    events: list[dict[str, Any]] = [
-        SupervisorStageEvent(
-            stage=stage,
-            progress=progress,
-            label=str(config["label"]),
-            subagent=config.get("subagent"),
-        ).to_dict()
-    ]
-    reasoning = config.get("reasoning")
-    if reasoning:
-        events.append(SupervisorReasoningEvent(content=str(reasoning)).to_dict())
-    return stage, progress, events
-
-
 async def _persist_memory_snapshot(
     *,
     memory_manager: Any,
@@ -203,65 +103,6 @@ async def _persist_memory_snapshot(
     await memory_manager.add_message(session_id, "assistant", answer)
 
 
-def _normalize_done_payload(
-    *,
-    answer: str,
-    tools_used: list[str],
-    session_id: str,
-    run_id: str | None,
-    final_state: dict[str, Any],
-) -> dict[str, Any]:
-    """Build the terminal normalized payload for streaming legacy runtime shims."""
-
-    resolved_answer = str(final_state.get("answer") or answer or "")
-    resolved_tools_used = list(final_state.get("tools_used") or tools_used or [])
-    execution_stats = final_state.get("execution_stats", {}) or {}
-    execution_summary = final_state.get("execution_summary", {}) or {}
-    verify_result = final_state.get("verify_result", {}) or {}
-    strategy_detail = final_state.get("strategy_detail", {}) or {}
-    tool_results = final_state.get("tool_results", {}) or {}
-    plan_id = final_state.get("plan_id")
-    intent = final_state.get("intent")
-
-    verification_passed: Optional[bool]
-    if isinstance(verify_result, dict) and "passed" in verify_result:
-        verification_passed = bool(verify_result.get("passed"))
-    elif bool(strategy_detail.get("requires_verification", False)):
-        verification_passed = False
-    else:
-        verification_passed = True
-
-    fallback_steps = int(execution_summary.get("fallback_steps", 0) or 0)
-    if fallback_steps <= 0 and isinstance(execution_stats, dict):
-        stats_steps = list(execution_stats.get("steps", []) or [])
-        fallback_steps = sum(1 for item in stats_steps if bool(item.get("fallback_used", False)))
-
-    stale_result_count = sum(
-        1
-        for result in (tool_results.values() if isinstance(tool_results, dict) else [])
-        if isinstance(result, dict) and bool(result.get("success")) and bool(result.get("is_stale", False))
-    )
-
-    if not _is_answer_complete(resolved_answer):
-        if resolved_answer:
-            resolved_answer = f"{resolved_answer.rstrip()} {_INCOMPLETE_ANSWER_FALLBACK}"
-        else:
-            resolved_answer = _INCOMPLETE_ANSWER_FALLBACK
-
-    return SupervisorDoneEvent(
-        answer=resolved_answer,
-        tools_used=resolved_tools_used,
-        session_id=session_id,
-        run_id=run_id,
-        plan_id=plan_id,
-        intent=intent,
-        execution_stats=execution_stats if isinstance(execution_stats, dict) else {},
-        verification_passed=verification_passed,
-        stale_result_count=stale_result_count,
-        fallback_steps=fallback_steps,
-    ).to_dict()
-
-
 async def _stream_graph_source(
     *,
     source: LegacyGraphSourceAdapter,
@@ -272,57 +113,37 @@ async def _stream_graph_source(
 ):
     """Stream normalized supervisor events from one prebuilt legacy graph source."""
 
-    answer = ""
-    tools_used: list[str] = []
-    final_state: dict[str, Any] = {}
-    stage = "parse"
-    progress = 5
+    emitter = LegacySupervisorEventEmitter(session_id=session_id, run_id=run_id)
 
     try:
-        yield SupervisorStageEvent(stage=stage, progress=progress, label="Analyze request").to_dict()
+        yield emitter.emit_initial()
         async for event in source.agent.astream_events(source.initial_state):
             event_type = event.get("event")
 
             if event_type == "on_node_start":
                 node_name = str(event.get("name", ""))
-                stage_update, progress_update, stage_events = _iter_node_stage_events(node_name)
-                if stage_update is not None:
-                    stage = stage_update
-                if progress_update is not None:
-                    progress = progress_update
-                for stage_event in stage_events:
+                for stage_event in emitter.emit_node_start(node_name):
                     yield stage_event
 
             elif event_type == "on_chat_model_stream":
                 content = _extract_text_from_chunk((event.get("data") or {}).get("chunk"))
-                if content:
-                    answer += content
-                    yield SupervisorChunkEvent(content=content).to_dict()
+                chunk_event = emitter.emit_chat_chunk(content)
+                if chunk_event:
+                    yield chunk_event
 
             elif event_type == "on_tool_start":
                 tool_name = str(event.get("name", ""))
-                tools_used.append(tool_name)
-                progress = min(75, progress + 5)
-                yield SupervisorStageEvent(
-                    stage="query",
-                    progress=progress,
-                    label=f"Query data: {tool_name}",
-                ).to_dict()
-                yield SupervisorToolStartEvent(tool=tool_name, progress=progress).to_dict()
+                for stage_event in emitter.emit_tool_start(tool_name):
+                    yield stage_event
 
             elif event_type == "on_tool_end":
                 tool_name = str(event.get("name", ""))
                 result = (event.get("data") or {}).get("output")
-                yield SupervisorToolEndEvent(
-                    tool=tool_name,
-                    result=str(result)[:TOOL_RESULT_PREVIEW_LIMIT],
-                    progress=progress,
-                ).to_dict()
+                yield emitter.emit_tool_end(tool_name, result)
 
             elif event_type == "on_chain_end":
                 output = (event.get("data") or {}).get("output")
-                if isinstance(output, dict) and ("answer" in output or "execution_stats" in output):
-                    final_state = output
+                emitter.record_chain_output(output)
 
     except Exception:
         if persist_memory:
@@ -331,7 +152,7 @@ async def _stream_graph_source(
                     memory_manager=source.memory_manager,
                     session_id=session_id,
                     user_message=user_message,
-                    answer=f"[INTERRUPTED]{answer}",
+                    answer=emitter.interrupted_answer(),
                 )
             except Exception:
                 pass
@@ -342,17 +163,11 @@ async def _stream_graph_source(
             memory_manager=source.memory_manager,
             session_id=session_id,
             user_message=user_message,
-            answer=str(final_state.get("answer") or answer or ""),
+            answer=emitter.persisted_answer(),
         )
 
-    yield SupervisorStageEvent(stage="finalize", progress=100, label="Complete").to_dict()
-    yield _normalize_done_payload(
-        answer=answer,
-        tools_used=tools_used,
-        session_id=session_id,
-        run_id=run_id,
-        final_state=final_state,
-    )
+    for completion_event in emitter.emit_completion_events():
+        yield completion_event
 
 
 def _generate_plan_preview_from_source(source: LegacyPlanPreviewSourceAdapter) -> dict[str, Any]:

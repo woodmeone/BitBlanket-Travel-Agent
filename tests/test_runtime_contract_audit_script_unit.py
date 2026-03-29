@@ -13,7 +13,7 @@ def test_build_runtime_contract_audit_report_passes_for_current_repo() -> None:
     report = runtime_contract_audit.build_runtime_contract_audit_report()
 
     assert report["finding_count"] == 0
-    assert len(report["audited_files"]) == 5
+    assert len(report["audited_files"]) == 6
 
 
 def test_audit_legacy_bridge_module_reports_missing_typed_annotations(tmp_path: Path) -> None:
@@ -91,5 +91,34 @@ def test_audit_runtime_sources_module_reports_missing_adapters(tmp_path: Path) -
     )
     assert any(
         detail.endswith("runtime source adapters are missing a required seam dependency")
+        for detail in finding_details
+    )
+
+
+def test_audit_runtime_event_emitters_module_reports_missing_emitter_methods(tmp_path: Path) -> None:
+    """Flag emitter modules that stop owning contract-first event assembly."""
+
+    runtime_event_emitters_path = tmp_path / "runtime_event_emitters.py"
+    runtime_event_emitters_path.write_text(
+        "\n".join(
+            [
+                "class LegacySupervisorEventEmitter:",
+                "    def emit_initial(self):",
+                "        return {}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    findings = runtime_contract_audit.audit_runtime_event_emitters_module(runtime_event_emitters_path)
+    finding_details = {f"{finding.symbol}|{finding.detail}" for finding in findings}
+
+    assert any(
+        detail.startswith("LegacySupervisorEventEmitter.emit_node_start|missing runtime event emitter method")
+        for detail in finding_details
+    )
+    assert any(
+        detail.endswith("runtime event emitters are missing a required contract dependency")
         for detail in finding_details
     )
