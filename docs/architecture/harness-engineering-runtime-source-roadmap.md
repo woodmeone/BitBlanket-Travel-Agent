@@ -30,7 +30,7 @@ Goal:
 Planned actions:
 - [completed 2026-03-28] Add `scripts/runtime_contract_audit.py` and wire it into `python scripts/dev.py infra-check` plus CI to guard the typed runtime seam.
 - Replace remaining `legacy_runtime` event assembly paths with contract-first emitters.
-- Move memory-aware source-state assembly out of the legacy shim and into smaller runtime-source adapters.
+- [completed 2026-03-29] Move memory-aware source-state assembly out of the legacy shim and into smaller runtime-source adapters.
 - Keep `AgentRuntime -> legacy_bridge -> legacy_runtime` as the only allowed compatibility chain.
 
 ### 3.2 Ops Artifact Harness
@@ -73,7 +73,12 @@ Planned actions:
 ### Phase B: Runtime Source Replacement
 
 - Replace remaining legacy source assembly with contract-native adapters.
-- Move memory/state preparation closer to source adapters and out of wide compatibility functions.
+- [completed 2026-03-29] Move memory/state preparation closer to source adapters and out of wide compatibility functions.
+
+Progress update:
+- [completed 2026-03-29] Added `agent/travel_agent/runtime_sources.py` so memory-aware graph/preview state assembly and default checkpointer creation live outside `legacy_runtime.py`.
+- [completed 2026-03-29] Refactored `legacy_runtime.py` to consume prebuilt runtime sources for supervisor stream/preview, while keeping normalized shim event emission local to the compatibility layer.
+- [completed 2026-03-29] Extended `scripts/runtime_contract_audit.py` and unit coverage to guard the `legacy_runtime -> runtime_sources` adapter boundary and block direct `memory_integration` drift back into the shim.
 
 ### Phase C: Ops Artifact Contracts
 
@@ -100,4 +105,5 @@ This roadmap is complete when:
 
 1. [completed 2026-03-28] Add the runtime contract audit gate.
 2. [completed 2026-03-28] Contractize runtime doctor and support bundle outputs.
-3. Continue replacing legacy runtime source assembly behind the typed seam.
+3. [completed 2026-03-29] Move memory-aware runtime source assembly into dedicated runtime-source adapters and guard the boundary with audit coverage.
+4. Continue replacing remaining legacy runtime event assembly behind the typed seam.
