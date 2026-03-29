@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import Any, Callable, Optional
 
 from langchain_core.runnables import Runnable
@@ -21,12 +20,81 @@ from ..contracts import (
     SupervisorToolEndEvent,
     SupervisorToolStartEvent,
 )
+from ..runtime_sources import (
+    LegacyGraphSourceAdapter,
+    LegacyPlanPreviewSourceAdapter,
+    build_memory_graph_source,
+    build_memory_plan_preview_source,
+    build_supervisor_plan_preview_source,
+    build_supervisor_streaming_source,
+    create_default_checkpointer,
+)
 from .nodes import AgentNodes
 from .runtime_config import get_runtime_config
 from .state import TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_state
 
 TOOL_RESULT_PREVIEW_LIMIT = 200
-_DEFAULT_CHECKPOINTER = None
+_INCOMPLETE_ANSWER_FALLBACK = (
+    "The main steps are complete, but the current response may be truncated. "
+    "Tell me whether you want me to fill in the budget, itinerary, or hotel details first."
+)
+_NODE_STAGE_CONFIG: dict[str, dict[str, Any]] = {
+    "intent": {
+        "stage": "parse",
+        "progress": 10,
+        "label": "Analyze request",
+        "reasoning": "Analyzing user intent...",
+    },
+    "strategy": {
+        "stage": "parse",
+        "progress": 18,
+        "label": "Select strategy",
+        "reasoning": "Selecting the execution strategy...",
+    },
+    "plan": {
+        "stage": "query",
+        "progress": 25,
+        "label": "Build plan",
+        "subagent": "planning",
+        "reasoning": "Preparing the execution plan...",
+    },
+    "react": {
+        "stage": "query",
+        "progress": 25,
+        "label": "Run reactive planner",
+        "subagent": "planning",
+        "reasoning": "Preparing the reactive tool loop...",
+    },
+    "execute": {
+        "stage": "query",
+        "progress": 45,
+        "label": "Query data",
+        "subagent": "research",
+        "reasoning": "Running tools...",
+    },
+    "answer": {
+        "stage": "generate",
+        "progress": 80,
+        "label": "Draft answer",
+    },
+    "direct_answer": {
+        "stage": "generate",
+        "progress": 80,
+        "label": "Draft answer",
+    },
+    "verify": {
+        "stage": "generate",
+        "progress": 72,
+        "label": "Verify results",
+        "subagent": "verification",
+        "reasoning": "Checking price, policy, and date consistency...",
+    },
+    "self_check": {
+        "stage": "finalize",
+        "progress": 95,
+        "label": "Self check answer",
+    },
+}
 
 
 async def stream_supervisor_run(
@@ -35,17 +103,13 @@ async def stream_supervisor_run(
     context: SupervisorRuntimeContext,
 ):
     """Bridge one supervisor-stream request into the legacy graph runtime shim."""
-    async for event in run_travel_agent_streaming_with_memory(
+    source = build_supervisor_streaming_source(request=request, context=context)
+    async for event in _stream_graph_source(
+        source=source,
         user_message=request.user_message,
-        llm=context.llm,
-        tools=context.tools,
         session_id=request.session_id,
-        memory_manager=context.memory_manager,
-        system_prompt=request.system_prompt,
         persist_memory=request.persist_memory,
         run_id=request.run_id,
-        chat_mode=request.chat_mode,
-        routing_llm=context.routing_llm,
     ):
         yield event
 
@@ -56,18 +120,8 @@ def generate_supervisor_plan_preview(
     context: SupervisorRuntimeContext,
 ) -> SupervisorPlanPreview:
     """Bridge one supervisor preview request into the legacy graph runtime shim."""
-    return SupervisorPlanPreview.from_dict(
-        generate_plan_preview_with_memory(
-            user_message=request.user_message,
-            llm=context.llm,
-            tools=context.tools,
-            session_id=request.session_id,
-            memory_manager=context.memory_manager,
-            system_prompt=request.system_prompt,
-            chat_mode=request.chat_mode,
-            routing_llm=context.routing_llm,
-        )
-    )
+    source = build_supervisor_plan_preview_source(request=request, context=context)
+    return SupervisorPlanPreview.from_dict(_generate_plan_preview_from_source(source))
 
 
 def collect_supervisor_tool_health_diagnostics() -> SupervisorToolHealthDiagnostics:
@@ -108,43 +162,216 @@ def _is_answer_complete(answer: str) -> bool:
     text = str(answer or "").strip()
     if len(text) < 8:
         return False
-    tail = text[-1]
-    return tail in {"。", ".", "！", "!", "？", "?"}
+    return text[-1] in {".", "!", "?", "。", "！", "？"}
 
 
-def _create_default_checkpointer():
-    """Create default checkpointer with persistent-first and memory-fallback strategy."""
-    global _DEFAULT_CHECKPOINTER
-    if _DEFAULT_CHECKPOINTER is not None:
-        return _DEFAULT_CHECKPOINTER
+def _iter_node_stage_events(node_name: str) -> tuple[str | None, int | None, list[dict[str, Any]]]:
+    """Map node-start events into normalized stage/reasoning payloads."""
+
+    config = _NODE_STAGE_CONFIG.get(node_name)
+    if not config:
+        return None, None, []
+
+    stage = str(config["stage"])
+    progress = int(config["progress"])
+    events: list[dict[str, Any]] = [
+        SupervisorStageEvent(
+            stage=stage,
+            progress=progress,
+            label=str(config["label"]),
+            subagent=config.get("subagent"),
+        ).to_dict()
+    ]
+    reasoning = config.get("reasoning")
+    if reasoning:
+        events.append(SupervisorReasoningEvent(content=str(reasoning)).to_dict())
+    return stage, progress, events
+
+
+async def _persist_memory_snapshot(
+    *,
+    memory_manager: Any,
+    session_id: str,
+    user_message: str,
+    answer: str,
+) -> None:
+    """Persist one user/assistant exchange when a memory manager is available."""
+
+    if memory_manager is None:
+        return
+    await memory_manager.add_message(session_id, "user", user_message)
+    await memory_manager.add_message(session_id, "assistant", answer)
+
+
+def _normalize_done_payload(
+    *,
+    answer: str,
+    tools_used: list[str],
+    session_id: str,
+    run_id: str | None,
+    final_state: dict[str, Any],
+) -> dict[str, Any]:
+    """Build the terminal normalized payload for streaming legacy runtime shims."""
+
+    resolved_answer = str(final_state.get("answer") or answer or "")
+    resolved_tools_used = list(final_state.get("tools_used") or tools_used or [])
+    execution_stats = final_state.get("execution_stats", {}) or {}
+    execution_summary = final_state.get("execution_summary", {}) or {}
+    verify_result = final_state.get("verify_result", {}) or {}
+    strategy_detail = final_state.get("strategy_detail", {}) or {}
+    tool_results = final_state.get("tool_results", {}) or {}
+    plan_id = final_state.get("plan_id")
+    intent = final_state.get("intent")
+
+    verification_passed: Optional[bool]
+    if isinstance(verify_result, dict) and "passed" in verify_result:
+        verification_passed = bool(verify_result.get("passed"))
+    elif bool(strategy_detail.get("requires_verification", False)):
+        verification_passed = False
+    else:
+        verification_passed = True
+
+    fallback_steps = int(execution_summary.get("fallback_steps", 0) or 0)
+    if fallback_steps <= 0 and isinstance(execution_stats, dict):
+        stats_steps = list(execution_stats.get("steps", []) or [])
+        fallback_steps = sum(1 for item in stats_steps if bool(item.get("fallback_used", False)))
+
+    stale_result_count = sum(
+        1
+        for result in (tool_results.values() if isinstance(tool_results, dict) else [])
+        if isinstance(result, dict) and bool(result.get("success")) and bool(result.get("is_stale", False))
+    )
+
+    if not _is_answer_complete(resolved_answer):
+        if resolved_answer:
+            resolved_answer = f"{resolved_answer.rstrip()} {_INCOMPLETE_ANSWER_FALLBACK}"
+        else:
+            resolved_answer = _INCOMPLETE_ANSWER_FALLBACK
+
+    return SupervisorDoneEvent(
+        answer=resolved_answer,
+        tools_used=resolved_tools_used,
+        session_id=session_id,
+        run_id=run_id,
+        plan_id=plan_id,
+        intent=intent,
+        execution_stats=execution_stats if isinstance(execution_stats, dict) else {},
+        verification_passed=verification_passed,
+        stale_result_count=stale_result_count,
+        fallback_steps=fallback_steps,
+    ).to_dict()
+
+
+async def _stream_graph_source(
+    *,
+    source: LegacyGraphSourceAdapter,
+    user_message: str,
+    session_id: str,
+    persist_memory: bool,
+    run_id: str | None,
+):
+    """Stream normalized supervisor events from one prebuilt legacy graph source."""
+
+    answer = ""
+    tools_used: list[str] = []
+    final_state: dict[str, Any] = {}
+    stage = "parse"
+    progress = 5
+
     try:
-        from .persistent_checkpointer import PersistentSqliteSaver
+        yield SupervisorStageEvent(stage=stage, progress=progress, label="Analyze request").to_dict()
+        async for event in source.agent.astream_events(source.initial_state):
+            event_type = event.get("event")
 
-        default_db_path = os.path.abspath(
-            os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                "..",
-                "data",
-                "langgraph_checkpoints.sqlite3",
-            )
-        )
-        db_path = os.getenv("AGENT_CHECKPOINT_DB", default_db_path)
-        max_checkpoints = int(os.getenv("AGENT_CHECKPOINT_MAX_PER_THREAD", "200"))
-        compaction_interval = int(os.getenv("AGENT_CHECKPOINT_COMPACTION_INTERVAL", "50"))
-        _DEFAULT_CHECKPOINTER = PersistentSqliteSaver(
-            db_path=db_path,
-            max_checkpoints_per_thread_ns=max_checkpoints,
-            compaction_interval=compaction_interval,
-        )
-        return _DEFAULT_CHECKPOINTER
+            if event_type == "on_node_start":
+                node_name = str(event.get("name", ""))
+                stage_update, progress_update, stage_events = _iter_node_stage_events(node_name)
+                if stage_update is not None:
+                    stage = stage_update
+                if progress_update is not None:
+                    progress = progress_update
+                for stage_event in stage_events:
+                    yield stage_event
+
+            elif event_type == "on_chat_model_stream":
+                content = _extract_text_from_chunk((event.get("data") or {}).get("chunk"))
+                if content:
+                    answer += content
+                    yield SupervisorChunkEvent(content=content).to_dict()
+
+            elif event_type == "on_tool_start":
+                tool_name = str(event.get("name", ""))
+                tools_used.append(tool_name)
+                progress = min(75, progress + 5)
+                yield SupervisorStageEvent(
+                    stage="query",
+                    progress=progress,
+                    label=f"Query data: {tool_name}",
+                ).to_dict()
+                yield SupervisorToolStartEvent(tool=tool_name, progress=progress).to_dict()
+
+            elif event_type == "on_tool_end":
+                tool_name = str(event.get("name", ""))
+                result = (event.get("data") or {}).get("output")
+                yield SupervisorToolEndEvent(
+                    tool=tool_name,
+                    result=str(result)[:TOOL_RESULT_PREVIEW_LIMIT],
+                    progress=progress,
+                ).to_dict()
+
+            elif event_type == "on_chain_end":
+                output = (event.get("data") or {}).get("output")
+                if isinstance(output, dict) and ("answer" in output or "execution_stats" in output):
+                    final_state = output
+
     except Exception:
-        try:
-            from langgraph.checkpoint.memory import InMemorySaver
+        if persist_memory:
+            try:
+                await _persist_memory_snapshot(
+                    memory_manager=source.memory_manager,
+                    session_id=session_id,
+                    user_message=user_message,
+                    answer=f"[INTERRUPTED]{answer}",
+                )
+            except Exception:
+                pass
+        raise
 
-            _DEFAULT_CHECKPOINTER = InMemorySaver()
-            return _DEFAULT_CHECKPOINTER
-        except Exception:
-            return None
+    if persist_memory:
+        await _persist_memory_snapshot(
+            memory_manager=source.memory_manager,
+            session_id=session_id,
+            user_message=user_message,
+            answer=str(final_state.get("answer") or answer or ""),
+        )
+
+    yield SupervisorStageEvent(stage="finalize", progress=100, label="Complete").to_dict()
+    yield _normalize_done_payload(
+        answer=answer,
+        tools_used=tools_used,
+        session_id=session_id,
+        run_id=run_id,
+        final_state=final_state,
+    )
+
+
+def _generate_plan_preview_from_source(source: LegacyPlanPreviewSourceAdapter) -> dict[str, Any]:
+    """Generate one normalized plan preview from a prebuilt legacy preview source."""
+
+    intent_state = dict(source.initial_state)
+    intent_state.update(source.nodes.intent_node(intent_state))
+    plan_state = dict(intent_state)
+    plan_state.update(source.nodes.plan_node(intent_state))
+
+    return {
+        "plan_id": plan_state.get("plan_id"),
+        "intent": plan_state.get("intent"),
+        "intent_detail": plan_state.get("intent_detail", {}),
+        "plan_explanation": plan_state.get("plan_explanation"),
+        "validation_status": plan_state.get("validation_status", "pass"),
+        "validation_errors": plan_state.get("validation_errors", []),
+        "plan": plan_state.get("plan", []),
+    }
 
 
 async def run_travel_agent(
@@ -164,7 +391,7 @@ async def run_travel_agent(
         llm,
         tools,
         system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
-        checkpointer=_create_default_checkpointer(),
+        checkpointer=create_default_checkpointer(),
         routing_llm=routing_llm,
     )
     initial_state = create_initial_state(
@@ -205,7 +432,7 @@ async def run_travel_agent_streaming(
         llm,
         tools,
         system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
-        checkpointer=_create_default_checkpointer(),
+        checkpointer=create_default_checkpointer(),
         routing_llm=routing_llm,
     )
     initial_state = create_initial_state(
@@ -260,33 +487,23 @@ async def run_travel_agent_with_memory(
     routing_llm: Runnable | None = None,
 ) -> dict:
     """Run non-streaming graph execution with memory context injection."""
-    from .builder import build_travel_agent
-    from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
-    if memory_manager is None:
-        memory_manager = get_agent_memory_manager(llm=llm, max_history=10, summary_threshold=15)
-
-    initial_state = AgentStateWithMemory.create(
+    source = build_memory_graph_source(
         user_message=user_message,
+        llm=llm,
+        tools=tools,
         session_id=session_id,
         memory_manager=memory_manager,
-        system_prompt=system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         chat_mode=chat_mode,
-    )
-    if run_id:
-        initial_state["run_id"] = run_id
-
-    agent = build_travel_agent(
-        llm,
-        tools,
-        system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
-        checkpointer=_create_default_checkpointer(),
+        run_id=run_id,
         routing_llm=routing_llm,
+        manager_defaults={"max_history": 10, "summary_threshold": 15},
     )
 
     answer = ""
     tools_used: list[str] = []
-    async for event in agent.astream_events(initial_state):
+    async for event in source.agent.astream_events(source.initial_state):
         event_type = event.get("event")
         if event_type == "on_chat_model_stream":
             content = _extract_text_from_chunk((event.get("data") or {}).get("chunk"))
@@ -306,8 +523,12 @@ async def run_travel_agent_with_memory(
                 await on_tool_end(tool_name, result)
 
     if persist_memory:
-        await memory_manager.add_message(session_id, "user", user_message)
-        await memory_manager.add_message(session_id, "assistant", answer)
+        await _persist_memory_snapshot(
+            memory_manager=source.memory_manager,
+            session_id=session_id,
+            user_message=user_message,
+            answer=answer,
+        )
 
     return {
         "success": True,
@@ -331,169 +552,26 @@ async def run_travel_agent_streaming_with_memory(
     routing_llm: Runnable | None = None,
 ):
     """Run streaming graph execution with memory context and normalized event payloads."""
-    from .builder import build_travel_agent
-    from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
-    if memory_manager is None:
-        memory_manager = get_agent_memory_manager(llm=llm)
-
-    initial_state = AgentStateWithMemory.create(
+    source = build_memory_graph_source(
         user_message=user_message,
+        llm=llm,
+        tools=tools,
         session_id=session_id,
         memory_manager=memory_manager,
-        system_prompt=system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         chat_mode=chat_mode,
-    )
-    if run_id:
-        initial_state["run_id"] = run_id
-
-    agent = build_travel_agent(
-        llm,
-        tools,
-        system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
-        checkpointer=_create_default_checkpointer(),
+        run_id=run_id,
         routing_llm=routing_llm,
     )
-
-    answer = ""
-    tools_used: list[str] = []
-    final_state: dict[str, Any] = {}
-    stage = "parse"
-    progress = 5
-
-    try:
-        yield SupervisorStageEvent(stage=stage, progress=progress, label="解析需求").to_dict()
-        async for event in agent.astream_events(initial_state):
-            event_type = event.get("event")
-
-            if event_type == "on_node_start":
-                node_name = event.get("name", "")
-                if node_name == "intent":
-                    stage = "parse"
-                    progress = 10
-                    yield SupervisorStageEvent(stage=stage, progress=progress, label="解析需求").to_dict()
-                    yield SupervisorReasoningEvent(content="分析用户意图...").to_dict()
-                elif node_name == "strategy":
-                    stage = "parse"
-                    progress = 18
-                    yield SupervisorStageEvent(stage=stage, progress=progress, label="选择策略").to_dict()
-                    yield SupervisorReasoningEvent(content="选择 ReAct 子策略...").to_dict()
-                elif node_name == "plan":
-                    stage = "query"
-                    progress = 25
-                    yield SupervisorStageEvent(stage=stage, progress=progress, label="生成计划", subagent="planning").to_dict()
-                    yield SupervisorReasoningEvent(content="制定执行计划...").to_dict()
-                elif node_name == "react":
-                    stage = "query"
-                    progress = 25
-                    yield SupervisorStageEvent(stage=stage, progress=progress, label="ReAct 执行计划", subagent="planning").to_dict()
-                    yield SupervisorReasoningEvent(content="进入 ReAct 工具编排...").to_dict()
-                elif node_name == "execute":
-                    stage = "query"
-                    progress = 45
-                    yield SupervisorStageEvent(stage=stage, progress=progress, label="查询数据", subagent="research").to_dict()
-                    yield SupervisorReasoningEvent(content="执行工具...").to_dict()
-                elif node_name in {"answer", "direct_answer"}:
-                    stage = "generate"
-                    progress = 80
-                    yield SupervisorStageEvent(stage=stage, progress=progress, label="生成方案").to_dict()
-                elif node_name == "verify":
-                    stage = "generate"
-                    progress = 72
-                    yield SupervisorStageEvent(stage=stage, progress=progress, label="验证结果一致性", subagent="verification").to_dict()
-                    yield SupervisorReasoningEvent(content="校验价格/政策/日期一致性...").to_dict()
-                elif node_name == "self_check":
-                    stage = "finalize"
-                    progress = 95
-                    yield SupervisorStageEvent(stage=stage, progress=progress, label="自检答案完整性").to_dict()
-
-            elif event_type == "on_chat_model_stream":
-                content = _extract_text_from_chunk((event.get("data") or {}).get("chunk"))
-                if content:
-                    answer += content
-                    yield SupervisorChunkEvent(content=content).to_dict()
-
-            elif event_type == "on_tool_start":
-                tool_name = event.get("name", "")
-                tools_used.append(tool_name)
-                progress = min(75, progress + 5)
-                yield SupervisorStageEvent(stage="query", progress=progress, label=f"查询数据: {tool_name}").to_dict()
-                yield SupervisorToolStartEvent(tool=tool_name, progress=progress).to_dict()
-
-            elif event_type == "on_tool_end":
-                tool_name = event.get("name", "")
-                result = (event.get("data") or {}).get("output")
-                yield SupervisorToolEndEvent(
-                    tool=tool_name,
-                    result=str(result)[:TOOL_RESULT_PREVIEW_LIMIT],
-                    progress=progress,
-                ).to_dict()
-            elif event_type == "on_chain_end":
-                output = (event.get("data") or {}).get("output")
-                if isinstance(output, dict) and ("answer" in output or "execution_stats" in output):
-                    final_state = output
-
-    except Exception:
-        if persist_memory and memory_manager is not None:
-            try:
-                await memory_manager.add_message(session_id, "user", user_message)
-                await memory_manager.add_message(session_id, "assistant", f"[INTERRUPTED]{answer}")
-            except Exception:
-                pass
-        raise
-
-    if persist_memory:
-        await memory_manager.add_message(session_id, "user", user_message)
-        await memory_manager.add_message(session_id, "assistant", answer)
-
-    execution_stats = final_state.get("execution_stats", {})
-    execution_summary = final_state.get("execution_summary", {}) or {}
-    verify_result = final_state.get("verify_result", {}) or {}
-    strategy_detail = final_state.get("strategy_detail", {}) or {}
-    tool_results = final_state.get("tool_results", {}) or {}
-    plan_id = final_state.get("plan_id")
-    intent = final_state.get("intent")
-    if not execution_stats and isinstance(final_state, dict):
-        execution_stats = final_state.get("execution_stats", {})
-    verification_passed: Optional[bool]
-    if isinstance(verify_result, dict) and "passed" in verify_result:
-        verification_passed = bool(verify_result.get("passed"))
-    elif bool(strategy_detail.get("requires_verification", False)):
-        verification_passed = False
-    else:
-        verification_passed = True
-
-    fallback_steps = int(execution_summary.get("fallback_steps", 0) or 0)
-    if fallback_steps <= 0 and isinstance(execution_stats, dict):
-        stats_steps = list(execution_stats.get("steps", []) or [])
-        fallback_steps = sum(1 for item in stats_steps if bool(item.get("fallback_used", False)))
-
-    stale_result_count = sum(
-        1
-        for result in (tool_results.values() if isinstance(tool_results, dict) else [])
-        if isinstance(result, dict) and bool(result.get("success")) and bool(result.get("is_stale", False))
-    )
-
-    if not _is_answer_complete(answer):
-        fallback_text = "已完成主要步骤，但当前回复可能不完整。请告诉我你希望我优先补充预算、行程还是酒店。"
-        if answer:
-            answer = f"{answer.rstrip()} {fallback_text}"
-        else:
-            answer = fallback_text
-
-    yield SupervisorStageEvent(stage="finalize", progress=100, label="完整性检查").to_dict()
-    yield SupervisorDoneEvent(
-        answer=answer,
-        tools_used=tools_used,
+    async for event in _stream_graph_source(
+        source=source,
+        user_message=user_message,
         session_id=session_id,
+        persist_memory=persist_memory,
         run_id=run_id,
-        plan_id=plan_id,
-        intent=intent,
-        execution_stats=execution_stats,
-        verification_passed=verification_passed,
-        stale_result_count=stale_result_count,
-        fallback_steps=fallback_steps,
-    ).to_dict()
+    ):
+        yield event
 
 
 def generate_plan_preview_with_memory(
@@ -507,34 +585,18 @@ def generate_plan_preview_with_memory(
     routing_llm: Runnable | None = None,
 ) -> dict:
     """Generate a memory-aware plan preview without executing full tool orchestration."""
-    from .memory_integration import AgentStateWithMemory, get_agent_memory_manager
 
-    if memory_manager is None:
-        memory_manager = get_agent_memory_manager(llm=llm)
-
-    initial_state = AgentStateWithMemory.create(
+    source = build_memory_plan_preview_source(
         user_message=user_message,
+        llm=llm,
+        tools=tools,
         session_id=session_id,
         memory_manager=memory_manager,
-        system_prompt=system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         chat_mode=chat_mode,
+        routing_llm=routing_llm,
     )
-
-    nodes = AgentNodes(llm, tools, system_prompt or TRAVEL_AGENT_SYSTEM_PROMPT, routing_llm=routing_llm)
-    intent_state = dict(initial_state)
-    intent_state.update(nodes.intent_node(intent_state))
-    plan_state = dict(intent_state)
-    plan_state.update(nodes.plan_node(intent_state))
-
-    return {
-        "plan_id": plan_state.get("plan_id"),
-        "intent": plan_state.get("intent"),
-        "intent_detail": plan_state.get("intent_detail", {}),
-        "plan_explanation": plan_state.get("plan_explanation"),
-        "validation_status": plan_state.get("validation_status", "pass"),
-        "validation_errors": plan_state.get("validation_errors", []),
-        "plan": plan_state.get("plan", []),
-    }
+    return _generate_plan_preview_from_source(source)
 
 
 def get_tool_health_diagnostics() -> dict[str, Any]:

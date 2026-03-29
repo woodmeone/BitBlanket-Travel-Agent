@@ -19,15 +19,26 @@ from agent.travel_agent.runtime.legacy_bridge import DefaultLegacyRuntimeBridge
 def test_stream_supervisor_run_uses_explicit_contract(monkeypatch):
     """Legacy runtime stream shim should consume supervisor request/context directly."""
     observed: dict[str, object] = {}
+    source = SimpleNamespace(agent="agent", initial_state={"messages": []}, memory_manager="memory")
 
-    async def _fake_run_travel_agent_streaming_with_memory(**kwargs):
+    def _fake_build_supervisor_streaming_source(*, request, context):
+        observed["request"] = request
+        observed["context"] = context
+        return source
+
+    async def _fake_stream_graph_source(**kwargs):
         observed.update(kwargs)
         yield {"type": "done", "answer": "ok"}
 
     monkeypatch.setattr(
         legacy_runtime,
-        "run_travel_agent_streaming_with_memory",
-        _fake_run_travel_agent_streaming_with_memory,
+        "build_supervisor_streaming_source",
+        _fake_build_supervisor_streaming_source,
+    )
+    monkeypatch.setattr(
+        legacy_runtime,
+        "_stream_graph_source",
+        _fake_stream_graph_source,
     )
 
     request = SupervisorRunRequest(
@@ -51,30 +62,38 @@ def test_stream_supervisor_run_uses_explicit_contract(monkeypatch):
     events = asyncio.run(_collect())
 
     assert events == [{"type": "done", "answer": "ok"}]
+    assert observed["request"] is request
+    assert observed["context"] is context
+    assert observed["source"] is source
     assert observed["user_message"] == "plan a trip"
     assert observed["session_id"] == "session-1"
-    assert observed["system_prompt"] == "system"
     assert observed["persist_memory"] is False
     assert observed["run_id"] == "run-1"
-    assert observed["chat_mode"] == "plan"
-    assert observed["llm"] is context.llm
-    assert observed["tools"] == context.tools
-    assert observed["memory_manager"] is context.memory_manager
-    assert observed["routing_llm"] is context.routing_llm
 
 
 def test_generate_supervisor_plan_preview_uses_explicit_contract(monkeypatch):
     """Legacy runtime preview shim should consume supervisor request/context directly."""
     observed: dict[str, object] = {}
+    source = SimpleNamespace(nodes="nodes", initial_state={"messages": []}, memory_manager="memory")
 
-    def _fake_generate_plan_preview_with_memory(**kwargs):
-        observed.update(kwargs)
+    def _fake_build_supervisor_plan_preview_source(*, request, context):
+        observed["request"] = request
+        observed["context"] = context
+        return source
+
+    def _fake_generate_plan_preview_from_source(source_arg):
+        observed["source"] = source_arg
         return {"plan_id": "preview-1"}
 
     monkeypatch.setattr(
         legacy_runtime,
-        "generate_plan_preview_with_memory",
-        _fake_generate_plan_preview_with_memory,
+        "build_supervisor_plan_preview_source",
+        _fake_build_supervisor_plan_preview_source,
+    )
+    monkeypatch.setattr(
+        legacy_runtime,
+        "_generate_plan_preview_from_source",
+        _fake_generate_plan_preview_from_source,
     )
 
     request = SupervisorPlanPreviewRequest(
@@ -102,14 +121,9 @@ def test_generate_supervisor_plan_preview_uses_explicit_contract(monkeypatch):
         "validation_errors": [],
         "plan": [],
     }
-    assert observed["user_message"] == "preview trip"
-    assert observed["session_id"] == "session-2"
-    assert observed["system_prompt"] == "system-preview"
-    assert observed["chat_mode"] == "react"
-    assert observed["llm"] is context.llm
-    assert observed["tools"] == context.tools
-    assert observed["memory_manager"] is context.memory_manager
-    assert observed["routing_llm"] is context.routing_llm
+    assert observed["request"] is request
+    assert observed["context"] is context
+    assert observed["source"] is source
 
 
 def test_default_legacy_runtime_bridge_delegates_to_contract_shim(monkeypatch):

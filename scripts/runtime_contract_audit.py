@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CONTRACT_PATH = ROOT / "agent" / "travel_agent" / "contracts" / "supervisor_orchestration.py"
 LEGACY_BRIDGE_PATH = ROOT / "agent" / "travel_agent" / "runtime" / "legacy_bridge.py"
 LEGACY_RUNTIME_PATH = ROOT / "agent" / "travel_agent" / "graph" / "legacy_runtime.py"
+RUNTIME_SOURCES_PATH = ROOT / "agent" / "travel_agent" / "runtime_sources.py"
 AGENT_RUNTIME_PATH = ROOT / "agent" / "travel_agent" / "runtime" / "agent_runtime.py"
 
 REQUIRED_CONTRACTS = (
@@ -23,6 +24,13 @@ REQUIRED_CONTRACTS = (
     "SupervisorPlanPreview",
     "SupervisorToolHealthEntry",
     "SupervisorToolHealthDiagnostics",
+)
+REQUIRED_RUNTIME_SOURCE_FUNCTIONS = (
+    "create_default_checkpointer",
+    "build_memory_graph_source",
+    "build_memory_plan_preview_source",
+    "build_supervisor_streaming_source",
+    "build_supervisor_plan_preview_source",
 )
 
 
@@ -282,6 +290,7 @@ def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]
     """Audit the legacy runtime shim annotations and exported entrypoints."""
 
     module = _load_module_ast(path)
+    source = path.read_text(encoding="utf-8")
     findings: list[RuntimeContractAuditFinding] = []
 
     stream_function = _find_function(module, "stream_supervisor_run")
@@ -362,6 +371,85 @@ def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]
                 )
             )
 
+    if "from ..runtime_sources import" not in source:
+        findings.append(
+            RuntimeContractAuditFinding(
+                path=_repo_relative(path),
+                symbol="legacy_runtime",
+                detail="legacy runtime must import runtime source adapters",
+            )
+        )
+
+    required_adapter_tokens = (
+        "build_supervisor_streaming_source",
+        "build_supervisor_plan_preview_source",
+        "build_memory_graph_source",
+        "build_memory_plan_preview_source",
+        "_stream_graph_source",
+        "_generate_plan_preview_from_source",
+    )
+    for token in required_adapter_tokens:
+        if token not in source:
+            findings.append(
+                RuntimeContractAuditFinding(
+                    path=_repo_relative(path),
+                    symbol=token,
+                    detail="legacy runtime must route through runtime source adapters",
+                )
+            )
+
+    forbidden_tokens = (
+        "AgentStateWithMemory",
+        "get_agent_memory_manager",
+        "from .memory_integration import",
+    )
+    for token in forbidden_tokens:
+        if token in source:
+            findings.append(
+                RuntimeContractAuditFinding(
+                    path=_repo_relative(path),
+                    symbol="legacy_runtime",
+                    detail=f"legacy runtime must not assemble memory state directly via `{token}`",
+                )
+            )
+
+    return findings
+
+
+def audit_runtime_sources_module(path: Path) -> list[RuntimeContractAuditFinding]:
+    """Audit the dedicated runtime source adapters that own memory/state preparation."""
+
+    module = _load_module_ast(path)
+    source = path.read_text(encoding="utf-8")
+    findings: list[RuntimeContractAuditFinding] = []
+
+    for function_name in REQUIRED_RUNTIME_SOURCE_FUNCTIONS:
+        if _find_function(module, function_name) is None:
+            _add_missing_function_finding(
+                findings,
+                path,
+                symbol=function_name,
+                detail="missing runtime source adapter function",
+            )
+
+    required_tokens = (
+        "build_travel_agent",
+        "AgentStateWithMemory",
+        "get_agent_memory_manager",
+        "AgentNodes",
+        "SupervisorRunRequest",
+        "SupervisorPlanPreviewRequest",
+    )
+    for token in required_tokens:
+        if token not in source:
+            findings.append(
+                RuntimeContractAuditFinding(
+                    path=_repo_relative(path),
+                    symbol=token,
+                    detail="runtime source adapters are missing a required seam dependency",
+                )
+            )
+
     return findings
 
 
@@ -422,6 +510,7 @@ def build_runtime_contract_audit_report(root: Path = ROOT) -> dict[str, Any]:
         _repo_relative(CONTRACT_PATH): audit_contract_module(CONTRACT_PATH),
         _repo_relative(LEGACY_BRIDGE_PATH): audit_legacy_bridge_module(LEGACY_BRIDGE_PATH),
         _repo_relative(LEGACY_RUNTIME_PATH): audit_legacy_runtime_module(LEGACY_RUNTIME_PATH),
+        _repo_relative(RUNTIME_SOURCES_PATH): audit_runtime_sources_module(RUNTIME_SOURCES_PATH),
         _repo_relative(AGENT_RUNTIME_PATH): audit_agent_runtime_module(AGENT_RUNTIME_PATH),
     }
     findings = [

@@ -13,7 +13,7 @@ def test_build_runtime_contract_audit_report_passes_for_current_repo() -> None:
     report = runtime_contract_audit.build_runtime_contract_audit_report()
 
     assert report["finding_count"] == 0
-    assert len(report["audited_files"]) == 4
+    assert len(report["audited_files"]) == 5
 
 
 def test_audit_legacy_bridge_module_reports_missing_typed_annotations(tmp_path: Path) -> None:
@@ -57,5 +57,39 @@ def test_audit_legacy_bridge_module_reports_missing_typed_annotations(tmp_path: 
     )
     assert any(
         detail.endswith("missing typed legacy runtime shim reference")
+        for detail in finding_details
+    )
+
+
+def test_audit_runtime_sources_module_reports_missing_adapters(tmp_path: Path) -> None:
+    """Flag runtime source modules that stop owning the source/state adapter boundary."""
+
+    runtime_sources_path = tmp_path / "runtime_sources.py"
+    runtime_sources_path.write_text(
+        "\n".join(
+            [
+                "from dataclasses import dataclass",
+                "",
+                "@dataclass",
+                "class LegacyGraphSourceAdapter:",
+                "    agent: object",
+                "",
+                "def build_memory_graph_source():",
+                "    return LegacyGraphSourceAdapter(agent=object())",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    findings = runtime_contract_audit.audit_runtime_sources_module(runtime_sources_path)
+    finding_details = {f"{finding.symbol}|{finding.detail}" for finding in findings}
+
+    assert any(
+        detail.startswith("create_default_checkpointer|missing runtime source adapter function")
+        for detail in finding_details
+    )
+    assert any(
+        detail.endswith("runtime source adapters are missing a required seam dependency")
         for detail in finding_details
     )
