@@ -113,7 +113,7 @@ moyuan-travel-agent/
 - `web/moyuan_web/bootstrap.py` 现在统一收口 repo root + `web/` 的导入入口，`tests/conftest.py` 会直接复用它来初始化 pytest 的导入边界，避免 root tests 继续各自写 `sys.path` 补丁
 - `scripts/bootstrap_paths.py` 现在统一承接 benchmark / replay / runtime / snapshot 脚本的导入入口，`agent_benchmark.py`、`agent_replay.py`、`runtime_doctor.py`、`export_openapi_snapshot.py` 等脚本不再各自内联 repo root / `web/` 注入
 - `scripts/dev.py` 与 `scripts/bootstrap.py` 现在既是跨平台本地入口，也被 `pytest + ruff + mypy` 直接覆盖；对应脚本入口已统一兼容“直接执行 / 包内导入 / spec 加载单测”三种运行方式
-- `scripts/runtime_ops_contracts.py` 现在统一收口 `runtime_doctor`、support bundle、release evidence 的 typed report contract；`scripts/export_runtime_doctor_snapshot.py` 会把这套 contract 固化到 `docs/reference/runtime-doctor.snapshot.json`
+- `scripts/runtime_ops_contracts.py` 现在统一收口 `runtime_doctor`、support bundle、release manifest、release harness scorecard 与 release evidence 的 typed report contract；`scripts/export_runtime_doctor_snapshot.py` 会把这套 contract 固化到 `docs/reference/runtime-doctor.snapshot.json`
 - `agent/travel_agent/memory/conflict_resolution.py` 现在统一承接 memory 冲突检测、澄清提示排序、显式覆盖闭环、resolved 审计日志和 persisted conflict schema 归一化，`agent/travel_agent/graph/memory_integration.py` 已进一步退化为会话 memory 编排层
 - `agent/travel_agent/contracts/skills.py`、`agent/travel_agent/skills/registry.py` 与 `agent/travel_agent/subagents/registry.py` 现在把 `skills market` 收口成显式 schema + selection policy：默认 skill 会带 `owner / version / input / output / evidence / freshness / fallback / docs / eval` 元数据，以及 `priority / intent_signals / preferred_context` 选择规则；`AgentRuntime` diagnostics 也会暴露 `subagent_skill_policies`，不再把能力选择继续藏在 prompt 里；配套 onboarding 清单见 [docs/governance/skills-market-onboarding.md](docs/governance/skills-market-onboarding.md)，catalog 见 [docs/reference/skills-market-catalog.md](docs/reference/skills-market-catalog.md)
 - `agent/travel_agent/contracts/supervisor_orchestration.py` 现在把 `AgentRuntime -> legacy bridge` 的 supervisor 编排状态收口成显式 `SupervisorRunRequest / SupervisorPlanPreviewRequest / SupervisorRuntimeContext` 契约，streaming 与 preview 路径不再继续靠一长串散参数维持兼容
@@ -492,6 +492,7 @@ mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_o
 - Release manifest: [`scripts/export_release_manifest.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_release_manifest.py)
 - Release harness checklist: [`scripts/release_harness_scorecard.py`](/D:/moyuan/moyuan-travel-agent/scripts/release_harness_scorecard.py)
 - Support bundle: [`scripts/export_support_bundle.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_support_bundle.py)
+  - support bundle manifest 现在也会复用 typed release evidence，带出 release manifest 的 `git_sha/git_ref`、release harness scorecard 的 `status`，并在压缩包内附带 `release-harness-scorecard.json`
 - Grafana dashboard: [`ops/observability/grafana-dashboard.json`](/D:/moyuan/moyuan-travel-agent/ops/observability/grafana-dashboard.json)
 - Prometheus alerts: [`ops/observability/prometheus-alerts.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus-alerts.yml)
 - Local Prometheus config: [`ops/observability/prometheus.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus.yml)

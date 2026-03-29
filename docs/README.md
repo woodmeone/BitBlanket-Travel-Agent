@@ -116,12 +116,12 @@
 - `scripts/runtime_restore.py`: 运行数据恢复
 - `scripts/runtime_prune.py`: 运行数据清理
 - `scripts/runtime_doctor.py`: 运行态一键自检
-- `scripts/runtime_ops_contracts.py`: runtime doctor / support bundle / release evidence 共享 report contract
+- `scripts/runtime_ops_contracts.py`: runtime doctor / support bundle / release manifest / release harness scorecard / release evidence 共享 report contract
 - `scripts/export_openapi_snapshot.py`: OpenAPI 契约快照导出
 - `scripts/export_sse_contract_snapshot.py`: SSE 契约快照导出
 - `scripts/export_runtime_doctor_snapshot.py`: runtime doctor 契约快照导出
 - `scripts/export_release_manifest.py`: release manifest 导出
-- `scripts/release_harness_scorecard.py`: 发布前收口 benchmark / delivery / skills / subagent 质量证据
+- `scripts/release_harness_scorecard.py`: 发布前收口 benchmark / delivery / skills / subagent 质量证据，并通过 shared ops contracts 输出 release scorecard
 - `scripts/export_support_bundle.py`: 运行态支持包导出
 - `scripts/bootstrap.py`: 跨平台本地依赖、虚拟环境与配置模板初始化入口
 - `scripts/dev.py`: 本地开发、测试、infra 检查、compose 校验统一入口

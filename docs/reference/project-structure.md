@@ -173,7 +173,7 @@ python scripts/dev.py help
 配套的结构审计脚本是 [`scripts/decision_record_audit.py`](/D:/moyuan/moyuan-travel-agent/scripts/decision_record_audit.py)，当前已接入本地 `python scripts/dev.py infra-check` 和 CI。
 配套的 skills 四件套审计脚本是 [`scripts/skills_market_audit.py`](/D:/moyuan/moyuan-travel-agent/scripts/skills_market_audit.py)，当前也已接入本地 `python scripts/dev.py infra-check` 和 CI。
 配套的 runtime seam 审计脚本是 [`scripts/runtime_contract_audit.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_contract_audit.py)，当前会固定 `AgentRuntime -> legacy_bridge -> legacy_runtime -> runtime_sources -> runtime_event_emitters` 的 typed contract 边界，并阻止 `legacy_runtime.py` 重新直接依赖 `memory_integration` 或重新内联 event contract 装配；该门禁已接入本地 `python scripts/dev.py infra-check` 和 CI。
-配套的运行态报告 contract 入口是 [`scripts/runtime_ops_contracts.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_ops_contracts.py)，`runtime_doctor`、support bundle 和 release evidence 会共用这套 typed report 模型；对应 snapshot 导出脚本是 [`scripts/export_runtime_doctor_snapshot.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_runtime_doctor_snapshot.py)。
+配套的运行态报告 contract 入口是 [`scripts/runtime_ops_contracts.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_ops_contracts.py)，`runtime_doctor`、support bundle、release manifest、release harness scorecard 和 release evidence 会共用这套 typed report 模型；对应 snapshot 导出脚本是 [`scripts/export_runtime_doctor_snapshot.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_runtime_doctor_snapshot.py)。
 
 ### `config/`
 
@@ -310,7 +310,9 @@ python scripts/dev.py help
 - [`scripts/agent_subagent_scorecard.py`](/D:/moyuan/moyuan-travel-agent/scripts/agent_subagent_scorecard.py)
   - 基于 replay fixture 生成 `research / planning / budget / verification` 的协作覆盖 scorecard 基线
 - [`scripts/release_harness_scorecard.py`](/D:/moyuan/moyuan-travel-agent/scripts/release_harness_scorecard.py)
-  - 收口 golden / benchmark / subagent scorecard / delivery snapshot / skills market 的 release checklist
+  - 收口 golden / benchmark / subagent scorecard / delivery snapshot / skills market 的 release checklist，并通过 `runtime_ops_contracts.py` 输出 typed release scorecard
+- [`scripts/export_release_manifest.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_release_manifest.py)
+  - 输出 typed release manifest，并把 benchmark / golden eval / subagent scorecard / release harness scorecard / delivery snapshot / skills catalog 作为显式质量证据引用收入口径
 - [`agent/travel_agent/artifacts/models.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/artifacts/models.py)
 - [`agent/travel_agent/memory/conflict_resolution.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/memory/conflict_resolution.py)
 - [`agent/travel_agent/memory/persistence.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/memory/persistence.py)

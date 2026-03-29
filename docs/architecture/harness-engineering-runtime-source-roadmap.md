@@ -41,7 +41,7 @@ Goal:
 Planned actions:
 - [completed 2026-03-28] Add a typed runtime-doctor report contract and snapshot.
 - [completed 2026-03-28] Contractize support-bundle manifest sections around runtime health, release evidence, and delivery evidence.
-- Make release evidence reuse the same typed report sources instead of rebuilding ad-hoc dict payloads.
+- [completed 2026-03-29] Make release evidence reuse the same typed report sources instead of rebuilding ad-hoc dict payloads.
 
 ### 3.3 Delivery Bundle Harness
 
@@ -87,7 +87,13 @@ Progress update:
 
 - [completed 2026-03-28] Add typed runtime doctor outputs.
 - [completed 2026-03-28] Add typed support-bundle/report payloads.
-- Reuse the same report contracts in release evidence.
+- [completed 2026-03-29] Reuse the same report contracts in release evidence.
+
+Progress update:
+- [completed 2026-03-29] Extended `scripts/runtime_ops_contracts.py` with typed release-manifest and release-harness-scorecard contracts, plus richer support-bundle release-evidence metadata derived from those contracts.
+- [completed 2026-03-29] Refactored `scripts/export_release_manifest.py` and `scripts/release_harness_scorecard.py` to emit release evidence through the shared typed ops-contract layer instead of building loose dict payloads inline.
+- [completed 2026-03-29] Refactored `scripts/export_support_bundle.py` to load typed release manifest and release scorecard evidence, surface git/status metadata in the support-bundle manifest, and include the release scorecard artifact in exported bundles.
+- [completed 2026-03-29] Added and refreshed unit coverage for `runtime_ops_contracts`, release manifest export, release harness scorecard export, and support bundle export so release evidence stays aligned with the shared contract layer.
 
 ### Phase D: Delivery Bundle Closure
 
@@ -110,4 +116,5 @@ This roadmap is complete when:
 2. [completed 2026-03-28] Contractize runtime doctor and support bundle outputs.
 3. [completed 2026-03-29] Move memory-aware runtime source assembly into dedicated runtime-source adapters and guard the boundary with audit coverage.
 4. [completed 2026-03-29] Move normalized legacy runtime event assembly into dedicated contract-first emitters and guard the boundary with audit coverage.
-5. Reuse typed runtime/ops report contracts in release evidence instead of rebuilding ad-hoc payloads.
+5. [completed 2026-03-29] Reuse typed runtime/ops report contracts in release evidence instead of rebuilding ad-hoc payloads.
+6. Package `artifact + execution receipt + HTML content + share metadata` as one delivery bundle descriptor.

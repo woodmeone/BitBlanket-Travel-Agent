@@ -131,7 +131,7 @@ npm run build
 - `decision_record_audit --strict` 会检查 `docs/governance/` 下的 ADR / RFC / Design Review 是否包含统一状态和必填章节
 - `skills_market_audit --strict` 会检查默认 skill catalog 是否补齐 `schema + tests + docs + eval` 四件套，并验证 `docs_path / test_fixture / eval_fixture / onboarding_doc`
 - `runtime_contract_audit --strict` 会检查 `AgentRuntime -> legacy_bridge -> legacy_runtime` 是否仍通过显式 supervisor contract 协作，防止 runtime seam 退化回 loose kwargs 和直接 graph import
-- `export_runtime_doctor_snapshot.py` 会把 `runtime_doctor` 的 typed report contract 固化到 `docs/reference/runtime-doctor.snapshot.json`，供 support bundle / release evidence / CI 复用
+- `export_runtime_doctor_snapshot.py` 会把 `runtime_doctor` 的 typed report contract 固化到 `docs/reference/runtime-doctor.snapshot.json`，供 support bundle / release manifest / release harness scorecard / release evidence / CI 复用
 - 当前前端默认验证入口已经稳定化：`npm run test:run` 会把 `vitest` worker 上限固定为 `2`，`npm run build` 默认走 `next build --webpack`
 - `scripts/dev.py` 当前也会自动解析跨平台 npm 可执行文件，在 Windows 上优先命中 `npm.cmd`
 

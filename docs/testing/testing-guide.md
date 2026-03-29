@@ -82,13 +82,13 @@ npm run build
 - `python scripts/decision_record_audit.py --strict` 会审计 ADR / RFC / Design Review 的基础结构，保证大改动有稳定记录入口
 - `python scripts/skills_market_audit.py --strict` 会审计默认 `skills market` 是否补齐 `schema + tests + docs + eval` 四件套，并验证 `docs_path / test_fixture / eval_fixture / onboarding_doc`
 - `python scripts/runtime_contract_audit.py --strict` 会审计 `AgentRuntime -> legacy_bridge -> legacy_runtime -> runtime_sources -> runtime_event_emitters` 这条 runtime seam 的 request/context/result contract、shim 边界、memory source adapter 边界与 event emitter 边界，防止 runtime 兼容层退回 loose kwargs，或直接在 shim 内拼装 memory state / event payload
-- `python scripts/export_runtime_doctor_snapshot.py` 会导出 `runtime_doctor` 的 typed report contract 快照，并与 support bundle / release evidence 共享同一组 ops contract
+- `python scripts/export_runtime_doctor_snapshot.py` 会导出 `runtime_doctor` 的 typed report contract 快照，并与 support bundle / release manifest / release harness scorecard / release evidence 共享同一组 ops contract
 - `scripts/dev.py` 与 `scripts/bootstrap.py` 当前也纳入了脚本级单测和 `ruff / mypy` 门禁，避免跨平台入口在 CI 中退化成只能本地手工验证
 
 ### 2.3 改运行维护脚本、契约快照、发布与观测资产
 
 ```bash
-python -m pytest tests/test_runtime_data_lifecycle_unit.py tests/test_runtime_doctor_unit.py tests/test_runtime_ops_contracts_unit.py tests/test_export_openapi_snapshot_script_unit.py tests/test_export_sse_contract_snapshot_script_unit.py tests/test_export_runtime_doctor_snapshot_script_unit.py tests/test_export_release_manifest_script_unit.py tests/test_export_support_bundle_script_unit.py tests/test_observability_assets_unit.py -q
+python -m pytest tests/test_runtime_data_lifecycle_unit.py tests/test_runtime_doctor_unit.py tests/test_runtime_ops_contracts_unit.py tests/test_export_openapi_snapshot_script_unit.py tests/test_export_sse_contract_snapshot_script_unit.py tests/test_export_runtime_doctor_snapshot_script_unit.py tests/test_export_release_manifest_script_unit.py tests/test_release_harness_scorecard_script_unit.py tests/test_export_support_bundle_script_unit.py tests/test_observability_assets_unit.py -q
 python scripts/export_openapi_snapshot.py
 python scripts/export_sse_contract_snapshot.py
 python scripts/export_runtime_doctor_snapshot.py
@@ -190,7 +190,7 @@ mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_o
 - [`tests/test_runtime_doctor_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_doctor_unit.py)
   - 保护 runtime doctor
 - [`tests/test_runtime_ops_contracts_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_ops_contracts_unit.py)
-  - 保护 runtime doctor / support bundle typed contract 的 round-trip 与 section 归一化
+  - 保护 runtime doctor / support bundle / release manifest / release harness scorecard typed contract 的 round-trip 与 section 归一化
 - [`tests/test_export_openapi_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_openapi_snapshot_script_unit.py)
   - 保护 OpenAPI 快照导出
 - [`tests/test_export_sse_contract_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_sse_contract_snapshot_script_unit.py)
@@ -200,7 +200,7 @@ mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_o
 - [`tests/test_export_release_manifest_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_release_manifest_script_unit.py)
   - 保护 release manifest 与质量证据引用
 - [`tests/test_export_support_bundle_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_support_bundle_script_unit.py)
-  - 保护 support bundle
+  - 保护 support bundle 对 typed release manifest / release scorecard evidence 的打包与 manifest 归一化
 - [`tests/test_observability_assets_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_observability_assets_unit.py)
   - 保护 dashboard 和 alert 资产
 
