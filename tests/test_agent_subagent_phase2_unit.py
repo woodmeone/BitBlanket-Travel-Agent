@@ -32,7 +32,7 @@ def test_default_subagent_registry_resolves_stage_and_tool_mapping():
 
 
 def test_runtime_emits_budget_subagent_events_and_artifact_patches():
-    class _LegacyBridge:
+    class _RuntimeDriver:
         async def stream_with_memory(self, *, request, context):
             _ = (request, context)
             yield {"type": "stage", "stage": "query", "label": "planning", "subagent": "planning"}
@@ -76,7 +76,7 @@ def test_runtime_emits_budget_subagent_events_and_artifact_patches():
             SimpleNamespace(name="get_travel_tips"),
         ],
         memory_manager=SimpleNamespace(),
-        legacy_bridge=_LegacyBridge(),
+        runtime_driver=_RuntimeDriver(),
     )
 
     async def _collect():

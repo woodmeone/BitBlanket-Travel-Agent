@@ -1,4 +1,4 @@
-"""Application-facing runtime wrapper for the phase-1 supervisor architecture."""
+"""Application-facing runtime wrapper for the supervisor architecture."""
 
 from __future__ import annotations
 
@@ -25,11 +25,11 @@ from ..graph.state import TRAVEL_AGENT_SYSTEM_PROMPT
 from ..skills import SkillRegistry, build_default_skill_registry
 from ..subagents import SubagentRegistry, build_default_subagent_registry
 from ..supervisor import SupervisorTravelAgentGraph, build_supervisor_agent
-from .legacy_bridge import DefaultLegacyRuntimeBridge, LegacyRuntimeBridge
+from .runtime_driver import DefaultRuntimeDriver, RuntimeDriver
 
 
 class AgentRuntime:
-    """Compatibility runtime that introduces skills, subagents, and artifact-first payloads."""
+    """Runtime wrapper that adds skills, subagents, and artifact-first payloads."""
 
     def __init__(
         self,
@@ -40,7 +40,7 @@ class AgentRuntime:
         memory_manager: Any = None,
         routing_llm: Optional[Runnable] = None,
         skill_registry: Optional[SkillRegistry] = None,
-        legacy_bridge: Optional[LegacyRuntimeBridge] = None,
+        runtime_driver: Optional[RuntimeDriver] = None,
     ):
         """Initialize the application-facing runtime wrapper."""
         self.llm = llm
@@ -51,7 +51,7 @@ class AgentRuntime:
         self.skill_registry = skill_registry or build_default_skill_registry(tools)
         self.subagent_registry = build_default_subagent_registry(self.skill_registry)
         self.subagents = self.subagent_registry.names()
-        self.legacy_bridge = legacy_bridge or DefaultLegacyRuntimeBridge()
+        self.runtime_driver = runtime_driver or DefaultRuntimeDriver()
 
     def build_supervisor_graph(self, checkpointer: Any = None) -> SupervisorTravelAgentGraph:
         """Build the phase-1 supervisor graph wrapper."""
@@ -87,7 +87,7 @@ class AgentRuntime:
             run_id=request.run_id,
             chat_mode=request.chat_mode,
         )
-        async for event in self.legacy_bridge.stream_with_memory(
+        async for event in self.runtime_driver.stream_with_memory(
             request=request,
             context=self._build_runtime_context(),
         ):
@@ -172,7 +172,7 @@ class AgentRuntime:
             session_id=session_id,
             chat_mode=chat_mode,
         )
-        preview = self.legacy_bridge.generate_plan_preview_with_memory(
+        preview = self.runtime_driver.generate_plan_preview_with_memory(
             request=request,
             context=self._build_runtime_context(),
         )
@@ -191,7 +191,7 @@ class AgentRuntime:
 
     def get_tool_health_diagnostics(self) -> dict[str, Any]:
         """Return tool diagnostics plus phase-1 skill and subagent metadata."""
-        diagnostics = _coerce_tool_health_diagnostics_dict(self.legacy_bridge.get_tool_health_diagnostics())
+        diagnostics = _coerce_tool_health_diagnostics_dict(self.runtime_driver.get_tool_health_diagnostics())
         diagnostics["skills"] = self.skill_registry.to_dict()
         diagnostics["subagents"] = list(self.subagents)
         diagnostics["subagent_skills"] = {
@@ -204,7 +204,7 @@ class AgentRuntime:
         return diagnostics
 
     def _build_runtime_context(self) -> SupervisorRuntimeContext:
-        """Build the shared runtime context passed to the compatibility bridge."""
+        """Build the shared runtime context passed to the execution driver."""
         return SupervisorRuntimeContext(
             llm=self.llm,
             tools=self.tools,
@@ -248,7 +248,7 @@ class AgentRuntime:
 
 
 class _SubagentTracker:
-    """Track active subagent transitions while preserving backward compatibility."""
+    """Track active subagent transitions while preserving stable artifact semantics."""
 
     def __init__(
         self,

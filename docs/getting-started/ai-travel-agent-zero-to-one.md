@@ -42,22 +42,22 @@
 
 ```text
 Frontend (Next.js)
-  -> Web API (FastAPI)
+  -> Backend API (FastAPI)
     -> Agent (LangGraph + LangChain + Tools + Memory)
 ```
 
 你可以把三层理解成三个问题:
 
 - Frontend: 用户如何提需求、看过程、继续调整结果
-- Web API: 如何把浏览器请求转成稳定的后端接口和 SSE 流
+- Backend API: 如何把浏览器请求转成稳定的后端接口和 SSE 流
 - Agent: 如何真正做意图识别、计划、执行、验证和最终回答
 
 最重要的入口文件分别是:
 
 - 前端入口: `frontend/src/app/page.tsx`
 - 前端主工作区: `frontend/src/components/ChatArea.tsx`
-- API 入口: `web/moyuan_web/main.py`
-- 对话服务: `web/moyuan_web/services/chat_service.py`
+- API 入口: `backend/moyuan_web/main.py`
+- 对话服务: `backend/moyuan_web/services/chat_service.py`
 - Agent 图入口: `agent/travel_agent/graph/builder.py`
 - Agent 节点实现: `agent/travel_agent/graph/nodes.py`
 
@@ -73,8 +73,8 @@ Frontend (Next.js)
 
 ```mermaid
 flowchart LR
-  A["用户在 ChatArea 输入需求"] --> B["frontend/src/services/api.ts 发起 POST /api/chat/stream"]
-  B --> C["web/moyuan_web/routes/chat.py 返回 SSE StreamingResponse"]
+  A["用户在 ChatArea 输入需求"] --> B["chatClient.ts 发起 POST /api/chat/stream"]
+  B --> C["backend/moyuan_web/routes/chat.py 返回 SSE StreamingResponse"]
   C --> D["ChatService.stream_chat"]
   D --> E["run_travel_agent_streaming_with_memory"]
   E --> F["LangGraph: intent -> strategy -> plan -> execute -> verify -> answer -> self_check"]
@@ -346,7 +346,7 @@ plan -> execute -> verify -> (必要时回 execute) -> answer
 
 ### 6.1 `ChatService` 的作用
 
-入口在 `web/moyuan_web/services/chat_service.py`。
+入口在 `backend/moyuan_web/services/chat_service.py`。
 
 它主要做这些事:
 
@@ -485,9 +485,9 @@ Checkpoint 是 LangGraph 执行层概念。
 
 ### 第二步: 看 API 编排层
 
-- `web/moyuan_web/main.py`
-- `web/moyuan_web/routes/chat.py`
-- `web/moyuan_web/services/chat_service.py`
+- `backend/moyuan_web/main.py`
+- `backend/moyuan_web/routes/chat.py`
+- `backend/moyuan_web/services/chat_service.py`
 
 先知道 SSE 是怎么从后端出去的。
 
@@ -510,7 +510,8 @@ Checkpoint 是 LangGraph 执行层概念。
 
 ### 第五步: 再回前端看渲染
 
-- `frontend/src/services/api.ts`
+- `frontend/src/services/api/chatClient.ts`
+- `frontend/src/services/api/chatStreamParser.ts`
 - `frontend/src/components/MessageList.tsx`
 - `frontend/src/components/TravelPlanToolkit.tsx`
 - `frontend/src/utils/travelPlan.ts`
@@ -601,19 +602,17 @@ Checkpoint 是 LangGraph 执行层概念。
 常用命令:
 
 ```bash
-python -m pytest tests -q
-
-cd frontend
-npm run lint
-npm run test:run
-npm run build
+python scripts/dev.py backend-test --pytest-slice all
+python scripts/dev.py frontend-lint
+python scripts/dev.py frontend-test
+python scripts/dev.py frontend-build
 ```
 
 Agent 质量脚本也值得知道:
 
 ```bash
-python scripts/agent_benchmark.py --output-dir docs/benchmarks
-python scripts/agent_golden_eval.py --dataset tests/golden/agent_react_golden.json --report docs/benchmarks/agent_golden_eval_latest.json --min-pass-rate 0.0
+python scripts/dev.py benchmark-report
+python scripts/dev.py golden-report
 ```
 
 ## 11. 本地运行与当前状态
@@ -639,7 +638,7 @@ python scripts/agent_golden_eval.py --dataset tests/golden/agent_react_golden.js
 
 如果发起首轮对话后依旧异常，再去检查:
 
-- `config/llm_config.yaml`
+- `backend/config/llm_config.yaml`
 - 模型 provider 配置
 - API key / base URL
 
@@ -734,4 +733,3 @@ python scripts/agent_golden_eval.py --dataset tests/golden/agent_react_golden.js
 - 产品级结果加工
 
 组织成一条完整链路。
-

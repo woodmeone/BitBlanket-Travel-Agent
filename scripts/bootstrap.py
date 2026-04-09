@@ -10,6 +10,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_ROOT = REPO_ROOT / "frontend"
+BACKEND_CONFIG_ROOT = REPO_ROOT / "backend" / "config"
 DEFAULT_PYTHON_VERSION = "3.13"
 
 
@@ -81,19 +82,19 @@ def ensure_virtualenv(uv_path: str, python_version: str) -> Path:
 def ensure_config_from_example(filename: str) -> None:
     """Seed a config file from its example template when needed."""
 
-    config_path = REPO_ROOT / "config" / filename
-    example_path = REPO_ROOT / "config" / f"{filename}.example"
+    config_path = BACKEND_CONFIG_ROOT / filename
+    example_path = BACKEND_CONFIG_ROOT / f"{filename}.example"
     if config_path.exists():
-        log_step(f"Config check passed: config/{filename} exists")
+        log_step(f"Config check passed: backend/config/{filename} exists")
         return
     if not example_path.exists():
         print(
-            f"[bootstrap] Warning: missing config/{filename} and its example template.",
+            f"[bootstrap] Warning: missing backend/config/{filename} and its example template.",
             file=sys.stderr,
         )
         return
     config_path.write_text(example_path.read_text(encoding="utf-8"), encoding="utf-8")
-    log_step(f"Created config/{filename} from template.")
+    log_step(f"Created backend/config/{filename} from template.")
 
 
 def build_parser() -> argparse.ArgumentParser:

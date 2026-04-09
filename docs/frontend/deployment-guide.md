@@ -3,9 +3,8 @@
 ## 本地运行
 
 ```bash
-cd frontend
-npm install
-npm run dev
+python scripts/bootstrap.py
+python scripts/dev.py frontend-dev
 ```
 
 默认地址: `http://localhost:33001`

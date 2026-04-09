@@ -38,12 +38,12 @@
       "note": "planning pipeline hotspot"
     },
     {
-      "path": "web/moyuan_web/services/chat/stream_mixin.py",
+      "path": "backend/moyuan_web/services/chat/stream_mixin.py",
       "max_lines": 548,
       "note": "chat streaming orchestration hotspot"
     },
     {
-      "path": "web/moyuan_web/routes/api_docs.py",
+      "path": "backend/moyuan_web/routes/api_docs.py",
       "max_lines": 627,
       "note": "API docs presentation route"
     },

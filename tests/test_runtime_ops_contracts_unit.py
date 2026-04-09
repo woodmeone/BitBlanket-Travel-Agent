@@ -61,6 +61,9 @@ def test_support_bundle_manifest_round_trip_preserves_nested_sections() -> None:
             "checks_total": 7,
             "checks_degraded": 0,
             "checks_not_ready": 0,
+            "checkpoint_backend": "postgres",
+            "checkpoint_restore_strategy": "external_snapshot",
+            "checkpoint_requires_external_snapshot": True,
         },
         "release_evidence": {
             "release_manifest_exists": True,
@@ -81,6 +84,7 @@ def test_support_bundle_manifest_round_trip_preserves_nested_sections() -> None:
     manifest = SupportBundleManifest.from_dict(payload)
 
     assert manifest.runtime_health.runtime_files_count == 3
+    assert manifest.runtime_health.checkpoint_backend == "postgres"
     assert manifest.release_evidence.release_manifest_exists is True
     assert manifest.release_evidence.release_scorecard_status == "pass"
     assert manifest.delivery_evidence.contract_snapshots == [
@@ -115,7 +119,23 @@ def test_runtime_health_section_uses_runtime_files_from_doctor_report() -> None:
                             {"key": "share_links"},
                         ]
                     },
-                }
+                },
+                "checkpoint_runtime": {
+                    "name": "checkpoint_runtime",
+                    "status": "ok",
+                    "message": "Checkpoint runtime uses postgres with external snapshot recovery.",
+                    "details": {
+                        "backend": "postgres",
+                        "target": "postgresql://demo:***@db.example.com:5432/moyuan",
+                        "restore_strategy": "external_snapshot",
+                        "archive_contains_checkpoint_data": False,
+                        "archived_files": [],
+                        "requires_external_snapshot": True,
+                        "restore_instructions": [
+                            "Checkpoint backend is postgres; restore checkpoint tables from an external database snapshot before switching runtime back to postgres."
+                        ],
+                    },
+                },
             },
         }
     )
@@ -126,6 +146,9 @@ def test_runtime_health_section_uses_runtime_files_from_doctor_report() -> None:
     assert section.runtime_files_count == 2
     assert section.checks_degraded == 1
     assert section.checks_not_ready == 1
+    assert section.checkpoint_backend == "postgres"
+    assert section.checkpoint_restore_strategy == "external_snapshot"
+    assert section.checkpoint_requires_external_snapshot is True
 
 
 def test_release_manifest_round_trip_preserves_quality_artifacts() -> None:

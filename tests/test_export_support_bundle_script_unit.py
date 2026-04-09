@@ -100,6 +100,7 @@ observability:
         assert "manifest.json" in names
         assert "doctor-report.json" in names
         assert "doctor-report.txt" in names
+        assert "checkpoint-runtime.json" in names
         assert "runtime-files.json" in names
         assert "release-manifest.json" in names
         assert "release-harness-scorecard.json" in names
@@ -109,6 +110,9 @@ observability:
         manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
         assert manifest["runtime_health"]["doctor_status"] == "ok"
         assert manifest["runtime_health"]["runtime_files_count"] >= 1
+        assert manifest["runtime_health"]["checkpoint_backend"] == "sqlite"
+        assert manifest["runtime_health"]["checkpoint_restore_strategy"] == "metadata_only"
+        assert manifest["runtime_health"]["checkpoint_requires_external_snapshot"] is False
         assert manifest["release_evidence"]["release_manifest_exists"] is True
         assert manifest["release_evidence"]["release_manifest_git_sha"] == "abc1234"
         assert manifest["release_evidence"]["release_scorecard_exists"] is True
@@ -118,3 +122,8 @@ observability:
             "openapi.snapshot.json",
             "sse-contract.snapshot.json",
         ]
+
+        checkpoint_runtime = json.loads(archive.read("checkpoint-runtime.json").decode("utf-8"))
+        assert checkpoint_runtime["backend"] == "sqlite"
+        assert checkpoint_runtime["restore_strategy"] == "metadata_only"
+        assert checkpoint_runtime["requires_external_snapshot"] is False

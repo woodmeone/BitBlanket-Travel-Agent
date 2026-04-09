@@ -20,7 +20,11 @@ from typing import Any, Dict, List, Optional
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
-from ..memory import MemoryConflictResolutionHelper, MemoryPersistenceStore
+from ..memory import (
+    MemoryConflictResolutionHelper,
+    MemoryPersistenceStore,
+    PostgresMemorySessionRepository,
+)
 
 
 @dataclass
@@ -107,6 +111,7 @@ class AgentMemoryManager:
         max_history: int = 10,
         summary_threshold: int = 20,
         persist_path: Optional[str] = None,
+        persistence_store: MemoryPersistenceStore | None = None,
         session_ttl_seconds: int = 7 * 24 * 3600,
         max_sessions: int = 5000,
     ):
@@ -120,6 +125,7 @@ class AgentMemoryManager:
             max_history: Numeric control parameter `max_history` used for bounds or pagination.
             summary_threshold: Maximum message count before older dialogue turns are summarized.
             persist_path: Filesystem/resource path for `persist_path` resolution.
+            persistence_store: Optional persistence adapter overriding file-backed defaults.
             session_ttl_seconds: Time-related setting `session_ttl_seconds` used by scheduling/retry windows.
             max_sessions: Numeric control parameter `max_sessions` used for bounds or pagination.
         
@@ -136,7 +142,7 @@ class AgentMemoryManager:
         self._max_sessions = max(1, max_sessions)
 
         self._persist_path = persist_path
-        self._persistence_store = MemoryPersistenceStore(
+        self._persistence_store = persistence_store or MemoryPersistenceStore(
             persist_path=self._persist_path,
             backup_suffix=self.PERSIST_BACKUP_SUFFIX,
         )
@@ -233,7 +239,7 @@ class AgentMemoryManager:
                 self._trim_messages(session)
                 self._enforce_capacity_locked()
 
-            if self._persist_path:
+            if self._persistence_store.enabled:
                 await asyncio.to_thread(self._save_to_disk_locked)
 
     async def get_recent_messages(self, session_id: str, limit: Optional[int] = None) -> List[MemoryMessage]:
@@ -520,7 +526,7 @@ class AgentMemoryManager:
                 session["messages"] = []
                 session["summary"] = ""
                 session["profile"] = self._empty_profile()
-            if self._persist_path:
+            if self._persistence_store.enabled:
                 await asyncio.to_thread(self._save_to_disk_locked)
             return True
 
@@ -539,7 +545,7 @@ class AgentMemoryManager:
         async with self._lock:
             with self._sync_lock:
                 existed = self._sessions.pop(session_id, None) is not None
-            if existed and self._persist_path:
+            if existed and self._persistence_store.enabled:
                 await asyncio.to_thread(self._save_to_disk_locked)
             return existed
 
@@ -2292,7 +2298,16 @@ class AgentStateWithMemory:
 
 _DEFAULT_MANAGER: Optional[AgentMemoryManager] = None
 _DEFAULT_LOCK = threading.Lock()
-_DEFAULT_MANAGER_KEY: Optional[tuple[int, int, int]] = None
+_DEFAULT_MANAGER_KEY: Optional[tuple[Any, ...]] = None
+
+
+def reset_agent_memory_manager() -> None:
+    """Drop the process-wide memory manager so tests and config reloads can rebuild it."""
+
+    global _DEFAULT_MANAGER, _DEFAULT_MANAGER_KEY
+    with _DEFAULT_LOCK:
+        _DEFAULT_MANAGER = None
+        _DEFAULT_MANAGER_KEY = None
 
 
 def get_agent_memory_manager(
@@ -2304,7 +2319,8 @@ def get_agent_memory_manager(
     """Return process-wide shared memory manager for agent sessions."""
 
     global _DEFAULT_MANAGER, _DEFAULT_MANAGER_KEY
-    config_key = (max_history, summary_threshold, session_ttl_seconds)
+    persistence_store, persistence_key = _build_default_persistence_store()
+    config_key = (max_history, summary_threshold, session_ttl_seconds, persistence_key)
     if _DEFAULT_MANAGER is not None and _DEFAULT_MANAGER_KEY == config_key:
         return _DEFAULT_MANAGER
 
@@ -2312,21 +2328,54 @@ def get_agent_memory_manager(
         if _DEFAULT_MANAGER is not None and _DEFAULT_MANAGER_KEY == config_key:
             return _DEFAULT_MANAGER
 
-        persist_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-            "..",
-            "data",
-            "agent_memory.json",
-        )
-        persist_path = os.path.abspath(persist_path)
-
         _DEFAULT_MANAGER = AgentMemoryManager(
             llm=llm,
             max_history=max_history,
             summary_threshold=summary_threshold,
-            persist_path=persist_path,
+            persist_path=_default_memory_persist_path(),
+            persistence_store=persistence_store,
             session_ttl_seconds=session_ttl_seconds,
         )
         _DEFAULT_MANAGER_KEY = config_key
 
     return _DEFAULT_MANAGER
+
+
+def _default_memory_persist_path() -> str:
+    """Return the canonical file-backed agent-memory snapshot path."""
+
+    persist_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        "..",
+        "data",
+        "agent_memory.json",
+    )
+    return os.path.abspath(persist_path)
+
+
+def _build_default_persistence_store() -> tuple[MemoryPersistenceStore, tuple[Any, ...]]:
+    """Build the default persistence store based on the active server configuration."""
+
+    try:
+        from config import server_config
+    except Exception:
+        server_config = None
+
+    if server_config is not None and server_config.db_backend == "postgres":
+        if not server_config.postgres_dsn:
+            raise ValueError("database.backend=postgres requires database.postgres_dsn")
+        repository = PostgresMemorySessionRepository(
+            server_config.postgres_dsn,
+            pool_min=server_config.db_pool_min,
+            pool_max=server_config.db_pool_max,
+        )
+        return (
+            MemoryPersistenceStore(persist_path=None, repository=repository),
+            ("postgres", server_config.postgres_dsn, server_config.db_pool_min, server_config.db_pool_max),
+        )
+
+    persist_path = _default_memory_persist_path()
+    return (
+        MemoryPersistenceStore(persist_path=persist_path, backup_suffix=AgentMemoryManager.PERSIST_BACKUP_SUFFIX),
+        ("file", persist_path),
+    )

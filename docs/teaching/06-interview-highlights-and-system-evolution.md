@@ -1,570 +1,280 @@
-# 06. 面试难点与系统拓展
+# 06. 面试速通、追问与系统演进问答
 
-这一章专门解决两个问题：
+这一篇专门解决三件事：
 
-1. 如何把这个项目讲成一个有深度的工程案例。
-2. 如何从当前实现推演未来的系统演进方向。
+1. 怎么用 30 秒到 5 分钟讲清这个项目。
+2. 面试官最常追问什么，推荐怎么答。
+3. 如果继续演进系统，最合理的下一步是什么。
 
-前面几章主要回答的是：
+## 问题 1：如果面试官只给我 30 秒，我该怎么介绍这个项目？
 
-- 现在是怎么实现的
-- 代码怎么组织
-- 状态怎么流动
-- 测试怎么保护
+答案：
 
-但真正到了面试、项目复盘、架构评审或者带教场景里，别人最常问的其实不是“你这个函数怎么写”，而是：
+可以直接用这一版：
 
-- 为什么这样设计
-- 还有没有别的方案
-- 当前方案的代价是什么
-- 如果要扩展，你会怎么做
+`moyuan-travel-agent` 不是普通聊天 Demo，而是把旅行约束输入变成可流式解释、可验证、可继续操作、可回放的旅行决策系统。前端负责 SSE 消费和结构化结果产品化，Backend 负责 `/api/chat/stream`、session 和持久化边界，Agent 负责状态机、工具执行、验证、自检、memory 和 checkpoint。
 
-这一章就是专门为这些问题准备的。
+如果只能记一句，就记这句。
 
-## 1. 本章解决什么问题
+## 问题 2：如果面试官愿意听 2 分钟，我该怎么讲？
 
-读完本章后，你应该能做到：
+答案：
 
-1. 用 3-5 分钟把项目讲清楚。
-2. 用更工程化的方式回答“为什么三层拆分”“为什么选 SSE”“为什么要状态机”。
-3. 能识别当前项目中最容易被追问的难点。
-4. 能从当前实现自然过渡到未来扩展方案。
-5. 能区分“泛泛而谈的项目介绍”和“有取舍、有边界、有演进路径的项目讲解”。
+可以直接用这一版：
 
-## 2. 什么时候需要读这一章
+这个项目的目标不是生成一段旅游建议，而是把预算、天数、偏好、路线约束变成一个可解释的旅行决策过程。系统拆成三层：前端用 Next.js 负责输入、SSE 消费和 `TravelPlanToolkit` 结果产品化；Backend 用 FastAPI 提供 `/api/chat/stream`、session 和健康检查等接口，负责请求上下文、SSE 编排和持久化边界；Agent 层通过 `AgentRuntime` 和 LangGraph 把 `intent -> strategy -> execute -> verify -> answer -> self_check` 组织成状态机。之所以选 SSE，是因为系统不仅要返回最终文本，还要实时推送 `stage`、`tool`、`plan_preview`、`artifact_patch`、`metadata` 和 `done`。为了让结果更可靠，系统还补了 `_meta`、stale / fallback / refresh、memory、checkpoint、benchmark、golden eval 和 quality gate。
 
-这章最适合下面 4 类场景：
+## 问题 3：如果面试官继续追问 5 分钟，最推荐按什么顺序展开？
 
-1. 准备面试，把这个项目讲成自己的工程案例。
-2. 做项目复盘，要给别人讲清楚设计取舍。
-3. 带新人，让对方从“会看代码”进到“能讲清系统”。
-4. 做中长期规划，讨论这个项目下一步怎么演进。
+答案：
 
-## 3. 一个合格的项目讲解应该长什么样
+最稳的顺序是：
 
-很多人讲项目的方式是：
+1. 先讲业务目标。
+2. 再讲 `frontend / backend / agent` 三层分工。
+3. 再讲一条真实聊天主链。
+4. 再讲为什么要 SSE、为什么要状态机、为什么要 artifact-first。
+5. 最后讲可靠性和演进方向。
 
-“我们用了 Next.js、FastAPI、LangGraph，然后做了一个旅游助手……”
+这样讲的好处是：
 
-这类讲法的问题是：
+你先让对方知道这不是 demo，再把技术取舍放回真实业务约束里。
 
-- 技术词很多
-- 业务动机很弱
-- 架构边界不清
-- 听不出为什么这样设计
+## 问题 4：这个项目最值得面试时强调的 5 个亮点是什么？
 
-更好的讲法应该是下面这套顺序：
+答案：
 
-1. 先讲业务目标
-2. 再讲当前约束
-3. 再讲系统拆分
-4. 再讲一条真实链路
-5. 再讲关键取舍
-6. 最后讲可靠性与扩展
+最值得强调的是这 5 个：
 
-你可以把它记成：
+1. 不是普通聊天页，而是旅行决策系统。
+2. SSE 不只推 token，还推过程事件和结构化补充信息。
+3. 前端不是只展示文本，而是 `artifact-first` 的结果消费层。
+4. Backend 分层清楚，能承接 session 和 `file / postgres` 双基线。
+5. Agent 有 runtime seam、状态机、验证回环、memory 和 checkpoint。
+
+如果还想再补两点：
+
+1. 已经有 skill / subagent registry，具备 supervisor 演进方向。
+2. 有 benchmark、golden eval、quality gate，不只是手工联调。
+
+## 问题 5：如果面试官问“这个项目为什么有工程深度”，推荐怎么答？
+
+答案：
+
+可以直接答：
+
+因为它解决的不只是“大模型生成一段文本”，而是“系统怎样把复杂决策过程工程化”。具体体现在三点：第一，协议层有 SSE 事件流和 request/trace/run 级诊断；第二，执行层不是线性 prompt，而是有路由、执行、验证、自检、恢复的状态机；第三，结果交付不是只回一段话，而是持续产出 `plan_preview`、`artifact_patch`、`metadata` 和最终 artifact，前端还能把这些结果继续做成可操作工具台。
+
+## 问题 6：如果面试官问“为什么要拆成三层”，推荐怎么答？
+
+答案：
+
+最稳的答法是：
+
+因为这三个问题本来就不应该混在一起。
+
+1. `frontend`
+   解决交互、SSE 消费和结果产品化。
+2. `backend`
+   解决 HTTP / SSE 协议、session 和持久化边界。
+3. `agent`
+   解决策略路由、工具执行、验证、自检、memory 和 checkpoint。
+
+如果都塞进一个服务里，短期看省事，长期会在可维护性、可测试性和演进能力上一起失血。
+
+## 问题 7：如果面试官问“为什么是 SSE，不是 WebSocket”，推荐怎么答？
+
+答案：
+
+推荐答法：
+
+当前主需求是服务端单向持续推送，而不是复杂双工协作。系统需要把 `stage / reasoning / tool / plan_preview / artifact_patch / metadata / done` 这些过程事件持续推给前端，SSE 已经足够覆盖，而且实现和运维成本更低、对现有 HTTP 设施更友好。只有在多人协作编辑、前端持续反向发控制信号、或者需要更复杂实时协议时，WebSocket 才会明显更优。
+
+代码锚点：
+
+- [chat.py](../../backend/moyuan_web/routes/chat.py)
+- [chatClient.ts](../../frontend/src/services/api/chatClient.ts)
+- [chatStreamParser.ts](../../frontend/src/services/api/chatStreamParser.ts)
+
+## 问题 8：如果面试官问“为什么前端不是只渲染文本”，推荐怎么答？
+
+答案：
+
+推荐答法：
+
+因为这个项目最终交付的不是一段旅游文案，而是一个可以继续操作的旅行方案。前端除了显示最终文本，还要消费 `plan_preview`、`artifact_patch`、`metadata` 和最终 `artifact`，并把这些结构化结果继续做成 `TravelPlanToolkit` 里的预算、对比、冲突、分享和继续 refine 入口。所以前端在这里是运行态解释层和结果产品化层，而不是普通消息展示层。
+
+代码锚点：
+
+- [useChatRuntime.ts](../../frontend/src/components/chat-area/useChatRuntime.ts)
+- [TravelPlanToolkit.tsx](../../frontend/src/components/TravelPlanToolkit.tsx)
+
+## 问题 9：如果面试官问“为什么 Backend 不直接调 graph”，推荐怎么答？
+
+答案：
+
+推荐答法：
+
+因为应用层需要依赖稳定的 runtime seam，而不是直接依赖图内部实现。当前 Backend 通过 `ChatService -> AgentRuntime -> RuntimeDriver -> runtime_flow` 调 Agent，这样既能把 graph 细节隔离出去，也能在 runtime 层统一挂技能、subagent、artifact patch、execution receipt 和后续演进能力。换句话说，Backend 接的是执行 contract，不是底层图实现。
+
+代码锚点：
+
+- [chat_service.py](../../backend/moyuan_web/services/chat_service.py)
+- [agent_runtime.py](../../agent/travel_agent/runtime/agent_runtime.py)
+- [runtime_driver.py](../../agent/travel_agent/runtime/runtime_driver.py)
+
+## 问题 10：如果面试官问“为什么 Agent 要做成状态机”，推荐怎么答？
+
+答案：
+
+推荐答法：
+
+因为当前任务有明显的分叉和回环。系统先要判断问题是 `direct` 还是需要执行型链路，再决定走 `plan` 或 `react`，执行过程中还可能因为证据不足或结果陈旧在 `verify` 后回跳 `execute`，最终答案成稿后还要走 `self_check`。这类流程如果用线性链表达，会很快变得混乱，而状态机更适合表达条件边、重试和终态。
+
+代码锚点：
+
+- [builder.py](../../agent/travel_agent/graph/builder.py)
+- [nodes.py](../../agent/travel_agent/graph/nodes.py)
+
+## 问题 11：如果面试官问“你们怎么保证答案可靠”，推荐怎么答？
+
+答案：
+
+推荐答法：
+
+我们不是单纯依赖 prompt，而是做了多层可靠性设计。工具结果会附带 `_meta`、stale、fallback、refresh 这类证据质量语义，执行后会进入 `verify` 阶段检查证据是否充分、是否需要重试，最终答案成稿后还有 `self_check` 做交付前自检。运行态上还有 request/trace/run 级标识、session、memory、checkpoint、benchmark、golden eval 和 quality gate，尽量把“看起来能跑”升级成“行为可解释、可回放、可度量”。
+
+## 问题 12：如果面试官问“这个项目里最难的地方是什么”，推荐怎么答？
+
+答案：
+
+最推荐的答法不是说“prompt 很难调”，而是说：
+
+最难的是把多层状态边界讲清楚并维护住。这个系统同时有前端流式临时态、后端 session 生命周期、Agent 的状态机状态、memory 的长期上下文和 checkpoint 的执行恢复点。如果这些边界混了，问题会非常难排查。当前实现通过 `useChatRuntime`、`ChatService`、`SessionLifecycleService`、`AgentRuntime`、`memory_integration.py` 和 `runtime_sources.py` 把这些边界分开，这是工程上最难也最重要的部分。
+
+## 问题 13：如果面试官问“这个项目未来先演进哪三件事”，推荐怎么答？
+
+答案：
+
+最稳的三件事是：
+
+1. 把结构化交付继续做深。
+   让 artifact、share、history、compare 更像正式交付物，而不只是聊天附属品。
+2. 把 runtime 观测和回放继续做强。
+   让 trace、execution receipt、checkpoint、replay、失败聚类更闭环。
+3. 把 supervisor / subagent 演进做实。
+   当前已有 skill registry 和 subagent registry，下一步可以继续增强真正的分工和调度能力。
+
+## 问题 14：如果面试官问“现在最大的技术债是什么”，推荐怎么答？
+
+答案：
+
+比较稳的答法是：
+
+当前最大的技术债不是单点 bug，而是一些能力已经进入“过渡阶段”。例如 runtime seam 已经稳定，但真正的 supervisor / subagent 执行还没有完全独立；`file / postgres`、`sqlite / postgres` 双基线已经具备，但还需要继续统一运维和观测口径；前端已经是 artifact-first，但结构化交付和分享页能力还有继续产品化的空间。这种答法既承认现实，也体现你知道系统正处在哪个阶段。
+
+## 问题 15：如果面试官要我讲一条完整主链，最推荐怎么说？
+
+答案：
+
+直接顺着这条链讲：
 
 ```text
-目标 -> 约束 -> 分层 -> 主链 -> 取舍 -> 风险 -> 演进
+用户输入
+  -> ChatArea / useChatRuntime
+  -> chatClient.ts 发起 SSE
+  -> /api/chat/stream
+  -> ChatService
+  -> AgentRuntime
+  -> RuntimeDriver
+  -> runtime_flow
+  -> builder / nodes
+  -> SSE 事件回推
+  -> chatStreamParser.ts
+  -> MessageList / TravelPlanToolkit
 ```
 
-## 4. 当前项目最值得讲的 6 个工程亮点
+然后补一句：
 
-如果把这个项目作为项目经历，最值得强调的是下面 6 组亮点。
+这条链上最关键的不是“请求经过了很多文件”，而是每层都在把结果继续加工成更适合下一层消费的 contract。
 
-### 亮点 1：不是普通聊天页，而是有产品闭环的 AI 助手
+## 问题 16：如果面试官要我讲“详细版项目答法”，最推荐怎么组织？
 
-可讲点：
+答案：
 
-- 输入旅行约束
-- Agent 识别意图和风险
-- 中间状态流式展示
-- 前端把答案加工成更可操作结果
+最推荐按这个模板展开：
 
-### 亮点 2：SSE 不只传 token，还传阶段、工具和 metadata
+1. 背景：
+   为什么旅行规划问题不适合做成普通问答。
+2. 分层：
+   前端、Backend、Agent 各自负责什么。
+3. 主链：
+   一次请求怎么跨三层流动。
+4. 关键取舍：
+   为什么 SSE、为什么 runtime seam、为什么状态机、为什么 artifact-first。
+5. 可靠性：
+   verify、自检、memory、checkpoint、quality gate。
+6. 演进：
+   现在已经做到哪一步，下一步怎么扩展。
 
-可讲点：
+这个模板的好处是：
 
-- 用户能看到系统做到哪一步
-- 可以暴露工具执行过程
-- 可以把运行诊断带回前端
+你不会把项目讲成流水账，而是会讲成一个有约束、有取舍、有演进的工程案例。
 
-### 亮点 3：三层拆分清晰
+## 问题 17：如果面试官让我说“这项目最想证明你什么能力”，推荐怎么答？
 
-可讲点：
+答案：
 
-- `frontend` 负责交互与结果加工
-- `web` 负责协议、编排和持久化边界
-- `agent` 负责决策、执行、验证和恢复
+推荐答法：
 
-### 亮点 4：Agent 不是普通工具调用，而是状态机
+这个项目最能证明的不是某一个框架会不会用，而是我能不能把一个 AI 场景做成完整工程系统。包括分层设计、协议设计、流式前端、运行态状态边界、Agent 可靠性、持久化与恢复、以及质量门禁和回归策略。也就是说，它更像一个系统工程能力样本，而不是一个单点算法样本。
 
-可讲点：
+## 问题 18：如果面试前只能背 10 个代码锚点，最值得背哪 10 个？
 
-- `intent -> strategy -> plan/react/direct -> execute -> verify -> answer -> self_check`
-- 有条件边
-- 有回环
-- 有高风险验证
+答案：
 
-### 亮点 5：tools、memory、checkpoint 形成了完整的执行与恢复系统
+最值得背这 10 个：
 
-可讲点：
+1. [useChatRuntime.ts](../../frontend/src/components/chat-area/useChatRuntime.ts)
+2. [chatClient.ts](../../frontend/src/services/api/chatClient.ts)
+3. [chatStreamParser.ts](../../frontend/src/services/api/chatStreamParser.ts)
+4. [TravelPlanToolkit.tsx](../../frontend/src/components/TravelPlanToolkit.tsx)
+5. [chat.py](../../backend/moyuan_web/routes/chat.py)
+6. [chat_service.py](../../backend/moyuan_web/services/chat_service.py)
+7. [lifecycle_service.py](../../backend/moyuan_web/services/session/lifecycle_service.py)
+8. [agent_runtime.py](../../agent/travel_agent/runtime/agent_runtime.py)
+9. [builder.py](../../agent/travel_agent/graph/builder.py)
+10. [nodes.py](../../agent/travel_agent/graph/nodes.py)
 
-- `_meta`
-- stale / fallback / refresh
-- 长期偏好注入
-- 图运行恢复
+如果还能再补 3 个：
 
-### 亮点 6：有较完整的测试和质量门禁体系
+1. [runtime_sources.py](../../agent/travel_agent/runtime_sources.py)
+2. [memory_integration.py](../../agent/travel_agent/graph/memory_integration.py)
+3. [test_chat_stream_local.py](../../tests/test_chat_stream_local.py)
 
-可讲点：
+## 问题 19：面试里最不该犯的 5 个错误是什么？
 
-- SSE / API / memory / guardrails 测试
-- benchmark
-- golden eval
-- quality gate
+答案：
 
-## 5. 面试时最容易被追问的 10 个主题
+最常见的失分点是：
 
-### 主题 1：为什么项目要拆成三层
+1. 把项目讲成“前端发请求，后端调模型，返回结果”。
+2. 把 `session / memory / checkpoint` 混成一套。
+3. 把 `verify` 和 `self_check` 讲成同一个阶段。
+4. 只会说“用了 LangGraph”，但讲不出图边和状态。
+5. 只会讲功能，不会讲质量门禁和演进路线。
 
-高频追问：
+## 问题 20：如果我现在就要临场复习，这一篇最该回看什么？
 
-- 为什么不是一个后端全做
-- 为什么前端不直接接模型
-- 为什么 Agent 不直接暴露 API
+答案：
 
-### 主题 2：为什么聊天链路选 SSE
+优先回看这 6 个问题：
 
-高频追问：
+1. 问题 1：30 秒讲法
+2. 问题 2：2 分钟讲法
+3. 问题 7：为什么是 SSE
+4. 问题 9：为什么要 runtime seam
+5. 问题 10：为什么要状态机
+6. 问题 13：未来怎么演进
 
-- 为什么不是一次性 JSON
-- 为什么不是 WebSocket
-- SSE 的边界是什么
-
-### 主题 3：为什么前端要维护临时流式状态
-
-高频追问：
-
-- 为什么不把所有内容都放进 `messages`
-- 为什么还要有 `streamingReasoning`
-
-### 主题 4：为什么 Web 层要严格分层
-
-高频追问：
-
-- repository 是否多余
-- storage 层是不是过度设计
-
-### 主题 5：为什么 Agent 要做成状态机
-
-高频追问：
-
-- 为什么不直接串几个 prompt
-- 为什么需要条件边和回环
-
-### 主题 6：为什么有 `direct / react / plan`
-
-高频追问：
-
-- 只留一种模式行不行
-- 三种模式怎么控制复杂度和成本
-
-### 主题 7：为什么要有 `verify` 和 `self_check`
-
-高频追问：
-
-- 结果不可信时系统如何处理
-- 自检是不是多此一举
-
-### 主题 8：memory、checkpoint、session 的边界
-
-高频追问：
-
-- 都在存数据，为什么要分三套
-- 哪一套更适合长期用户画像
-
-### 主题 9：这个项目怎么做测试和质量控制
-
-高频追问：
-
-- unit、integration、benchmark、golden eval 区别
-- 怎么验证 Agent 改动没退化
-
-### 主题 10：如果让你继续扩展这个项目，你会怎么做
-
-高频追问：
-
-- JSON 文件存储怎么升级
-- 如何支持更多 provider
-- 如何做观测、缓存、多租户、安全、成本控制
-
-## 5.1 面试主题要绑定到真实代码
-
-这一章最重要的原则是：面试回答不要飘在概念上，一定要能落回当前仓库里的真实文件和真实函数。
-
-下面这张表可以直接当你的“面试代码锚点速查卡”：
-
-| 主题 | 至少要引用的代码路径 | 最推荐点名的函数/关键字 | 回答时最该强调什么 |
-| --- | --- | --- | --- |
-| 三层拆分 | [page.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/app/page.tsx)、[chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)、[builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py) | `Home`、`stream_chat`、`build` | 前端、Web、Agent 各自承担的是不同复杂度。 |
-| 为什么选 SSE | [api.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)、[chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py) | `fetchStreamChat`、`handleSSELine`、`stream_chat`、`reasoning_start`、`metadata` | 当前不是只推答案，还要推阶段、工具和诊断。 |
-| 前端临时流式状态 | [ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)、[AppContext.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/context/AppContext.tsx) | `streamingMessage`、`streamingReasoning`、`drainStreamingQueueToRefs` | UI 临时态和最终持久态生命周期不同。 |
-| Web 分层 | [chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)、[chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)、[session_repository_impl.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/repositories/session_repository_impl.py)、[session_storage.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py) | `StreamingResponse`、`_ensure_session`、`create`、`_atomic_write_json` | route、service、repository、storage 回答的是不同问题。 |
-| Agent 状态机 | [state.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/state.py)、[builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py) | `AgentState`、`create_initial_state`、`routing_decision`、`should_continue`、`verify_decision` | 这里有分叉、有回环、有验证，不适合线性链。 |
-| `direct / react / plan` | [nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)、[builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py) | `strategy_node`、`routing_decision`、`plan_node`、`direct_answer_node` | 三种模式不是重复，而是复杂度和成本的不同取舍。 |
-| `verify / self_check` | [nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py) | `verify_node`、`verify_decision`、`self_check_node` | 这是结果质量控制，而不是“多此一举”。 |
-| memory / checkpoint / session | [memory_integration.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/memory_integration.py)、[persistent_checkpointer.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/persistent_checkpointer.py)、[session_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/session_service.py) | `add_message`、`build_context_messages`、checkpoint、`create_session` | 三者时间尺度不同、恢复目标不同。 |
-| 测试与质量门禁 | [test_sse_streaming.py](D:/moyuan/moyuan-travel-agent/tests/test_sse_streaming.py)、[test_api_integration.py](D:/moyuan/moyuan-travel-agent/tests/test_api_integration.py)、[agent_quality_gate.py](D:/moyuan/moyuan-travel-agent/scripts/agent_quality_gate.py) | `text/event-stream`、benchmark、golden eval、quality gate | 不是只靠点页面，而是分层保护行为边界。 |
-| 系统演进 | [session_storage.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py)、[llm/](D:/moyuan/moyuan-travel-agent/agent/travel_agent/llm)、[TravelPlanToolkit.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx) | `_atomic_write_json`、adapter、`runQuickRefine` | 演进要从当前实现自然推出来，不要凭空发散。 |
-
-### 5.2 面试前最后一遍最值得看的代码
-
-如果你只剩 20-30 分钟复习时间，最推荐再快速扫一遍下面这些代码：
-
-1. [ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)
-重点看：`handleSend`、`flushStreamingQueue`、`onComplete`
-2. [api.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
-重点看：`StreamCallbacks`、`fetchStreamChat`、`handleSSELine`
-3. [chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)
-重点看：`stream_chat`、`_ensure_session`、`_stream_agent_events`
-4. [builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)
-重点看：`build`
-5. [nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)
-重点看：`routing_decision`、`execute_node`、`verify_node`、`verify_decision`
-6. [agent_quality_gate.py](D:/moyuan/moyuan-travel-agent/scripts/agent_quality_gate.py)
-重点看：系统最后是怎样把质量要求变成门禁的
-
-## 补充一：30 秒 / 2 分钟 / 5 分钟短答卡
-
-这组短答卡的目标不是替代完整讲解，而是帮助你在面试、带教和临时复习时快速起势。
-
-### 1. 30 秒答法
-
-“这是一个 AI 旅行助手项目，不只是聊天页。前端负责交互、SSE 消费和结果产品化，Web 层负责 FastAPI 接口、session 和流式编排，Agent 层负责状态机决策、工具执行、验证和自检。它的亮点是 SSE 中间事件、状态机 Agent、memory/checkpoint，以及比较完整的测试和质量门禁体系。”
-
-### 2. 2 分钟答法
-
-“这个项目的核心目标是把旅行约束输入变成可执行的旅行决策流程，而不是只返回一段文本。架构上我们拆成三层：前端用 Next.js 处理聊天输入、SSE 消费和 `TravelPlanToolkit` 这种结果加工；Web 层用 FastAPI 提供 `/api/chat/stream`，负责 session、memory、Agent 运行和 SSE 编排；Agent 层用 LangGraph 做 `intent -> strategy -> plan/react/direct -> execute -> verify -> answer -> self_check` 这条状态机。之所以选 SSE，是因为我们不只要最终答案，还要阶段、工具和 metadata 这些中间事件。为了工程可控，系统还有 `_meta`、stale/fallback/verify、memory、checkpoint，以及 pytest、benchmark、golden eval、quality gate 这套验证链。” 
-
-### 3. 5 分钟展开答法
-
-建议按下面顺序讲：
-
-1. 业务目标：为什么旅行规划不是普通聊天。
-2. 三层拆分：前端、Web、Agent 各自的职责。
-3. 一条真实聊天主链：从 `ChatArea.tsx` 到 `chat_service.py` 再到 `TravelPlanToolkit.tsx`。
-4. 关键取舍：为什么是 SSE、为什么 Web 分层、为什么 Agent 是状态机。
-5. 可靠性：`verify`、`self_check`、`_meta`、memory、checkpoint、质量门禁。
-6. 演进方向：数据库化、多模型路由、观测、回放、可编辑工作台。
-
-### 4. 最常用的 3 个临场转场句
-
-1. “如果只看功能，这个项目像聊天助手；如果看工程设计，它其实更像一个带流式协议和状态机的执行系统。”
-2. “这件事真正难的不是把答案生成出来，而是让中间过程、证据链和回归验证也工程化。”
-3. “我会先讲当前实现为什么成立，再补一层如果规模继续扩大时该怎样演进。”
-
-## 6. 标准答题框架
-
-无论是前端、后端还是 Agent 题，最稳的答法通常都是：
-
-```text
-背景 -> 约束 -> 方案 -> 取舍 -> 风险 -> 演进
-```
-
-### 6.1 背景
-
-回答：
-
-- 这个问题是在解决什么业务需求
-
-### 6.2 约束
-
-回答：
-
-- 当前项目阶段和现有能力边界是什么
-
-### 6.3 方案
-
-回答：
-
-- 当前实现具体怎么做
-
-### 6.4 取舍
-
-回答：
-
-- 为什么选这个方案而不是另一个
-
-### 6.5 风险
-
-回答：
-
-- 当前方案的代价和边界是什么
-
-### 6.6 演进
-
-回答：
-
-- 如果下一步继续做，会优先怎么扩展
-
-## 7. 五组最核心的标准答案骨架
-
-### 7.1 为什么要三层拆分
-
-推荐答法骨架：
-
-1. 当前系统同时有 UI 交互、HTTP/SSE 协议和 Agent 决策三类复杂度。
-2. 三层拆分能把交互、服务协议、执行策略解耦。
-3. 当前项目里 `frontend`、`web`、`agent` 各自承担真实职责。
-4. 这样更适合定位问题、做测试和后续演进。
-5. 代价是跨层联动会变多，但整体可维护性更高。
-
-### 7.2 为什么选 SSE
-
-推荐答法骨架：
-
-1. 当前需要服务端持续推送 token 和中间事件。
-2. 事件不仅有文本，还有阶段、工具和 metadata。
-3. SSE 足够覆盖当前单向流式场景，且实现成本较低。
-4. WebSocket 更适合更复杂的双向协作，但当前阶段不是第一优先。
-
-### 7.3 为什么 Web 层要分层
-
-推荐答法骨架：
-
-1. route 负责协议层
-2. service 负责业务编排
-3. repository 负责业务语义的数据访问
-4. storage 负责底层持久化
-5. 这样字段变化、存储替换、测试隔离都更容易
-
-### 7.4 为什么 Agent 要做成状态机
-
-推荐答法骨架：
-
-1. 问题不只是一次生成答案
-2. 需要意图识别、策略选择、执行、验证、自检
-3. 这些阶段之间有条件路由和回环
-4. 状态机更适合表达多阶段协作流程
-
-### 7.5 为什么 memory 和 checkpoint 分开
-
-推荐答法骨架：
-
-1. memory 偏长期偏好和摘要
-2. checkpoint 偏运行过程恢复
-3. 它们时间尺度不同、恢复目标不同
-4. 混在一起会让语义混乱
-
-## 8. 面试时最常见的错误回答方式
-
-### 错误 1：只报技术栈
-
-例如：
-
-“我们用了 Next.js、FastAPI、LangGraph……”
-
-问题：
-
-- 没讲业务目标
-- 没讲结构取舍
-- 没讲为什么这样做
-
-### 错误 2：只讲功能，不讲边界
-
-例如：
-
-“我们做了 SSE、做了 memory、做了 toolkit……”
-
-问题：
-
-- 听不出这些东西之间怎么协作
-- 听不出为什么需要它们
-
-### 错误 3：只讲现在，不讲将来
-
-问题：
-
-- 面试官会怀疑你只是看过代码，还没形成系统视角
-
-## 9. 一个 3 分钟项目讲解模板
-
-你可以这样讲：
-
-“这是一个 AI 旅行助手项目，不只是一个聊天 Demo。它的目标是让用户输入预算、时间、偏好等约束后，系统能生成计划、展示执行过程，并把答案进一步加工成可操作的行程结果。架构上我们拆成三层：前端用 Next.js 负责交互、SSE 消费和结果产品化；Web 层用 FastAPI 负责接口、SSE 编排、session 和存储；Agent 层用 LangGraph 组织意图识别、策略路由、工具执行、验证和自检。聊天链路采用 SSE，因为我们不只要返回最终答案，还要实时返回阶段、工具事件和 metadata。Agent 不是简单链式调用，而是带 `plan/react/direct` 分流和 `verify` 回环的状态机。为了保证工程稳定性，我们还有 memory、checkpoint，以及 pytest、benchmark、golden eval 和 quality gate 这套验证体系。后续如果扩展，我会优先考虑数据库化存储、多模型路由和更强的观测与回放。”
-
-## 10. 一个 10-15 分钟项目深讲模板
-
-更长版本建议按下面顺序展开：
-
-1. 业务目标
-2. 整体三层结构
-3. 一条真实聊天链路
-4. SSE 事件模型
-5. Web 分层
-6. Agent 状态机
-7. memory / checkpoint / tools
-8. 测试与质量门禁
-9. 典型难点
-10. 演进方向
-
-## 11. 当前项目最典型的难点
-
-### 难点一：状态多且跨层
-
-前端有 UI 状态，Web 有会话与事件状态，Agent 有图状态。
-
-如果没有统一状态心智模型，很容易把问题看散。
-
-### 难点二：中间事件多
-
-系统不仅有最终答案，还有一长串中间事件。
-
-这让产品体验更好，但也让链路解释和问题排查更复杂。
-
-### 难点三：可靠性不是单一步骤完成的
-
-当前项目对可靠性的控制分散在：
-
-- tool `_meta`
-- stale / fallback / refresh
-- verify
-- self_check
-- memory 注入
-- benchmark / golden eval
-
-这正是它的工程价值所在，也正是讲解时最该突出的一部分。
-
-## 12. 系统拓展路线图
-
-### 12.1 数据与存储升级
-
-当前状态：
-
-- `sessions.json`
-- `agent_memory.json`
-- `share_links.json`
-- checkpoint sqlite
-
-可演进方向：
-
-- session 与 share 迁移到数据库
-- memory 做更明确的索引和版本管理
-- checkpoint 与 replay 进一步统一
-
-### 12.2 工具与外部数据源升级
-
-可演进方向：
-
-- 更强缓存
-- 更多 provider
-- 统一新鲜度策略
-- 工具级 trace 与 SLA
-
-### 12.3 模型与成本控制升级
-
-可演进方向：
-
-- 多模型路由
-- 高低成本模型分工
-- prompt / tool 路由策略优化
-- 成本与质量联合观测
-
-### 12.4 观测与质量治理升级
-
-可演进方向：
-
-- `trace_id / run_id` 全链路贯穿
-- 失败聚类
-- 更标准化的 replay
-- benchmark 趋势分析
-- golden dataset 扩充
-
-### 12.5 产品能力升级
-
-可演进方向：
-
-- `TravelPlanToolkit` 升级为可编辑工作台
-- 地图、分享和城市探索更深联动
-- 更丰富的旅行场景模板
-
-### 12.6 服务化和多用户能力升级
-
-可演进方向：
-
-- 用户体系
-- 多租户
-- 权限控制
-- 配额与限流
-- 更严格的安全边界
-
-## 13. 如果要把这项目讲成“高级工程案例”，应该突出什么
-
-最推荐突出这 5 件事：
-
-1. 不是单模型直接回答，而是带状态机与验证的 Agent 执行系统
-2. 不是只回文本，还把执行过程实时显式化
-3. 不是只做页面展示，还把文本继续做成产品功能
-4. 不是只靠手工验，而是有质量门禁
-5. 不是只满足当前功能，还天然具备数据库化、多模型和可观测扩展空间
-
-## 14. 带教和面试模拟建议
-
-如果你在带新人或做面试模拟，最推荐按下面顺序问：
-
-1. 请画出聊天主链
-2. 请解释为什么前端要区分临时流和最终消息
-3. 请解释为什么后端要分层
-4. 请解释为什么 Agent 要有 `verify`
-5. 请解释 memory、checkpoint、session 的区别
-6. 如果要把 session 改成数据库，你会从哪层下手
-7. 如果要做多模型和更强观测，你最先改哪里
-
-这组题能很快区分：
-
-- 只是看过代码
-- 真正理解系统
-- 能继续做维护与扩展
-
-## 15. 常见误区
-
-### 误区 1：把项目讲成“技术栈堆砌”
-
-### 误区 2：只讲功能，不讲取舍
-
-### 误区 3：只讲现在，不讲演进
-
-### 误区 4：把 memory、checkpoint、session 混成同一种“存储”
-
-### 误区 5：把 `TravelPlanToolkit` 当成普通 UI 组件，而忽略它的产品化意义
-
-## 16. 本章验收标准
-
-读完本章后，最低应该能独立完成下面 8 件事中的 5 件：
-
-1. 用 3-5 分钟讲清项目
-2. 回答为什么三层拆分
-3. 回答为什么用 SSE
-4. 回答为什么 Agent 用状态机
-5. 区分 memory、checkpoint、session
-6. 给出至少 3 个未来扩展方向
-7. 说出当前项目最值得讲的工程亮点
-8. 给出一个更高级的演进方案草图
-
-## 17. 本章学习产出
-
-建议至少完成下面三项中的两项：
-
-1. 一份项目面试题清单
-2. 一份 5 分钟项目讲解提纲
-3. 一份系统演进方案草图
-
-## 18. 配套练习
-
-建议读完本章后，至少完成下面两项：
-
-1. 去 [07-thinking-questions-homework-and-answers.md](07-thinking-questions-homework-and-answers.md) 完成 `Phase 7` 的开放题和毕业题。
-2. 自己录一遍 3 分钟项目讲解，然后对照本章框架复盘哪里只讲了实现、没讲取舍。
-
-如果你能把这一章里的问题讲顺，你就已经从“会读源码”进一步走到了“会讲系统、会做架构讨论”的层级。
+这 6 个问题基本能覆盖一轮像样的项目面试。

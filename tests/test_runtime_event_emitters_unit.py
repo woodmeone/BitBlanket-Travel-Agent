@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from agent.travel_agent.runtime_event_emitters import LegacySupervisorEventEmitter
+from agent.travel_agent.runtime_event_emitters import SupervisorEventEmitter
 
 
-def test_legacy_supervisor_event_emitter_emits_stage_chunk_tool_and_done_payloads():
+def test_supervisor_event_emitter_emits_stage_chunk_tool_and_done_payloads():
     """Emitter should produce normalized contract payloads from runtime transitions."""
 
-    emitter = LegacySupervisorEventEmitter(session_id="session-1", run_id="run-1")
+    emitter = SupervisorEventEmitter(session_id="session-1", run_id="run-1")
 
     assert emitter.emit_initial() == {
         "type": "stage",
@@ -91,10 +91,10 @@ def test_legacy_supervisor_event_emitter_emits_stage_chunk_tool_and_done_payload
     ]
 
 
-def test_legacy_supervisor_event_emitter_adds_incomplete_answer_fallback():
+def test_supervisor_event_emitter_adds_incomplete_answer_fallback():
     """Emitter should patch truncated answers before the done payload is emitted."""
 
-    emitter = LegacySupervisorEventEmitter(session_id="session-2", run_id="run-2")
+    emitter = SupervisorEventEmitter(session_id="session-2", run_id="run-2")
     emitter.emit_chat_chunk("short")
     completion_events = emitter.emit_completion_events()
     done_event = completion_events[-1]

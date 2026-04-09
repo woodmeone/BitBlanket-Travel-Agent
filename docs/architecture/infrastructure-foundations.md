@@ -6,7 +6,7 @@
 
 - 需要统一本地启动、Docker 启动和 CI 行为
 - 需要排查为什么 `/api/ready` 返回 `503`
-- 需要定位一次请求在前端、Web API、Agent 之间的 `request_id / trace_id`
+- 需要定位一次请求在前端、Backend API、Agent 之间的 `request_id / trace_id`
 - 需要查看 CI 当前如何分层跑测试、产出 benchmark / golden eval / quality gate
 - 需要确认改动某个基础设施文件后，应该同步哪些文档
 
@@ -27,39 +27,40 @@
 对应核心代码路径：
 
 - 运行与部署
-  - [`compose.yaml`](/D:/moyuan/moyuan-travel-agent/compose.yaml)
-  - [`Dockerfile.backend`](/D:/moyuan/moyuan-travel-agent/Dockerfile.backend)
-  - [`frontend/Dockerfile`](/D:/moyuan/moyuan-travel-agent/frontend/Dockerfile)
-  - [`frontend/docker-compose.yml`](/D:/moyuan/moyuan-travel-agent/frontend/docker-compose.yml)
+  - [`deploy/compose/compose.yaml`](../../deploy/compose/compose.yaml)
+  - [`deploy/docker/backend.Dockerfile`](../../deploy/docker/backend.Dockerfile)
+  - [`deploy/docker/frontend.Dockerfile`](../../deploy/docker/frontend.Dockerfile)
+  - [`deploy/compose/frontend.local.yml`](../../deploy/compose/frontend.local.yml)
 - 配置与 readiness
-  - [`config/__init__.py`](/D:/moyuan/moyuan-travel-agent/config/__init__.py)
-  - [`config/server_config.yaml.example`](/D:/moyuan/moyuan-travel-agent/config/server_config.yaml.example)
-  - [`web/moyuan_web/startup_checks.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/startup_checks.py)
-  - [`web/moyuan_web/routes/health.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/health.py)
+  - [`backend/config/__init__.py`](../../backend/config/__init__.py)
+  - [`backend/config/server_config.yaml.example`](../../backend/config/server_config.yaml.example)
+  - [`backend/moyuan_web/startup_checks.py`](../../backend/moyuan_web/startup_checks.py)
+  - [`backend/moyuan_web/routes/health.py`](../../backend/moyuan_web/routes/health.py)
 - CI 与测试分层
-  - [`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml)
-  - [`pytest.ini`](/D:/moyuan/moyuan-travel-agent/pytest.ini)
-  - [`tests/conftest.py`](/D:/moyuan/moyuan-travel-agent/tests/conftest.py)
+  - [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)
+  - [`pyproject.toml`](../../pyproject.toml)
+  - [`tests/conftest.py`](../../tests/conftest.py)
 - Trace 与 metrics
-  - [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py)
-  - [`web/moyuan_web/middleware/__init__.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/middleware/__init__.py)
-  - [`web/moyuan_web/routes/chat.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)
-  - [`web/moyuan_web/services/chat_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)
-  - [`frontend/src/services/api.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
+  - [`backend/moyuan_web/observability.py`](../../backend/moyuan_web/observability.py)
+  - [`backend/moyuan_web/middleware/__init__.py`](../../backend/moyuan_web/middleware/__init__.py)
+  - [`backend/moyuan_web/routes/chat.py`](../../backend/moyuan_web/routes/chat.py)
+  - [`backend/moyuan_web/services/chat_service.py`](../../backend/moyuan_web/services/chat_service.py)
+  - [`frontend/src/services/api/chatClient.ts`](../../frontend/src/services/api/chatClient.ts)
+  - [`frontend/src/services/api/chatStreamParser.ts`](../../frontend/src/services/api/chatStreamParser.ts)
 - 数据生命周期
-  - [`scripts/runtime_backup.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_backup.py)
-  - [`scripts/runtime_restore.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_restore.py)
-  - [`scripts/runtime_prune.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_prune.py)
-  - [`scripts/runtime_doctor.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_doctor.py)
-  - [`docs/architecture/data-storage.md`](/D:/moyuan/moyuan-travel-agent/docs/architecture/data-storage.md)
+  - [`scripts/runtime_backup.py`](../../scripts/runtime_backup.py)
+  - [`scripts/runtime_restore.py`](../../scripts/runtime_restore.py)
+  - [`scripts/runtime_prune.py`](../../scripts/runtime_prune.py)
+  - [`scripts/runtime_doctor.py`](../../scripts/runtime_doctor.py)
+  - [`docs/architecture/data-storage.md`](data-storage.md)
 - 安全与契约治理
-  - [`SECURITY.md`](/D:/moyuan/moyuan-travel-agent/SECURITY.md)
-  - [`.github/dependabot.yml`](/D:/moyuan/moyuan-travel-agent/.github/dependabot.yml)
-  - [`.gitleaks.toml`](/D:/moyuan/moyuan-travel-agent/.gitleaks.toml)
-  - [`scripts/export_openapi_snapshot.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_openapi_snapshot.py)
-  - [`scripts/export_sse_contract_snapshot.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_sse_contract_snapshot.py)
-  - [`docs/reference/openapi.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/openapi.snapshot.json)
-  - [`docs/reference/sse-contract.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/sse-contract.snapshot.json)
+  - [`.github/SECURITY.md`](../../.github/SECURITY.md)
+  - [`.github/dependabot.yml`](../../.github/dependabot.yml)
+  - [`deploy/security/gitleaks.toml`](../../deploy/security/gitleaks.toml)
+  - [`scripts/export_openapi_snapshot.py`](../../scripts/export_openapi_snapshot.py)
+  - [`scripts/export_sse_contract_snapshot.py`](../../scripts/export_sse_contract_snapshot.py)
+  - [`docs/reference/openapi.snapshot.json`](../reference/openapi.snapshot.json)
+  - [`docs/reference/sse-contract.snapshot.json`](../reference/sse-contract.snapshot.json)
 
 ## 2. 运行与部署收敛
 
@@ -68,15 +69,15 @@
 当前统一端口基线是：
 
 - Frontend: `33001`
-- Web API: `38000`
+- Backend API: `38000`
 
 这组端口同时体现在：
 
 - 根 README
 - Quick Start
-- `compose.yaml`
-- `frontend/docker-compose.yml`
-- `config/server_config.yaml.example`
+- `deploy/compose/compose.yaml`
+- `deploy/compose/frontend.local.yml`
+- `backend/config/server_config.yaml.example`
 - 前端 Next.js 启动脚本与 rewrite
 
 如果未来要改端口，至少要同步这些文件，不要只改某一层。
@@ -86,23 +87,23 @@
 推荐优先使用根目录 Compose：
 
 ```bash
-docker compose up --build
+docker compose --file deploy/compose/compose.yaml up --build
 ```
 
 对应职责：
 
-- [`Dockerfile.backend`](/D:/moyuan/moyuan-travel-agent/Dockerfile.backend)
+- [`deploy/docker/backend.Dockerfile`](../../deploy/docker/backend.Dockerfile)
   - 安装 Python 依赖
-  - 拷贝 `agent/`、`web/`、`config/`、`scripts/`
+  - 拷贝 `agent/`、`backend/`、`scripts/`
   - 以 `uvicorn` 启动 `moyuan_web.main:app`
-- [`frontend/Dockerfile`](/D:/moyuan/moyuan-travel-agent/frontend/Dockerfile)
+- [`deploy/docker/frontend.Dockerfile`](../../deploy/docker/frontend.Dockerfile)
   - 先 `npm ci`
   - 再 `next build`
   - 最后以 standalone 模式运行前端
-- [`compose.yaml`](/D:/moyuan/moyuan-travel-agent/compose.yaml)
+- [`deploy/compose/compose.yaml`](../../deploy/compose/compose.yaml)
   - 把 `backend` 与 `frontend` 放进统一网络
   - 对外暴露 `38000/33001`
-  - 挂载 `config/`、`data/`、`logs/`
+  - 挂载 `backend/config/`、`data/`、`logs/`
 
 当前两份 Dockerfile 都支持通过 build args 覆盖基础镜像：
 
@@ -125,10 +126,10 @@ python scripts/dev.py compose-up \
    - 手动启动前后端
    - 适合改代码和调试
 2. Docker 联调
-   - `docker compose up --build`
+   - `docker compose --file deploy/compose/compose.yaml up --build`
    - 适合复现部署环境和验证配置
 3. CI 运行
-   - 由 [`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml) 自动准备配置、跑测试、跑质量门禁
+   - 由 [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) 自动准备配置、跑测试、跑质量门禁
 
 ## 3. 配置与 readiness 治理
 
@@ -136,9 +137,9 @@ python scripts/dev.py compose-up \
 
 当前 `ServerConfig` 的配置优先级是：
 
-`环境变量 > config/server_config.yaml > 代码默认值`
+`环境变量 > backend/config/server_config.yaml > 代码默认值`
 
-实现入口在 [`config/__init__.py`](/D:/moyuan/moyuan-travel-agent/config/__init__.py)。
+实现入口在 [`backend/config/__init__.py`](../../backend/config/__init__.py)。
 
 其中重点字段包括：
 
@@ -156,13 +157,13 @@ python scripts/dev.py compose-up \
 
 ### 3.2 启动校验
 
-启动校验在 [`web/moyuan_web/startup_checks.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/startup_checks.py)。
+启动校验在 [`backend/moyuan_web/startup_checks.py`](../../backend/moyuan_web/startup_checks.py)。
 
 当前会检查：
 
 1. `server_config` 能否解析出有效配置
 2. `data/` 是否可写
-3. `config/llm_config.yaml` 是否存在且是否至少有一个 active model
+3. `backend/config/llm_config.yaml` 是否存在且是否至少有一个 active model
 4. 依赖容器能否 resolve 出 `SessionRepository` 和 `ChatService`
 5. 聊天运行时能否初始化
 
@@ -174,7 +175,7 @@ python scripts/dev.py compose-up \
 
 ### 3.3 `/api/ready`
 
-[`web/moyuan_web/routes/health.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/health.py) 里的 `/api/ready` 现在返回真实检查结果，不再是静态 `ok`。
+[`backend/moyuan_web/routes/health.py`](../../backend/moyuan_web/routes/health.py) 里的 `/api/ready` 现在返回真实检查结果，不再是静态 `ok`。
 
 返回规则：
 
@@ -218,34 +219,32 @@ MOYUAN_FAIL_FAST_STARTUP_VALIDATION=true
 
 定义位置：
 
-- [`pytest.ini`](/D:/moyuan/moyuan-travel-agent/pytest.ini)
-- [`tests/conftest.py`](/D:/moyuan/moyuan-travel-agent/tests/conftest.py)
+- [`pyproject.toml`](../../pyproject.toml)
+- [`tests/conftest.py`](../../tests/conftest.py)
 
 ### 4.2 当前 CI 分层
 
-[`ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml) 里当前主要分成：
+[`ci.yml`](../../.github/workflows/ci.yml) 里当前主要分成下面这些 lane：
 
-1. Backend unit
-   - `pytest tests -m "unit and not local and not external_api" -q`
-2. Backend local smoke
-   - `pytest tests -m "local and not external_api" -q`
-3. Docstring audit
-   - `python scripts/docstring_audit.py --strict`
-   - 同时检查缺失 docstring 与新增低信息量模板 docstring，历史存量由 `docs/reference/docstring-audit.low-info-baseline.json` 管理
-4. Complexity budget gate
-   - `python scripts/complexity_budget.py --strict`
-   - 同时检查 Agent / Web API / Frontend 热点文件是否突破“只减不增”预算，预算基线保存在 `docs/reference/complexity-budget.json`
-5. Decision record audit
-   - `python scripts/decision_record_audit.py --strict`
-   - 检查 `docs/governance/` 下的 ADR / RFC / Design Review 是否带有统一状态和必填章节
-6. Benchmark
-7. Golden eval
-8. Benchmark trend
-9. Quality gate
-10. Frontend lint / test / build
-11. `pip-audit`
-12. Dockerized `gitleaks`
-13. OpenAPI / SSE snapshot verification
+| CI lane | 统一入口 | 主要目的 |
+| --- | --- | --- |
+| Backend unit | `python scripts/dev.py backend-test --pytest-slice unit` | 跑稳定的后端单测层。 |
+| Backend local smoke | `python scripts/dev.py backend-test --pytest-slice local` | 跑本地契约和轻量 smoke。 |
+| Docstring audit | `python scripts/dev.py docstring` | 检查缺失 docstring 与新增低信息量模板 docstring；历史存量由 `docs/reference/docstring-audit.low-info-baseline.json` 管理。 |
+| Complexity budget | `python scripts/dev.py complexity` | 守住 Agent / Backend API / Frontend 热点文件“只减不增”的复杂度预算；基线在 `docs/reference/complexity-budget.json`。 |
+| Decision record audit | `python scripts/dev.py decision-records` | 检查 `docs/governance/` 下 ADR / RFC / Design Review 的统一状态和必填章节。 |
+| Benchmark / golden / trend / gate | `python scripts/dev.py benchmark-report`、`golden-report`、`benchmark-trend`、`quality-gate` | 收口质量基线、趋势和最终门禁。 |
+| Frontend quality | frontend lint / test / build | 守住前端质量与构建成功。 |
+| Dependency / secret audit | `pip-audit`、Dockerized `gitleaks` | 做依赖和 secret 基线检查。 |
+| Contract snapshots | `python scripts/dev.py snapshots` | 校验 `openapi / sse-contract / runtime-doctor` 三份快照无漂移。 |
+
+当前 backend pytest 已与本地入口统一：
+
+- CI 不再直接写 `pytest tests ...`
+- backend slice 统一收口到 `python scripts/dev.py backend-test --pytest-slice ...`
+- docstring / complexity / governance audit / ruff / mypy / snapshots 也优先复用 `scripts/dev.py`
+- benchmark / golden eval / trend / quality gate / release scorecard 也收口到 `scripts/dev.py`
+- 这样本地回归和 CI 分层复用的是同一套命令面
 
 ### 4.3 CI 产物
 
@@ -265,7 +264,7 @@ MOYUAN_FAIL_FAST_STARTUP_VALIDATION=true
 
 ```mermaid
 flowchart LR
-    A["frontend/src/services/api.ts"] -->|"X-Request-ID / X-Trace-ID"| B["FastAPI middleware"]
+    A["chatClient.ts + chatStreamParser.ts"] -->|"X-Request-ID / X-Trace-ID"| B["FastAPI middleware"]
     B --> C["routes/chat.py"]
     C --> D["ChatService.stream_chat"]
     D --> E["SSE payloads"]
@@ -281,7 +280,7 @@ flowchart LR
 
 ### 5.2 结构化日志
 
-结构化日志入口在 [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py)。
+结构化日志入口在 [`backend/moyuan_web/observability.py`](../../backend/moyuan_web/observability.py)。
 
 目前会输出这些事件：
 
@@ -303,7 +302,7 @@ MOYUAN_STRUCTURED_LOGGING=false
 
 ### 5.3 Prometheus metrics
 
-Prometheus 指标同样由 [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py) 统一定义。
+Prometheus 指标同样由 [`backend/moyuan_web/observability.py`](../../backend/moyuan_web/observability.py) 统一定义。
 
 当前主要指标：
 
@@ -332,7 +331,7 @@ curl http://localhost:38000/api/metrics
 
 如果 `/api/ready` 返回 `503`，优先看：
 
-1. `config/llm_config.yaml` 是否存在、是否至少有一个 active model
+1. `backend/config/llm_config.yaml` 是否存在、是否至少有一个 active model
 2. `data/` 目录是否可写
 3. 启动日志中的 `startup_validation`
 4. ChatService 初始化是否失败
@@ -346,43 +345,24 @@ curl http://localhost:38000/api/metrics
 
 ## 7. 数据生命周期治理
 
-### 7.1 备份
+### 7.1 维护动作速查
 
-当前推荐命令：
+| 动作 | 推荐命令 | 重点输出 / 行为 |
+| --- | --- | --- |
+| 备份 | `python scripts/dev.py runtime-backup` | 归档 session、agent memory、share links、failure clusters，以及 checkpoint runtime metadata。 |
+| 带标签备份 | `python scripts/dev.py runtime-backup --backup-label before-upgrade` | 给升级前或排障前的备份打显式标签。 |
+| doctor | `python scripts/dev.py runtime-doctor --runtime-doctor-json` | 暴露 `checkpoint_runtime.backend / restore_strategy / requires_external_snapshot / restore_instructions`。 |
+| 严格 doctor | `python scripts/dev.py runtime-doctor --base-url http://localhost:38000 --runtime-doctor-strict` | 对活服务做更严格的 readiness / metrics / contract 检查。 |
+| 组合维护 | `python scripts/dev.py runtime-maintenance --prune-keep-latest-backups 10 --prune-max-backup-age-days 14` | 固定串起 `runtime-backup -> runtime-doctor --json -> runtime-prune`。 |
+| 恢复 | `python scripts/dev.py runtime-restore --restore-archive artifacts/runtime_backups/runtime_backup_<timestamp>.zip` | 先做 `pre-restore` 安全备份，再覆盖运行文件，并打印 checkpoint 恢复说明。 |
+| 运行态清理 | `python scripts/dev.py runtime-prune --prune-max-session-age-seconds 2592000 --prune-max-failure-age-days 30 --prune-vacuum-checkpoints` | 清理旧 session / failure，并做 checkpoint compaction。 |
+| PostgreSQL checkpoint 清理 | `python scripts/dev.py runtime-prune --prune-vacuum-checkpoints --prune-checkpoint-backend postgres --prune-checkpoint-db 'postgresql://user:password@localhost:5432/moyuan'` | 同样走 checkpoint factory，只是目标换成 SQL-backed maintenance。 |
+| Checkpoint 组合维护 | `python scripts/dev.py checkpoint-maintenance --replay-session-id <session_id> --prune-checkpoint-backend postgres --prune-checkpoint-db 'postgresql://user:password@localhost:5432/moyuan'` | 固定串起 `runtime-prune --vacuum-checkpoints -> optional agent-replay --dry-run -> runtime-doctor --json`。 |
 
-```bash
-python scripts/runtime_backup.py
-python scripts/runtime_backup.py --label before-upgrade
-python scripts/runtime_doctor.py --json
-python scripts/runtime_doctor.py --base-url http://localhost:38000 --strict
-```
+checkpoint 相关规则只要记住两点：
 
-默认会备份：
-
-- session 主文件与 `.bak`
-- agent memory 主文件与 `.bak`
-- checkpoint SQLite
-- share links
-- failure clusters
-
-### 7.2 恢复
-
-当前推荐命令：
-
-```bash
-python scripts/runtime_restore.py --archive artifacts/runtime_backups/runtime_backup_<timestamp>.zip
-```
-
-默认会先创建一次 `pre-restore` 安全备份，再覆盖运行文件。
-
-### 7.3 清理
-
-当前推荐命令：
-
-```bash
-python scripts/runtime_prune.py --keep-latest-backups 10 --max-backup-age-days 14
-python scripts/runtime_prune.py --max-session-age-seconds 2592000 --max-failure-age-days 30 --vacuum-checkpoints
-```
+- `sqlite` backend 会在项目目录内归档 SQLite 文件，并在清理时执行 compaction + `VACUUM`。
+- `postgres` backend 不会导出外部数据库内容；restore 时仍需要先恢复外部 PostgreSQL 快照。
 
 ## 8. 安全与契约治理基础
 
@@ -390,13 +370,15 @@ python scripts/runtime_prune.py --max-session-age-seconds 2592000 --max-failure-
 
 当前仓库已经补上：
 
-- [`SECURITY.md`](/D:/moyuan/moyuan-travel-agent/SECURITY.md)
-- [`.github/dependabot.yml`](/D:/moyuan/moyuan-travel-agent/.github/dependabot.yml)
+- [`.github/SECURITY.md`](../../.github/SECURITY.md)
+- [`.github/dependabot.yml`](../../.github/dependabot.yml)
+- [`deploy/security/gitleaks.toml`](../../deploy/security/gitleaks.toml)
 
 这代表项目已经至少有：
 
 - 安全问题上报入口说明
 - Python / npm 依赖更新建议机制
+- secret scan allowlist 与示例 token 例外规则
 - 敏感配置文件与模板文件边界说明
 - CI 中的 `pip-audit` 依赖审计
 - CI 中的 Dockerized `gitleaks` secret scan
@@ -411,7 +393,7 @@ python scripts/export_openapi_snapshot.py
 
 默认产物：
 
-- [`docs/reference/openapi.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/openapi.snapshot.json)
+- [`docs/reference/openapi.snapshot.json`](../reference/openapi.snapshot.json)
 
 这个文件的用途不是“给用户看”，而是：
 
@@ -429,7 +411,7 @@ python scripts/export_sse_contract_snapshot.py
 
 默认产物：
 
-- [`docs/reference/sse-contract.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/sse-contract.snapshot.json)
+- [`docs/reference/sse-contract.snapshot.json`](../reference/sse-contract.snapshot.json)
 
 它重点保护：
 
@@ -443,186 +425,45 @@ python scripts/export_sse_contract_snapshot.py
 
 至少同步：
 
-- [`README.md`](/D:/moyuan/moyuan-travel-agent/README.md)
-- [`docs/getting-started/quick-start.md`](/D:/moyuan/moyuan-travel-agent/docs/getting-started/quick-start.md)
-- [`docs/reference/configuration-reference.md`](/D:/moyuan/moyuan-travel-agent/docs/reference/configuration-reference.md)
-- [`docs/reference/project-structure.md`](/D:/moyuan/moyuan-travel-agent/docs/reference/project-structure.md)
+- [`README.md`](../../README.md)
+- [`docs/getting-started/quick-start.md`](../getting-started/quick-start.md)
+- [`docs/reference/configuration-reference.md`](../reference/configuration-reference.md)
+- [`docs/reference/project-structure.md`](../reference/project-structure.md)
 
 ### 改 readiness / health / startup check
 
 至少同步：
 
-- [`docs/reference/api-reference.md`](/D:/moyuan/moyuan-travel-agent/docs/reference/api-reference.md)
-- [`docs/architecture/system-architecture.md`](/D:/moyuan/moyuan-travel-agent/docs/architecture/system-architecture.md)
-- [`docs/architecture/infrastructure-foundations.md`](/D:/moyuan/moyuan-travel-agent/docs/architecture/infrastructure-foundations.md)
+- [`docs/reference/api-reference.md`](../reference/api-reference.md)
+- [`docs/architecture/system-architecture.md`](system-architecture.md)
+- [`docs/architecture/infrastructure-foundations.md`](infrastructure-foundations.md)
 
 ### 改 trace / metrics / 日志
 
 至少同步：
 
-- [`README.md`](/D:/moyuan/moyuan-travel-agent/README.md)
-- [`docs/reference/api-reference.md`](/D:/moyuan/moyuan-travel-agent/docs/reference/api-reference.md)
-- [`docs/testing/testing-guide.md`](/D:/moyuan/moyuan-travel-agent/docs/testing/testing-guide.md)
-- [`docs/architecture/system-architecture.md`](/D:/moyuan/moyuan-travel-agent/docs/architecture/system-architecture.md)
+- [`README.md`](../../README.md)
+- [`docs/reference/api-reference.md`](../reference/api-reference.md)
+- [`docs/testing/testing-guide.md`](../testing/testing-guide.md)
+- [`docs/architecture/system-architecture.md`](system-architecture.md)
 
 ### 改 CI / pytest marker / quality gate
 
 至少同步：
 
-- [`README.md`](/D:/moyuan/moyuan-travel-agent/README.md)
-- [`docs/getting-started/development-workflow.md`](/D:/moyuan/moyuan-travel-agent/docs/getting-started/development-workflow.md)
-- [`docs/testing/testing-guide.md`](/D:/moyuan/moyuan-travel-agent/docs/testing/testing-guide.md)
+- [`README.md`](../../README.md)
+- [`docs/getting-started/development-workflow.md`](../getting-started/development-workflow.md)
+- [`docs/testing/testing-guide.md`](../testing/testing-guide.md)
 
 ## 10. P1 基础设施继续完善
 
-### 10.5 编码与仓库规范治理
+### 10.1 P1 继续完善速查
 
-为了减少 Windows / Linux 之间的换行、编码和 diff 噪音，仓库现在补上了两份顶层规范文件：
-
-- [`.editorconfig`](/D:/moyuan/moyuan-travel-agent/.editorconfig)
-- [`.gitattributes`](/D:/moyuan/moyuan-travel-agent/.gitattributes)
-
-这两份文件分别负责：
-
-- 编辑器保存时的编码、缩进、换行
-- Git 提交时的文本归一化和二进制文件识别
-
-它们最主要保护的是：
-
-- Markdown / YAML / JSON 不被错误改成其他换行
-- 全仓文本默认使用 `LF`
-- 图片、PDF、SQLite 不被当成文本文件处理
-
-### 10.6 本地命令入口统一
-
-根目录新增了统一命令脚本：
-
-- [`scripts/dev.py`](/D:/moyuan/moyuan-travel-agent/scripts/dev.py)
-
-它把原来分散的本地命令统一成固定任务，包括：
-
-- `test`
-- `ruff`
-- `mypy`
-- `docstring`
-- `snapshots`
-- `release-manifest`
-- `support-bundle`
-- `infra-check`
-- `compose-config`
-- `compose-up`
-- `compose-observability`
-- `container-smoke`
-
-推荐优先把它当成“维护者本地入口”，而不是每次现查脚本名。
-
-### 10.7 容器与发布闭环验证
-
-CI 现在多了一层专门的部署验证任务：
-
-- [`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml) 中的 `container-validate`
-
-它覆盖：
-
-1. release manifest 导出
-2. 默认 Compose 渲染
-3. `observability` profile Compose 渲染
-4. 后端镜像 smoke build
-5. 前端镜像 smoke build
-6. `deployment-validation-artifacts` 上传
-
-本地推荐用这条命令先预检查：
-
-```bash
-python scripts/dev.py compose-config
-```
-
-如果这一步已经失败，通常不必等 CI 再报一次。
-
-如果失败原因只是基础镜像拉取慢，可以直接切镜像站后再跑：
-
-```bash
-python scripts/dev.py container-smoke \
-  --python-base-image "5ykpmdvdg6to97.xuanyuan.run/library/python:3.13-slim" \
-  --node-base-image "5ykpmdvdg6to97.xuanyuan.run/library/node:22-alpine"
-```
-
-### 10.1 静态质量门禁
-
-当前新增的静态质量基线包括：
-
-- [`ruff.toml`](/D:/moyuan/moyuan-travel-agent/ruff.toml)
-- [`mypy.ini`](/D:/moyuan/moyuan-travel-agent/mypy.ini)
-- [`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml)
-
-CI 里当前会对基础设施相关核心文件执行：
-
-- `ruff check --config ruff.toml ...`
-- `mypy --config-file mypy.ini ...`
-
-设计原则是先覆盖 release / observability / startup / contract / runtime maintenance 相关文件，再逐步扩面，而不是一次性把整个历史代码库都纳入静态门禁。
-
-### 10.2 release workflow
-
-当前 release 基础设施已经补到：
-
-- [`.github/workflows/release.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/release.yml)
-- [`scripts/export_release_manifest.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_release_manifest.py)
-- [`web/moyuan_web/app_meta.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/app_meta.py)
-
-这套流程的目标是：
-
-- tag 或手动触发时构建 backend / frontend 镜像
-- 推送到 `ghcr.io`
-- 导出 release manifest
-- 在 tag release 时自动创建 GitHub Release
-
-同时，后端 `/` 与 `/api/health` 现在也会暴露 `build` 元数据，便于排查当前实例实际运行的是哪一次构建。
-
-### 10.3 dashboard 与 alert 资产
-
-当前仓库已经补了最小可用的观测消费资产：
-
-- [`ops/observability/README.md`](/D:/moyuan/moyuan-travel-agent/ops/observability/README.md)
-- [`ops/observability/grafana-dashboard.json`](/D:/moyuan/moyuan-travel-agent/ops/observability/grafana-dashboard.json)
-- [`ops/observability/prometheus-alerts.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus-alerts.yml)
-
-Dashboard 重点覆盖：
-
-- HTTP 请求速率
-- p95 延迟
-- in-flight 请求
-- chat stream outcome
-- SSE event rate
-- readiness state
-
-Alert 重点覆盖：
-
-- `MoyuanReadinessDown`
-- `MoyuanHttp5xxSpike`
-- `MoyuanChatStreamFailures`
-- `MoyuanSseEventStall`
-
-### 10.4 local observability stack 与 support bundle
-
-当前仓库还补了两类偏运维实战的资产：
-
-- local observability stack
-  - `compose.yaml` 里的 `prometheus` / `grafana` profile
-  - `ops/observability/prometheus.yml`
-  - `ops/observability/grafana-provisioning/`
-- runtime support bundle
-  - `scripts/export_support_bundle.py`
-
-推荐命令：
-
-```bash
-docker compose --profile observability up --build
-python scripts/export_support_bundle.py --base-url http://localhost:38000
-```
-
-Support bundle 适合在这些场景使用：
-
-- `/api/ready`、`/api/metrics`、SSE 流式链路偶发失败，准备交给维护者排查
-- 想把 doctor 报告、运行时文件清单、契约快照、health/ready/metrics 响应一次打包
-- 发版后需要留一份当前实例的基础运行证据
+| 方向 | 当前资产 | 维护者最该记住什么 |
+| --- | --- | --- |
+| 编码与仓库规范 | [`.editorconfig`](../../.editorconfig)、[`.gitattributes`](../../.gitattributes) | 统一编码、缩进、换行和二进制识别，减少跨平台 diff 噪音。 |
+| 本地命令入口 | [`scripts/dev.py`](../../scripts/dev.py) | 优先把它当成本地维护入口，常用任务已收口到 `test / ruff / mypy / docstring / snapshots / release-manifest / support-bundle / infra-check / compose-config / compose-up / compose-observability / container-smoke`。 |
+| 静态质量门禁 | [`pyproject.toml`](../../pyproject.toml)、[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) | CI 已对基础设施相关核心文件执行 `ruff` / `mypy`，策略是先覆盖 release / observability / startup / contract / runtime maintenance 热点。 |
+| 容器与发布闭环 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) `container-validate`、[`.github/workflows/release.yml`](../../.github/workflows/release.yml)、[`scripts/export_release_manifest.py`](../../scripts/export_release_manifest.py) | 本地先跑 `python scripts/dev.py compose-config`；正式发布禁止 `latest`，手动 release 必须显式给 `release_tag`，manifest 必须带 `image_tag / image_ref`。 |
+| Dashboard / alert | [`extend/observability/README.md`](../../extend/observability/README.md)、[`extend/observability/grafana-dashboard.json`](../../extend/observability/grafana-dashboard.json)、[`extend/observability/prometheus-alerts.yml`](../../extend/observability/prometheus-alerts.yml) | 重点看 HTTP 请求速率、p95、in-flight、chat stream outcome、SSE event rate、readiness state，以及 `MoyuanReadinessDown / MoyuanHttp5xxSpike / MoyuanChatStreamFailures / MoyuanSseEventStall`。 |
+| Local observability / support bundle | `deploy/compose/compose.yaml` observability profile、`extend/observability/prometheus.yml`、`extend/observability/grafana-provisioning/`、[`scripts/export_support_bundle.py`](../../scripts/export_support_bundle.py) | `docker compose --file deploy/compose/compose.yaml --profile observability up --build` 启本地观测栈；`python scripts/dev.py support-bundle --base-url http://localhost:38000` 打排障包；support bundle 会额外带 `manifest.json.runtime_health.*` 和 `checkpoint-runtime.json` 两层 checkpoint 视图。 |

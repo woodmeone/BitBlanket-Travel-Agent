@@ -60,10 +60,74 @@ models:
     assert report["status"] == "ok"
     assert report["checks"]["llm_config"]["status"] == "ok"
     assert report["checks"]["contract_snapshots"]["status"] == "ok"
+    assert report["checks"]["checkpoint_runtime"]["status"] == "ok"
+    assert report["checks"]["checkpoint_runtime"]["details"]["backend"] == "sqlite"
+    assert report["checks"]["checkpoint_runtime"]["details"]["restore_strategy"] == "metadata_only"
+    assert report["checks"]["checkpoint_runtime"]["details"]["requires_external_snapshot"] is False
     assert report["checks"]["backups"]["details"]["archive_count"] == 1
     normalized = RuntimeDoctorReport.from_dict(report)
     assert normalized.summary.checks_total >= 6
     assert normalized.checks["server_config"].details["web_port"] == 38000
+
+
+def test_runtime_doctor_reports_postgres_checkpoint_runtime_dependency(tmp_path, monkeypatch):
+    project_root = tmp_path
+    (project_root / "config").mkdir()
+    (project_root / "data").mkdir()
+    (project_root / "docs" / "reference").mkdir(parents=True)
+
+    (project_root / "config" / "llm_config.yaml").write_text(
+        """
+default_model: demo
+models:
+  demo:
+    provider: openai-compatible
+    model: demo
+    api_base: http://localhost:1234/v1
+    api_key: ""
+""".strip(),
+        encoding="utf-8",
+    )
+    (project_root / "docs" / "reference" / "openapi.snapshot.json").write_text(
+        '{"openapi": "3.1.0", "paths": {}}',
+        encoding="utf-8",
+    )
+    (project_root / "docs" / "reference" / "sse-contract.snapshot.json").write_text(
+        '{"schema_version": 1, "modes": {}}',
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        runtime_doctor,
+        "resolve_checkpoint_runtime",
+        lambda _project_root: {
+            "backend": "postgres",
+            "target": "postgresql://demo:***@db.example.com:5432/moyuan",
+            "restore_strategy": "external_snapshot",
+            "archive_contains_checkpoint_data": False,
+            "archived_files": [],
+        },
+    )
+    monkeypatch.setattr(
+        runtime_doctor,
+        "build_restore_instructions",
+        lambda _checkpoint_runtime: [
+            "Checkpoint backend is postgres; restore checkpoint tables from an external database snapshot before switching runtime back to postgres."
+        ],
+    )
+
+    report = run_runtime_doctor(
+        project_root=project_root,
+        backup_dir=project_root / "artifacts" / "runtime_backups",
+        openapi_snapshot=project_root / "docs" / "reference" / "openapi.snapshot.json",
+        sse_snapshot=project_root / "docs" / "reference" / "sse-contract.snapshot.json",
+    )
+
+    checkpoint_details = report["checks"]["checkpoint_runtime"]["details"]
+    assert checkpoint_details["backend"] == "postgres"
+    assert checkpoint_details["restore_strategy"] == "external_snapshot"
+    assert checkpoint_details["requires_external_snapshot"] is True
+    assert "external database snapshot" in checkpoint_details["restore_instructions"][0]
 
 
 def test_runtime_doctor_reports_not_ready_when_llm_config_missing(tmp_path):

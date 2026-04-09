@@ -12,7 +12,7 @@
 
 ### ADR
 
-放在 [adr/](/D:/moyuan/moyuan-travel-agent/docs/governance/adr)。
+放在 [adr/](adr)。
 
 适合记录：
 
@@ -28,7 +28,7 @@
 
 ### RFC
 
-放在 [rfcs/](/D:/moyuan/moyuan-travel-agent/docs/governance/rfcs)。
+放在 [rfcs/](rfcs)。
 
 适合记录：
 
@@ -44,7 +44,7 @@
 
 ### Design Review
 
-放在 [design-reviews/](/D:/moyuan/moyuan-travel-agent/docs/governance/design-reviews)。
+放在 [design-reviews/](design-reviews)。
 
 适合记录：
 
@@ -70,8 +70,11 @@
 
 ## 当前入口
 
-- [adr/ADR-0000-template.md](/D:/moyuan/moyuan-travel-agent/docs/governance/adr/ADR-0000-template.md)
-- [adr/ADR-0001-governance-record-flow.md](/D:/moyuan/moyuan-travel-agent/docs/governance/adr/ADR-0001-governance-record-flow.md)
-- [skills-market-onboarding.md](/D:/moyuan/moyuan-travel-agent/docs/governance/skills-market-onboarding.md)
-- [rfcs/RFC-0000-template.md](/D:/moyuan/moyuan-travel-agent/docs/governance/rfcs/RFC-0000-template.md)
-- [design-reviews/DR-0000-template.md](/D:/moyuan/moyuan-travel-agent/docs/governance/design-reviews/DR-0000-template.md)
+- [adr/ADR-0000-template.md](adr/ADR-0000-template.md)
+- [adr/ADR-0001-governance-record-flow.md](adr/ADR-0001-governance-record-flow.md)
+- [adr/ADR-0002-versioned-release-images.md](adr/ADR-0002-versioned-release-images.md)
+- [skills-market-onboarding.md](skills-market-onboarding.md)
+- [rfcs/RFC-0001-postgresql-migration-baseline.md](rfcs/RFC-0001-postgresql-migration-baseline.md)
+- [rfcs/RFC-0002-checkpoint-sql-boundary.md](rfcs/RFC-0002-checkpoint-sql-boundary.md)
+- [rfcs/RFC-0000-template.md](rfcs/RFC-0000-template.md)
+- [design-reviews/DR-0000-template.md](design-reviews/DR-0000-template.md)

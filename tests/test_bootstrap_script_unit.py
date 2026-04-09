@@ -21,11 +21,12 @@ def test_ensure_config_from_example_creates_missing_file(tmp_path, monkeypatch):
     bootstrap_module = load_module(
         "test_bootstrap_script_unit_module", "scripts/bootstrap.py"
     )
-    config_dir = tmp_path / "config"
+    config_dir = tmp_path / "backend" / "config"
     config_dir.mkdir(parents=True)
     example_path = config_dir / "llm_config.yaml.example"
     example_path.write_text("model: test\n", encoding="utf-8")
     monkeypatch.setattr(bootstrap_module, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(bootstrap_module, "BACKEND_CONFIG_ROOT", config_dir)
 
     bootstrap_module.ensure_config_from_example("llm_config.yaml")
 

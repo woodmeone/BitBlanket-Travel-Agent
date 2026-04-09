@@ -29,7 +29,31 @@ ensure_project_paths = _bootstrap_paths.ensure_project_paths
 ensure_project_paths()
 
 from scripts.runtime_data_utils import DEFAULT_BACKUP_DIR, parse_utc_iso
-from moyuan_web.storage.session_storage import FileSessionStorage
+from moyuan_web.repositories.file_session_repository import FileSessionRepository
+
+
+def resolve_checkpointer_config(**kwargs):
+    """Lazily load checkpoint config resolver so prune stays lightweight."""
+
+    from agent.travel_agent.runtime_sources import resolve_checkpointer_config as _resolve_checkpointer_config
+
+    return _resolve_checkpointer_config(**kwargs)
+
+
+def create_checkpointer(config):
+    """Lazily construct checkpoint backend instances for maintenance routines."""
+
+    from agent.travel_agent.runtime_sources import create_checkpointer as _create_checkpointer
+
+    return _create_checkpointer(config)
+
+
+def close_checkpointer(checkpointer) -> None:
+    """Lazily release checkpoint backend resources after maintenance."""
+
+    from agent.travel_agent.runtime_sources import close_checkpointer as _close_checkpointer
+
+    _close_checkpointer(checkpointer)
 
 
 def prune_backup_archives(
@@ -66,8 +90,8 @@ async def prune_sessions_file(sessions_path: Path, *, max_age_seconds: int) -> i
     """Remove expired sessions from persisted session storage."""
     if not sessions_path.exists():
         return 0
-    storage = FileSessionStorage(str(sessions_path))
-    return await storage.cleanup(max_age_seconds)
+    repository = FileSessionRepository(str(sessions_path))
+    return await repository.cleanup_expired(max_age_seconds)
 
 
 def prune_failure_clusters(file_path: Path, *, max_age_days: int) -> int:
@@ -109,6 +133,25 @@ def vacuum_checkpoint_db(db_path: Path) -> bool:
     return True
 
 
+def compact_checkpoint_store(checkpointer: Any) -> dict[str, Any]:
+    """Trigger backend compaction across known checkpoint namespaces."""
+
+    namespaces_touched = 0
+    storage = getattr(checkpointer, "storage", None)
+    if isinstance(storage, dict):
+        for thread_id, namespace_map in storage.items():
+            if not isinstance(namespace_map, dict):
+                continue
+            for checkpoint_ns in list(namespace_map.keys()):
+                if hasattr(checkpointer, "get_checkpoint_count"):
+                    checkpointer.get_checkpoint_count(str(thread_id), str(checkpoint_ns))
+                    namespaces_touched += 1
+    return {
+        "performed": True,
+        "namespaces_touched": namespaces_touched,
+    }
+
+
 def prune_runtime_data(
     project_root: Path = ROOT,
     *,
@@ -118,6 +161,8 @@ def prune_runtime_data(
     max_session_age_seconds: int | None = None,
     max_failure_age_days: int | None = None,
     vacuum_checkpoints_enabled: bool = False,
+    checkpoint_backend: str | None = None,
+    checkpoint_target: str | None = None,
 ) -> dict[str, Any]:
     """Apply configured pruning actions and return structured maintenance summary."""
     data_dir = project_root / "data"
@@ -130,6 +175,12 @@ def prune_runtime_data(
         "deleted_sessions": 0,
         "deleted_failure_records": 0,
         "vacuumed_checkpoints": False,
+        "checkpoint_maintenance": {
+            "backend": None,
+            "action": None,
+            "performed": False,
+            "namespaces_touched": 0,
+        },
     }
 
     if max_session_age_seconds is not None:
@@ -146,8 +197,28 @@ def prune_runtime_data(
         )
 
     if vacuum_checkpoints_enabled:
-        checkpoint_path = data_dir / "langgraph_checkpoints.sqlite3"
-        result["vacuumed_checkpoints"] = vacuum_checkpoint_db(checkpoint_path)
+        checkpoint_config = resolve_checkpointer_config(
+            backend_override=checkpoint_backend,
+            target_override=checkpoint_target or str(data_dir / "langgraph_checkpoints.sqlite3"),
+        )
+        result["checkpoint_maintenance"]["backend"] = checkpoint_config.backend
+        if checkpoint_config.backend == "sqlite" and not Path(checkpoint_config.target).exists():
+            result["checkpoint_maintenance"]["action"] = "compact+vacuum"
+        else:
+            checkpointer = create_checkpointer(checkpoint_config)
+            try:
+                maintenance = compact_checkpoint_store(checkpointer)
+            finally:
+                close_checkpointer(checkpointer)
+            result["checkpoint_maintenance"].update(maintenance)
+            if checkpoint_config.backend == "sqlite":
+                result["checkpoint_maintenance"]["action"] = "compact+vacuum"
+                result["vacuumed_checkpoints"] = vacuum_checkpoint_db(Path(checkpoint_config.target))
+                result["checkpoint_maintenance"]["performed"] = bool(
+                    result["checkpoint_maintenance"]["performed"] or result["vacuumed_checkpoints"]
+                )
+            else:
+                result["checkpoint_maintenance"]["action"] = "compact"
 
     return result
 
@@ -187,7 +258,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--vacuum-checkpoints",
         action="store_true",
-        help="Run SQLite VACUUM on langgraph checkpoint database after pruning.",
+        help="Run checkpoint backend maintenance. SQLite backends also execute VACUUM.",
+    )
+    parser.add_argument(
+        "--checkpoint-backend",
+        choices=("sqlite", "postgres"),
+        default=None,
+        help="Explicit checkpoint backend override used with --vacuum-checkpoints.",
+    )
+    parser.add_argument(
+        "--checkpoint-db",
+        default=None,
+        help="Checkpoint SQLite path or PostgreSQL DSN override used with --vacuum-checkpoints.",
     )
     return parser
 
@@ -206,6 +288,8 @@ def main(argv: list[str] | None = None) -> int:
             max_session_age_seconds=args.max_session_age_seconds,
             max_failure_age_days=args.max_failure_age_days,
             vacuum_checkpoints_enabled=bool(args.vacuum_checkpoints),
+            checkpoint_backend=str(args.checkpoint_backend) if args.checkpoint_backend else None,
+            checkpoint_target=str(args.checkpoint_db) if args.checkpoint_db else None,
         )
     except Exception as exc:
         print(f"Runtime prune failed: {exc}", file=sys.stderr)

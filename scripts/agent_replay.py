@@ -31,9 +31,9 @@ else:  # pragma: no cover - direct script execution / spec-loaded module path
 ensure_project_paths()
 
 from agent.travel_agent.graph.builder import build_travel_agent
-from agent.travel_agent.graph.persistent_checkpointer import PersistentSqliteSaver
 from agent.travel_agent.graph.state import TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_state
 from agent.travel_agent.llm.langchain_adapter import create_from_yaml_config
+from agent.travel_agent.runtime_sources import close_checkpointer, create_checkpointer, resolve_checkpointer_config
 from agent.travel_agent.tools.travel_tools import get_travel_tools
 
 
@@ -134,64 +134,73 @@ def load_checkpoint_source(
     db_path: str,
     checkpoint_ns: str = "",
     checkpoint_id: str | None = None,
+    checkpoint_backend: str | None = None,
 ) -> dict[str, Any]:
     """Load checkpoint snapshot and normalize replay source metadata."""
-    saver = PersistentSqliteSaver(db_path)
+    checkpoint_config = resolve_checkpointer_config(
+        backend_override=checkpoint_backend,
+        target_override=db_path,
+    )
+    saver = create_checkpointer(checkpoint_config)
+    try:
+        if checkpoint_id:
+            checkpoint_tuple = saver.get_tuple(_build_config(session_id, checkpoint_ns, checkpoint_id))
+        else:
+            latest = list(saver.list(_build_config(session_id, checkpoint_ns), limit=1))
+            checkpoint_tuple = latest[0] if latest else None
 
-    if checkpoint_id:
-        checkpoint_tuple = saver.get_tuple(_build_config(session_id, checkpoint_ns, checkpoint_id))
-    else:
-        latest = list(saver.list(_build_config(session_id, checkpoint_ns), limit=1))
-        checkpoint_tuple = latest[0] if latest else None
+        if checkpoint_tuple is None:
+            raise ValueError(
+                f"Checkpoint not found for session_id={session_id}, checkpoint_ns={checkpoint_ns}, checkpoint_id={checkpoint_id or 'latest'}"
+            )
 
-    if checkpoint_tuple is None:
-        raise ValueError(
-            f"Checkpoint not found for session_id={session_id}, checkpoint_ns={checkpoint_ns}, checkpoint_id={checkpoint_id or 'latest'}"
-        )
+        config = checkpoint_tuple.config or {}
+        configurable = config.get("configurable", {}) if isinstance(config, dict) else {}
+        checkpoint = checkpoint_tuple.checkpoint or {}
+        channel_values = checkpoint.get("channel_values", {}) if isinstance(checkpoint, dict) else {}
+        if not isinstance(channel_values, dict):
+            channel_values = {}
 
-    config = checkpoint_tuple.config or {}
-    configurable = config.get("configurable", {}) if isinstance(config, dict) else {}
-    checkpoint = checkpoint_tuple.checkpoint or {}
-    channel_values = checkpoint.get("channel_values", {}) if isinstance(checkpoint, dict) else {}
-    if not isinstance(channel_values, dict):
-        channel_values = {}
+        messages = channel_values.get("messages", [])
+        if not isinstance(messages, list):
+            messages = []
 
-    messages = channel_values.get("messages", [])
-    if not isinstance(messages, list):
-        messages = []
+        execution_summary = channel_values.get("execution_summary", {})
+        if not isinstance(execution_summary, dict):
+            execution_summary = {}
 
-    execution_summary = channel_values.get("execution_summary", {})
-    if not isinstance(execution_summary, dict):
-        execution_summary = {}
+        execution_stats = channel_values.get("execution_stats", {})
+        if not isinstance(execution_stats, dict):
+            execution_stats = {}
 
-    execution_stats = channel_values.get("execution_stats", {})
-    if not isinstance(execution_stats, dict):
-        execution_stats = {}
+        failure_code_distribution = _build_failure_distribution(execution_summary, execution_stats)
+        plan = channel_values.get("plan", [])
+        if not isinstance(plan, list):
+            plan = []
 
-    failure_code_distribution = _build_failure_distribution(execution_summary, execution_stats)
-    plan = channel_values.get("plan", [])
-    if not isinstance(plan, list):
-        plan = []
+        tools_used = channel_values.get("tools_used", [])
+        if not isinstance(tools_used, list):
+            tools_used = []
 
-    tools_used = channel_values.get("tools_used", [])
-    if not isinstance(tools_used, list):
-        tools_used = []
-
-    return {
-        "session_id": str(configurable.get("thread_id") or session_id),
-        "checkpoint_ns": str(configurable.get("checkpoint_ns") or checkpoint_ns),
-        "checkpoint_id": str(configurable.get("checkpoint_id") or ""),
-        "checkpoint_ts": checkpoint.get("ts") if isinstance(checkpoint, dict) else None,
-        "intent": channel_values.get("intent"),
-        "routing": channel_values.get("routing"),
-        "plan_id": channel_values.get("plan_id"),
-        "plan": plan,
-        "tools_used": tools_used,
-        "execution_summary": execution_summary,
-        "failure_code_distribution": failure_code_distribution,
-        "message_count": len(messages),
-        "user_message": extract_latest_user_message(messages),
-    }
+        return {
+            "session_id": str(configurable.get("thread_id") or session_id),
+            "checkpoint_backend": checkpoint_config.backend,
+            "checkpoint_target": checkpoint_config.target,
+            "checkpoint_ns": str(configurable.get("checkpoint_ns") or checkpoint_ns),
+            "checkpoint_id": str(configurable.get("checkpoint_id") or ""),
+            "checkpoint_ts": checkpoint.get("ts") if isinstance(checkpoint, dict) else None,
+            "intent": channel_values.get("intent"),
+            "routing": channel_values.get("routing"),
+            "plan_id": channel_values.get("plan_id"),
+            "plan": plan,
+            "tools_used": tools_used,
+            "execution_summary": execution_summary,
+            "failure_code_distribution": failure_code_distribution,
+            "message_count": len(messages),
+            "user_message": extract_latest_user_message(messages),
+        }
+    finally:
+        close_checkpointer(saver)
 
 
 async def run_replay(
@@ -253,6 +262,7 @@ async def generate_replay_report(
     llm_config_path: str,
     dry_run: bool,
     message_override: str | None,
+    checkpoint_backend: str | None = None,
 ) -> dict[str, Any]:
     """Generate combined source snapshot and replay result payload."""
     source = load_checkpoint_source(
@@ -260,6 +270,7 @@ async def generate_replay_report(
         db_path=db_path,
         checkpoint_ns=checkpoint_ns,
         checkpoint_id=checkpoint_id,
+        checkpoint_backend=checkpoint_backend,
     )
 
     replay_message = (message_override or source.get("user_message") or "").strip()
@@ -313,6 +324,7 @@ def write_report(report: dict[str, Any], output_dir: Path, session_id: str) -> t
         "",
         f"- generated_at: {report.get('generated_at')}",
         f"- session_id: {source.get('session_id')}",
+        f"- checkpoint_backend: {source.get('checkpoint_backend')}",
         f"- checkpoint_id: {source.get('checkpoint_id')}",
         f"- checkpoint_ns: {source.get('checkpoint_ns')}",
         f"- checkpoint_ts: {source.get('checkpoint_ts')}",
@@ -372,7 +384,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--db",
         default=str(ROOT / "data" / "langgraph_checkpoints.sqlite3"),
-        help="Path to checkpoint sqlite database.",
+        help="Checkpoint SQLite path or PostgreSQL DSN override.",
+    )
+    parser.add_argument(
+        "--checkpoint-backend",
+        choices=("sqlite", "postgres"),
+        default=None,
+        help="Explicit checkpoint backend override. Defaults to runtime config or inferred from --db.",
     )
     parser.add_argument("--checkpoint-id", default=None, help="Specific checkpoint ID. Default: latest checkpoint.")
     parser.add_argument("--checkpoint-ns", default="", help="Checkpoint namespace.")
@@ -414,6 +432,7 @@ def main(argv: list[str] | None = None) -> int:
                 llm_config_path=str(args.llm_config),
                 dry_run=bool(args.dry_run),
                 message_override=str(args.message) if args.message else None,
+                checkpoint_backend=str(args.checkpoint_backend) if args.checkpoint_backend else None,
             )
         )
     except Exception as exc:

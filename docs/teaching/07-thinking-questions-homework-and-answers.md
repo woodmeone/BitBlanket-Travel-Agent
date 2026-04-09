@@ -1,1050 +1,372 @@
-# 07. 思考题、作业与参考答案
+# 07. 高频面试题库与参考答法
 
-这一章是整套教学材料的练习册、答案册和验收册。
+这一篇直接给面试准备使用的高频问答库。
 
-它的目标不是让你“背题”，而是把前面几章真正落实成：
+最推荐的用法很简单：
 
-- 能说清
-- 能画清
-- 能写清
-- 能改清
+1. 先读 [06-interview-highlights-and-system-evolution.md](06-interview-highlights-and-system-evolution.md)。
+2. 再用这一篇做口头快答。
+3. 每题都尽量落回真实代码锚点。
 
-为了方便使用，这一章分成三大部分：
+## 问题 1：这个项目最准确的一句话定义是什么？
 
-- Part A：思考题与作业
-- Part B：参考答案与优秀答案要点
-- Part C：评分标准、毕业任务与带教检查表
+答案：
 
-## 1. 使用方式
+`moyuan-travel-agent` 不是普通聊天 Demo，而是把旅行约束输入变成可流式解释、可验证、可继续操作、可回放的旅行决策系统。
 
-最推荐的使用方式不是直接看答案，而是按下面顺序走：
+这句话最好不要改得太花，因为它已经覆盖了：
 
-1. 先读对应主文档。
-2. 先完成本章前半部分题目。
-3. 只在自己写完后，再看后半部分答案。
-4. 对照评分标准检查自己是否只是“答到了”，还是“答透了”。
+1. 流式过程事件。
+2. 可靠性闭环。
+3. 结构化结果交付。
+4. session / memory / checkpoint。
 
-## 2. 题型说明
+## 问题 2：这个项目和普通聊天页最大的不同是什么？
 
-本章统一使用 4 类题型：
+答案：
 
-- `口头题`：适合复述主链、讲设计、做面试模拟
-- `书面题`：适合输出结构化理解
-- `画图题`：适合强迫自己把关系画清楚
-- `动手题`：适合真正动代码或做验证
+普通聊天页通常到“模型回一段文本”就结束了。
 
-同时，每道题会尽量带上：
+这个项目多做了 5 层工程化：
 
-- 难度
-- 预计耗时
-- 交付要求
+1. SSE 推过程事件，不只是最终文本。
+2. 前端消费 artifact，而不只是正文。
+3. Backend 负责 session 和持久化边界，不只是代理。
+4. Agent 是状态机，不是线性 prompt。
+5. 有 benchmark、golden eval、quality gate。
 
-## 3. 提交模板与使用建议
+## 问题 3：整条主链应该怎么讲？
 
-为了让这份练习册真的能拿来验收，而不只是“看完就算”，建议每次提交都至少包含下面 5 项：
+答案：
 
-1. 题目编号或作业编号
-2. 自己的答案或图
-3. 引用到的源码文件
-4. 自己认为最不确定的地方
-5. 自评等级：`L1 / L2 / L3 / L4`
-
-### 3.1 通用提交模板
+最稳的讲法是：
 
 ```text
-题目/作业编号：
-类型：
-完成时间：
-
-我的答案：
-
-引用源码：
-
-我最不确定的点：
-
-我的自评等级：
+用户输入
+  -> ChatArea / useChatRuntime
+  -> chatClient.ts
+  -> /api/chat/stream
+  -> ChatService
+  -> AgentRuntime
+  -> RuntimeDriver
+  -> runtime_flow
+  -> builder / nodes
+  -> SSE 回推
+  -> chatStreamParser.ts
+  -> MessageList / TravelPlanToolkit
 ```
 
-### 3.2 动手题补充模板
+如果面试官只要一条链，你就讲这条。
 
-如果是动手题或毕业任务，建议再多补下面 6 项：
+## 问题 4：为什么这里选 SSE，而不是一次性 JSON？
 
-```text
-改动目标：
-影响层：
-涉及文件：
-风险点：
-验证动作：
-文档同步：
-```
+答案：
 
-### 3.3 使用建议
+因为前端要消费的是事件流，而不是单个结果对象。
 
-最推荐的顺序是：
+当前至少会收到：
 
-1. 先做题
-2. 再对答案
-3. 再按评分表打分
-4. 最后补一版“更好的答案”
+1. `session_id`
+2. `stage`
+3. `reasoning_*`
+4. `tool_*`
+5. `plan_preview`
+6. `subagent_*`
+7. `artifact_patch`
+8. `metadata`
+9. `done`
 
----
+所以一次性 JSON 不适合表达这条链。
 
-## Part A：思考题与作业
+## 问题 5：为什么也不是 WebSocket？
 
-### Phase 0：建立地图与运行环境
+答案：
 
-配套章节：
+因为当前主需求是服务端单向持续推送。
 
-- [01-total-plan-and-learning-method.md](01-total-plan-and-learning-method.md)
+SSE 的优势是：
 
-源码绑定：
+1. 直接基于 HTTP。
+2. 代理和基础设施兼容性更好。
+3. 实现复杂度更低。
+4. 对当前 `stage / metadata / answer` 场景已经够用。
 
-- 必读文件：
-  [README.md](D:/moyuan/moyuan-travel-agent/README.md)、[docs/README.md](D:/moyuan/moyuan-travel-agent/docs/README.md)、[quick-start.md](D:/moyuan/moyuan-travel-agent/docs/getting-started/quick-start.md)、[main.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/main.py)
-- 建议搜索词：
-  `33001`、`38000`、`rapidoc`、`health`、`Home`
-- 做题提醒：
-  Phase 0 的重点不是背端口，而是建立“项目入口、服务入口、文档入口”三张地图。
+只有在复杂双向实时协作成为主需求时，WebSocket 才更值得切。
 
-#### 题 0-1
+## 问题 6：为什么前端要区分 `streamingMessage` 和最终 `messages`？
 
-- 类型：`口头题`
-- 难度：`L1`
-- 预计耗时：`10 分钟`
+答案：
 
-问题：
+因为它们不是同一种生命周期。
 
-这个项目为什么要拆成 `frontend/`、`web/`、`agent/` 三层，而不是把所有逻辑都塞进一个后端服务里？
-
-#### 题 0-2
-
-- 类型：`书面题`
-- 难度：`L1`
-- 预计耗时：`10 分钟`
-
-问题：
-
-`README.md`、`docs/README.md`、`docs/reference/project-structure.md` 三份文档分别解决什么问题？
-
-#### 题 0-3
-
-- 类型：`口头题`
-- 难度：`L1`
-- 预计耗时：`8 分钟`
-
-问题：
-
-如果后端健康检查能打开，但前端页面打不开，你会优先排查哪几类问题？
-
-#### 作业 0-A
-
-- 类型：`画图题`
-- 难度：`L1`
-- 预计耗时：`20 分钟`
-
-要求：
-
-画一张项目整体分层图，至少包含：
-
-- 前端
-- Web API
-- Agent
-- 存储
-
-#### 作业 0-B
-
-- 类型：`书面题`
-- 难度：`L1`
-- 预计耗时：`15 分钟`
-
-要求：
-
-整理一份本地启动清单，写明：
-
-- 前端启动
-- 后端启动
-- 健康检查入口
-- API 文档入口
-
-交付要求：
-
-- 明确端口 `33001` 和 `38000`
-- 至少引用 `README.md` 和 `docs/README.md`
-
----
-
-### Phase 1：聊天主链路
-
-配套章节：
-
-- [02-chat-mainline-and-frontend.md](02-chat-mainline-and-frontend.md)
-
-源码绑定：
-
-- 必读文件：
-  [page.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/app/page.tsx)、[ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)、[api.ts](D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)、[chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)、[chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)、[builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)、[MessageList.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)、[TravelPlanToolkit.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
-- 建议搜索词：
-  `handleSend`、`fetchStreamChat`、`stream_chat`、`plan_preview`、`stage`、`metadata`、`onComplete`
-- 做题提醒：
-  回答 Phase 1 时，最好不要只说“前端发请求、后端回消息”，而要明确说出中间事件怎么流动。
-
-#### 题 1-1
-
-- 类型：`口头题`
-- 难度：`L1`
-- 预计耗时：`12 分钟`
-
-问题：
-
-为什么这个项目的黄金主链必须从 `page.tsx` 一直看到 `TravelPlanToolkit.tsx`？
-
-#### 题 1-2
-
-- 类型：`书面题`
-- 难度：`L2`
-- 预计耗时：`12 分钟`
-
-问题：
-
-为什么聊天接口选 SSE，而不是一次性 JSON？
-
-#### 题 1-3
-
-- 类型：`书面题`
-- 难度：`L2`
-- 预计耗时：`15 分钟`
-
-问题：
-
-`session_id`、`reasoning_chunk`、`stage`、`tool_start`、`plan_preview`、`metadata` 这几类事件分别服务于什么目的？
-
-#### 作业 1-A
-
-- 类型：`画图题`
-- 难度：`L2`
-- 预计耗时：`30 分钟`
-
-要求：
-
-以“上海周末两日游，预算 1500，地铁可达”为例，画一张完整请求链图。
-
-最低覆盖：
-
-- `page.tsx`
-- `ChatArea.tsx`
-- `api.ts`
-- `chat.py`
-- `chat_service.py`
-- `builder.py`
-- `MessageList.tsx`
-- `TravelPlanToolkit.tsx`
-
-#### 作业 1-B
-
-- 类型：`书面题`
-- 难度：`L2`
-- 预计耗时：`25 分钟`
-
-要求：
-
-做一张 SSE 事件对照表，至少写清：
-
-- 事件名
-- 来源层
-- 前端用途
-- 触发时机
-
-#### 进阶题 1-C
-
-- 类型：`口头题`
-- 难度：`L3`
-- 预计耗时：`10 分钟`
-
-问题：
-
-解释为什么“流式输出”和“阶段事件”不是一回事。
-
----
-
-### Phase 2：前端状态流与结果加工
-
-配套章节：
-
-- [02-chat-mainline-and-frontend.md](02-chat-mainline-and-frontend.md)
-
-源码绑定：
-
-- 必读文件：
-  [AppContext.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/context/AppContext.tsx)、[ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)、[MessageList.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)、[TravelPlanToolkit.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)、[travelPlan.ts](D:/moyuan/moyuan-travel-agent/frontend/src/utils/travelPlan.ts)
-- 建议搜索词：
-  `streamingMessage`、`streamingReasoning`、`metadataRef`、`prepareMarkdownContent`、`extractThinkBlocks`、`looksLikeItineraryContent`、`runQuickRefine`
-- 做题提醒：
-  Phase 2 最容易答浅。一定要把“状态所有权”和“文本被加工成产品结果”这两层都讲出来。
-
-#### 题 2-1
-
-- 类型：`书面题`
-- 难度：`L2`
-- 预计耗时：`12 分钟`
-
-问题：
-
-`streamingMessage` 和最终 `messages` 为什么不能简单合并？
-
-#### 题 2-2
-
-- 类型：`口头题`
-- 难度：`L2`
-- 预计耗时：`10 分钟`
-
-问题：
-
-`AppContext.tsx` 更适合承载哪些状态？
-
-#### 题 2-3
-
-- 类型：`书面题`
-- 难度：`L2`
-- 预计耗时：`10 分钟`
-
-问题：
-
-`TravelPlanToolkit.tsx` 的价值为什么不仅是展示答案？
-
-#### 作业 2-A
-
-- 类型：`画图题`
-- 难度：`L2`
-- 预计耗时：`25 分钟`
-
-要求：
-
-画一张前端状态流图，至少标出：
-
-- `inputValue`
-- `messages`
 - `streamingMessage`
-- `streamingReasoning`
-- `metadata`
+  是运行中的临时态。
+- `messages`
+  是收口后的持久态。
 
-#### 作业 2-B
+这样拆开的好处是：
 
-- 类型：`书面题`
-- 难度：`L2`
-- 预计耗时：`25 分钟`
+1. 避免 UI 抖动。
+2. 避免 stop 后留下半条正式消息。
+3. 方便把 `metadata / artifact / reasoning` 在完成时一次性合并。
 
-要求：
+代码锚点：
 
-追踪一次文本答案如何变成结构化结果，写成步骤清单。
+- [useChatRuntime.ts](../../frontend/src/components/chat-area/useChatRuntime.ts)
 
-#### 进阶题 2-C
+## 问题 7：为什么 `TravelPlanToolkit` 很值得讲？
 
-- 类型：`动手题`
-- 难度：`L3`
-- 预计耗时：`30-60 分钟`
+答案：
 
-问题：
+因为它最能证明这不是普通聊天页。
 
-如果要新增“复制为 Markdown”或“强调显示 run_id”，你最先会改哪些文件？验证方式是什么？
+它的价值在于：
 
----
+1. 消费结构化 artifact，而不是只依赖长文本。
+2. 把结果继续做成预算、对比、冲突、分享、继续 refine。
+3. 把“回答”升级成“可操作结果”。
 
-### Phase 3：Web API、Session 与存储
+代码锚点：
 
-配套章节：
+- [TravelPlanToolkit.tsx](../../frontend/src/components/TravelPlanToolkit.tsx)
+- [useTravelPlanToolkitActions.ts](../../frontend/src/components/travel-plan-toolkit/useTravelPlanToolkitActions.ts)
 
-- [03-web-api-session-and-storage.md](03-web-api-session-and-storage.md)
+## 问题 8：为什么 Backend 要做 `route -> service -> repository -> persistence` 分层？
 
-源码绑定：
+答案：
 
-- 必读文件：
-  [main.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/main.py)、[container.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/dependencies/container.py)、[chat.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)、[chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)、[session_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/session_service.py)、[session_repository_impl.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/repositories/session_repository_impl.py)、[session_storage.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py)
-- 建议搜索词：
-  `StreamingResponse`、`stream_chat`、`_ensure_session`、`create_session`、`list_sessions`、`cleanup_expired`、`_atomic_write_json`
-- 做题提醒：
-  Phase 3 回答“为什么会跨层联动”时，最好直接点名 route / service / repository / storage 各自要改什么。
+因为这四层分别回答：
 
-#### 题 3-1
+1. 请求怎么进。
+2. 业务怎么编排。
+3. 业务对象怎么读写。
+4. 底层怎么存。
 
-- 类型：`书面题`
-- 难度：`L2`
-- 预计耗时：`12 分钟`
+这能保证：
 
-问题：
+1. route 足够薄。
+2. service 负责流程。
+3. file / postgres 可替换。
+4. session 和 chat 边界不容易混。
 
-为什么 `route -> service -> repository -> storage` 比 route 里直接写所有逻辑更适合长期维护？
+## 问题 9：`ChatService` 和 `SessionService` 为什么要分开？
 
-#### 题 3-2
+答案：
 
-- 类型：`口头题`
-- 难度：`L2`
-- 预计耗时：`8 分钟`
+因为聊天编排和会话生命周期不是一件事。
 
-问题：
+- `ChatService`
+  负责一轮聊天运行。
+- `SessionService`
+  负责 session facade。
+- `SessionLifecycleService`
+  负责 session CRUD 和 memory 副作用。
 
-`ChatService` 和 `SessionService` 的职责差异是什么？
+这能避免 session 接口被流式逻辑污染。
 
-#### 题 3-3
+## 问题 10：为什么当前项目同时保留 `file / postgres` 两条持久化基线？
 
-- 类型：`书面题`
-- 难度：`L2`
-- 预计耗时：`10 分钟`
+答案：
 
-问题：
+因为它们服务不同场景：
 
-为什么给 session 增加一个字段通常不可能只改一处代码？
+1. file baseline 适合本地开发、轻量环境、快速启动。
+2. postgres baseline 适合正式部署、共享环境和更稳定的数据管理。
 
-#### 作业 3-A
+更重要的是：
 
-- 类型：`画图题`
-- 难度：`L2`
-- 预计耗时：`25 分钟`
+这说明系统从一开始就在为“存储可演进”做准备。
 
-要求：
+## 问题 11：为什么 Backend 不直接调用 LangGraph，而是通过 `AgentRuntime`？
 
-画一张 session 生命周期图。
+答案：
 
-#### 作业 3-B
+因为应用层需要稳定的执行 contract。
 
-- 类型：`书面题`
-- 难度：`L3`
-- 预计耗时：`25 分钟`
+`AgentRuntime` 的作用是：
 
-要求：
+1. 隔离 graph 细节。
+2. 统一 stream、preview、tool diagnostics 接口。
+3. 附加 subagent、artifact patch、execution receipt 等运行态能力。
 
-假设新增 `last_used_at` 字段，列出会联动的文件清单，并按层分类。
+所以应用层依赖的是 runtime seam，而不是具体图实现。
 
-#### 进阶题 3-C
+## 问题 12：为什么这里的 Agent 一定要做成状态机？
 
-- 类型：`书面题`
-- 难度：`L3`
-- 预计耗时：`20 分钟`
+答案：
 
-问题：
+因为系统里存在：
 
-如果未来把 session 从 JSON 改成数据库，最希望哪些层变化最小？为什么？
+1. 路由分叉。
+2. 执行回环。
+3. 验证回跳。
+4. 终态自检。
 
----
+这类流程如果用线性链表达，很快就会变成难维护的 if/else 串。
 
-### Phase 4：Agent 图、节点、执行与验证
+代码锚点：
 
-配套章节：
+- [builder.py](../../agent/travel_agent/graph/builder.py)
+- [nodes.py](../../agent/travel_agent/graph/nodes.py)
 
-- [04-agent-core-tools-memory-checkpoint.md](04-agent-core-tools-memory-checkpoint.md)
+## 问题 13：`direct / react / plan` 三种路径分别解决什么问题？
 
-源码绑定：
+答案：
 
-- 必读文件：
-  [state.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/state.py)、[builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)
-- 建议搜索词：
-  `AgentState`、`create_initial_state`、`routing_decision`、`execute_node`、`verify_node`、`verify_decision`、`should_continue`、`self_check_node`
-- 做题提醒：
-  Phase 4 不要用抽象语言糊过去。至少要能说出一个条件边和一个回环是怎么落到代码里的。
+- `direct`
+  简单问题，尽快给答复。
+- `react`
+  需要执行型链路，但更偏直接执行。
+- `plan`
+  显式先产出结构化计划预览。
 
-#### 题 4-1
+当前实现更准确的说法是：
 
-- 类型：`口头题`
-- 难度：`L2`
-- 预计耗时：`10 分钟`
+系统先判断要不要进入规划执行链路，再依据 `chat_mode` 走 `plan` 或 `react`。
 
-问题：
+## 问题 14：`verify` 和 `self_check` 的区别是什么？
 
-为什么学习 Agent 时一定要先看 `state.py` 和 `builder.py`？
+答案：
 
-#### 题 4-2
+这是高频追问题。
 
-- 类型：`书面题`
-- 难度：`L3`
-- 预计耗时：`15 分钟`
-
-问题：
-
-`direct`、`react`、`plan` 三种模式分别适合什么场景？
-
-#### 题 4-3
-
-- 类型：`书面题`
-- 难度：`L3`
-- 预计耗时：`12 分钟`
-
-问题：
-
-为什么 `verify` 可能会回跳到 `execute`？
-
-#### 题 4-4
-
-- 类型：`口头题`
-- 难度：`L3`
-- 预计耗时：`8 分钟`
-
-问题：
-
-`self_check` 更像是在解决什么工程问题？
-
-#### 作业 4-A
-
-- 类型：`画图题`
-- 难度：`L3`
-- 预计耗时：`30 分钟`
-
-要求：
-
-画一张 Agent 节点与边关系图。
-
-#### 作业 4-B
-
-- 类型：`书面题`
-- 难度：`L3`
-- 预计耗时：`35 分钟`
-
-要求：
-
-给主要节点做一个输入 / 输出 / 决策表，至少覆盖：
-
-- `intent`
-- `strategy`
-- `plan` 或 `react`
-- `execute`
 - `verify`
-- `answer`
+  看工具证据够不够，是否需要 retry。
 - `self_check`
+  看最终答案还有没有明显问题。
 
-#### 进阶题 4-C
+一句话记忆：
 
-- 类型：`书面题`
-- 难度：`L4`
-- 预计耗时：`20 分钟`
+`verify` 面向证据，`self_check` 面向交付。
 
-问题：
+## 问题 15：`_meta / stale / fallback / refresh` 为什么重要？
 
-如果要新增一个“预算合法性二次校验”节点，你会放在哪个位置？为什么？
+答案：
 
----
+因为工具结果不是天然可信的。
 
-### Phase 5：Tools、Memory、Checkpoint
+这几个机制分别在解决：
 
-配套章节：
+1. 来源和诊断可解释。
+2. 数据新鲜度风险。
+3. 主路径失败时的降级。
+4. 结果陈旧时的刷新重试。
 
-- [04-agent-core-tools-memory-checkpoint.md](04-agent-core-tools-memory-checkpoint.md)
+面试里把这一层讲出来，说明你理解的是“工具可靠性”，不是“工具调用次数”。
 
-源码绑定：
+## 问题 16：`session / memory / checkpoint` 三者怎么区分？
 
-- 必读文件：
-  [travel_api.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/tools/travel_api.py)、[travel_tools.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/tools/travel_tools.py)、[memory_integration.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/memory_integration.py)、[persistent_checkpointer.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/persistent_checkpointer.py)
-- 建议搜索词：
-  `_meta`、`stale`、`fallback`、`refresh`、`build_context_messages`、`add_message`、`checkpoint`
-- 做题提醒：
-  这一阶段的表格题最好都把“面向谁”“何时写”“何时读”“何时恢复”四列写出来。
+答案：
 
-#### 题 5-1
+按时间尺度记就行：
 
-- 类型：`书面题`
-- 难度：`L3`
-- 预计耗时：`10 分钟`
+1. `session`
+   当前产品会话和消息历史。
+2. `memory`
+   长期偏好、摘要、跨轮上下文。
+3. `checkpoint`
+   图执行恢复点和 replay 依据。
 
-问题：
+再补一句：
 
-工具返回文本和 `_meta` 分别面向谁？
+session 偏产品，memory 偏语义，checkpoint 偏执行。
 
-#### 题 5-2
+## 问题 17：当前项目到底算不算多 Agent？
 
-- 类型：`书面题`
-- 难度：`L3`
-- 预计耗时：`12 分钟`
+答案：
 
-问题：
+比较准确的说法是：
 
-`stale`、`fallback_used`、`refresh_success` 对稳定性有什么帮助？
+它已经具备 supervisor runtime、skill registry 和 subagent registry，但核心执行主链仍主要落在当前主图上。
 
-#### 题 5-3
+所以更适合讲成：
 
-- 类型：`口头题`
-- 难度：`L3`
-- 预计耗时：`10 分钟`
+这是一个正在向多 Agent 架构演进的 supervisor runtime，而不是完全解耦的多 Agent 平台。
 
-问题：
+代码锚点：
 
-memory、checkpoint、session 的核心差异是什么？
+- [agent_runtime.py](../../agent/travel_agent/runtime/agent_runtime.py)
+- [skills/registry.py](../../agent/travel_agent/skills/registry.py)
+- [subagents/registry.py](../../agent/travel_agent/subagents/registry.py)
 
-#### 作业 5-A
+## 问题 18：这个项目里最容易被忽视，但很值得讲的一个点是什么？
 
-- 类型：`表格题`
-- 难度：`L3`
-- 预计耗时：`30 分钟`
+答案：
 
-要求：
+是 artifact-first。
 
-做一张工具契约表，至少覆盖 3 个工具。
+很多人会把注意力都放在“模型生成文本”，但当前项目更重要的是：
 
-#### 作业 5-B
+1. `plan_preview` 带 artifact。
+2. 流式过程中会不断收到 `artifact_patch`。
+3. `done` 和 `metadata` 里也能带最终 artifact。
+4. 前端优先消费结构化结果。
 
-- 类型：`表格题`
-- 难度：`L3`
-- 预计耗时：`25 分钟`
+这决定了系统交付的是“结果对象”，不是“结果文本”。
 
-要求：
+## 问题 19：如果面试官问“你们怎么做质量回归”，推荐怎么答？
 
-做一张 memory / checkpoint / session 对照表。
+答案：
 
-#### 进阶题 5-C
+推荐答法：
 
-- 类型：`书面题`
-- 难度：`L4`
-- 预计耗时：`20 分钟`
+我们把质量回归分成分层验证和趋势验证两部分。分层上，SSE 契约由 `test_chat_stream_local.py` 保护，关键 API 和健康接口由 `test_api_smoke_local.py` 等 smoke 测试保护，runtime backup/restore/prune 和 checkpoint 维护由 `test_runtime_data_lifecycle_unit.py` 保护。趋势上，再通过 benchmark、golden eval 和 `agent_quality_gate.py` 检查成功率、hallucination rate、fallback steps 和相对 baseline 的回归幅度。这样不是只看“能不能跑”，而是看“行为有没有变差”。
 
-问题：
+## 问题 20：如果面试官问“出了问题你怎么排查”，推荐怎么答？
 
-如果要新增一个可刷新的外部数据源，你最先要明确哪些契约？
+答案：
 
----
+最稳的答法是按层排：
 
-### Phase 6：测试、调试与回归
+1. 先看症状落在哪层。
+2. 再看请求或 SSE 事件有没有正确流动。
+3. 再看状态有没有被正确消费或持久化。
+4. 再看测试有没有覆盖这个边界。
+5. 最后才怀疑 prompt 或模型。
 
-配套章节：
+这种答法比“我先看看日志”更强，因为它体现你知道系统边界。
 
-- [05-testing-debugging-and-change-practice.md](05-testing-debugging-and-change-practice.md)
+## 问题 21：如果要加一个新字段，为什么通常不是小改动？
 
-源码绑定：
+答案：
 
-- 必读文件：
-  [test_sse_streaming.py](D:/moyuan/moyuan-travel-agent/tests/test_sse_streaming.py)、[test_api_integration.py](D:/moyuan/moyuan-travel-agent/tests/test_api_integration.py)、[test_agent_memory_unit.py](D:/moyuan/moyuan-travel-agent/tests/test_agent_memory_unit.py)、[test_agent_execution_optimization_integration.py](D:/moyuan/moyuan-travel-agent/tests/test_agent_execution_optimization_integration.py)、[test_agent_p0_guardrails_unit.py](D:/moyuan/moyuan-travel-agent/tests/test_agent_p0_guardrails_unit.py)、[agent_quality_gate.py](D:/moyuan/moyuan-travel-agent/scripts/agent_quality_gate.py)
-- 建议搜索词：
-  `text/event-stream`、`quality_gate`、`benchmark`、`golden eval`、`replay`、`fallback_steps`
-- 做题提醒：
-  Phase 6 最容易停留在“跑哪些命令”。更好的答案要解释“这些命令为什么和这次风险匹配”。
+因为字段是契约的一部分。
 
-#### 题 6-1
+新增字段通常会波及：
 
-- 类型：`书面题`
-- 难度：`L2`
-- 预计耗时：`10 分钟`
+1. API schema。
+2. service 编排。
+3. repository 持久化。
+4. SSE 事件或 metadata。
+5. 前端状态消费。
+6. 测试断言。
 
-问题：
+所以“加字段”在这种项目里往往是跨层联动。
 
-为什么这个项目里测试既是质量门禁，也是设计说明书？
+## 问题 22：如果要加一个新工具，最推荐怎么讲改动路径？
 
-#### 题 6-2
+答案：
 
-- 类型：`口头题`
-- 难度：`L2`
-- 预计耗时：`8 分钟`
+最稳的说法是：
 
-问题：
+先把工具 contract 接进 tool registry，再让规划和执行层知道何时使用它，再看是否需要 `_meta`、freshness 和 verify 规则，最后补前后端相关展示和测试。如果这个工具会影响计划预览或结构化交付，还要考虑 artifact patch 和 `TravelPlanToolkit` 消费。
 
-为什么改前端、改 API、改 Agent 时，回归命令不应该完全一样？
+这能体现你理解的不是“注册一个函数”，而是“把工具接进完整系统”。
 
-#### 题 6-3
+## 问题 23：如果要继续演进这个系统，你最先会补哪三类能力？
 
-- 类型：`书面题`
-- 难度：`L3`
-- 预计耗时：`15 分钟`
+答案：
 
-问题：
+最推荐说这三类：
 
-`unit`、`integration`、`benchmark`、`golden eval` 分别保护什么？
+1. 更完整的 artifact 交付与分享能力。
+2. 更强的 runtime 观测、回放和失败聚类。
+3. 更成熟的 supervisor / subagent 协作与选择策略。
 
-#### 作业 6-A
+这样回答既贴近当前代码，也不会空泛。
 
-- 类型：`表格题`
-- 难度：`L3`
-- 预计耗时：`30 分钟`
+## 问题 24：如果让我用一句话总结这个项目最能证明什么能力，我该怎么说？
 
-要求：
+答案：
 
-写一份改动风险等级到回归动作的对照表。
-
-#### 作业 6-B
-
-- 类型：`书面题`
-- 难度：`L3`
-- 预计耗时：`25 分钟`
-
-要求：
-
-从现有测试里挑 3 个文件，反推它们分别在保护什么行为。
-
-#### 进阶题 6-C
-
-- 类型：`书面题`
-- 难度：`L4`
-- 预计耗时：`15 分钟`
-
-问题：
-
-如果一次改动单测通过但 benchmark 退化，说明了什么？
-
----
-
-### Phase 7：面试讲解、系统拓展与毕业任务
-
-配套章节：
-
-- [06-interview-highlights-and-system-evolution.md](06-interview-highlights-and-system-evolution.md)
-
-源码绑定：
-
-- 必读文件：
-  [ChatArea.tsx](D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)、[chat_service.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)、[builder.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)、[nodes.py](D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)、[session_storage.py](D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage/session_storage.py)、[agent_quality_gate.py](D:/moyuan/moyuan-travel-agent/scripts/agent_quality_gate.py)
-- 建议搜索词：
-  `verify`、`StreamingResponse`、`streamingMessage`、`_meta`、`checkpoint`、`quality gate`
-- 做题提醒：
-  Phase 7 的核心不是“讲更多名词”，而是把亮点、取舍、代码锚点和演进路线串成一个完整故事。
-
-#### 题 7-1
-
-- 类型：`口头题`
-- 难度：`L3`
-- 预计耗时：`10 分钟`
-
-问题：
-
-这个项目最值得讲的三个工程亮点是什么？
-
-#### 题 7-2
-
-- 类型：`书面题`
-- 难度：`L3`
-- 预计耗时：`15 分钟`
-
-问题：
-
-如果把这个项目作为面试项目经历，最容易被追问的点有哪些？
-
-#### 题 7-3
-
-- 类型：`书面题`
-- 难度：`L4`
-- 预计耗时：`15 分钟`
-
-问题：
-
-如果让你继续扩展这个项目，你会优先做哪三个方向？
-
-#### 作业 7-A
-
-- 类型：`口头 + 书面`
-- 难度：`L3`
-- 预计耗时：`30 分钟`
-
-要求：
-
-写一份 5 分钟项目讲解提纲，并能口头讲一遍。
-
-#### 作业 7-B
-
-- 类型：`设计题`
-- 难度：`L4`
-- 预计耗时：`45 分钟`
-
-要求：
-
-设计一个跨至少两层的小改动方案，并写清：
-
-- 影响范围
-- 验证方式
-- 风险点
-- 文档同步计划
-
-#### 进阶题 7-C
-
-- 类型：`设计题`
-- 难度：`L4`
-- 预计耗时：`45-60 分钟`
-
-问题：
-
-设计一个“新人毕业任务”，同时考察前端、Web API、Agent 三层理解。
-
-#### 综合实战案例 7-D
-
-- 类型：`动手 + 书面`
-- 难度：`L3-L4`
-- 预计耗时：`0.5-1 天`
-
-题目：
-
-给 session 列表新增一个更友好的 `last_active_label` 字段，并完成：
-
-- Web API 输出
-- 前端展示
-- 回归验证
-- 文档同步
-
-最低交付要求：
-
-1. 写一页改动设计说明。
-2. 写一份回归矩阵。
-3. 指出至少 3 个涉及文件。
-4. 写明需要同步哪篇教学文档。
-
-优秀完成标准：
-
-1. 能解释为什么这是“中风险跨层改动”。
-2. 能说明该字段更适合后端生成还是前端格式化，并给出取舍。
-3. 能把这次改动讲成一个完整的小型工程案例。
-
----
-
-## Part B：参考答案与优秀答案要点
-
-### Phase 0 参考答案
-
-1. 三层拆分的核心原因是职责分离。前端负责交互和结果呈现，Web 层负责协议与服务编排，Agent 层负责决策、执行和验证。这样更适合演进和定位问题。
-2. `README.md` 解决项目总览，`docs/README.md` 解决文档导航，`project-structure.md` 解决目录职责。三者面向不同粒度和受众。
-3. 先查前端是否正常启动、端口是否正确、环境变量是否配置、构建是否成功、浏览器控制台是否报错、接口是否被正确请求。
-
-优秀答案要点：
-
-- 不只讲“分层”，还讲清分层后的收益和代价。
-- 能区分“项目总入口”和“开发文档总入口”。
-
-### Phase 1 参考答案
-
-1. 因为用户真正感知的不是“后端返回了答案”，而是从输入、流式事件到最终结构化结果的完整体验。不到 `TravelPlanToolkit.tsx`，链路还没到产品形态。
-2. SSE 更适合单向持续推送 token 和中间事件，一次性 JSON 不适合当前流式体验。
-3. `session_id` 用于绑定会话和运行标识，`reasoning_chunk` 用于展示推理过程，`stage` 用于过程提示，`tool_start` 用于工具可见性，`plan_preview` 用于提前展示计划，`metadata` 用于诊断和附加上下文。
-
-优秀答案要点：
-
-- 能区分“内容事件”“过程事件”“诊断事件”。
-- 能解释为什么当前阶段 SSE 比 WebSocket 更合适。
-
-### Phase 2 参考答案
-
-1. `streamingMessage` 是临时态，`messages` 是最终态。两者生命周期不同，合并后会让完成、失败、取消和展示逻辑混乱。
-2. `AppContext.tsx` 更适合放跨组件共享、会话级、页面级影响较大的状态。
-3. `TravelPlanToolkit.tsx` 把文本答案进一步变成结构化和可交互的产品结果。
-
-优秀答案要点：
-
-- 能说明状态所有权。
-- 能说明“消息渲染”和“结果产品化”不是同一个问题。
-
-### Phase 3 参考答案
-
-1. route 更适合做协议层工作，service 负责业务编排，repository 抽象业务数据访问，storage 负责底层读写。这样更易维护和替换存储方式。
-2. `ChatService` 关注聊天流式编排和 Agent 协调，`SessionService` 关注会话元数据和生命周期管理。
-3. 因为字段常常会穿过请求响应、业务逻辑、持久化、前端消费和测试断言多个层级。
-
-优秀答案要点：
-
-- 不只会列层次，还能解释每层“该做什么”和“不该做什么”。
-
-### Phase 4 参考答案
-
-1. `state.py` 决定状态字段，`builder.py` 决定图结构，`nodes.py` 才是具体实现。顺序反了就容易迷失在细节里。
-2. `direct` 适合直接回答，`react` 适合边推理边用工具，`plan` 适合复杂约束和多步骤任务。
-3. 因为验证失败时合理动作通常是补执行、补证据，而不是直接出答案。
-4. `self_check` 更像输出质量保护和工程兜底。
-
-优秀答案要点：
-
-- 能讲清“状态机”不只是节点多，而是有条件边和回环。
-
-### Phase 5 参考答案
-
-1. 文本结果更偏给模型和用户看，`_meta` 更偏给系统做结构化展示、验证、刷新和调试。
-2. 它们帮助系统识别数据是否可靠、是否走过兜底、是否刷新成功，从而减少错误传播。
-3. session 解决会话与消息，memory 解决长期偏好和摘要，checkpoint 解决图运行恢复。
-
-优秀答案要点：
-
-- 能从“写入时机”和“恢复目的”区分三者。
-
-### Phase 6 参考答案
-
-1. 因为测试本身就在定义系统不应退化成什么样。它不只是防 crash，也在保护事件协议、存储语义和 Agent 质量。
-2. 因为不同改动触发的风险不同，前端更关心构建和渲染，API 更关心契约，Agent 更关心行为质量和策略稳定性。
-3. unit 保护局部逻辑，integration 保护协作，benchmark 保护趋势，golden eval 保护关键样本行为。
-
-优秀答案要点：
-
-- 能从风险类型出发选回归，而不是所有改动都跑一套命令。
-
-### Phase 7 参考答案
-
-1. 最值得讲的工程亮点通常包括：SSE 中间事件、三层分层、Agent 状态机与验证、结果产品化、稳定性与质量控制。
-2. 最容易被追问的是：为什么要分层、为什么选 SSE、为什么 Agent 要做成状态机、memory 与 checkpoint 有什么区别。
-3. 优先扩展方向通常包括：数据库化存储、多模型与成本控制、更强观测和回放、更强工具与缓存、产品化结果编辑能力。
-
-优秀答案要点：
-
-- 不只讲“做了什么”，还讲“为什么这么设计”和“如何继续演进”。
-
-### 综合实战案例 7-D 参考完成框架
-
-一个合格答案至少应包含：
-
-1. 背景：session 列表当前只有原始时间字段，用户不够直观。
-2. 目标：增加更友好的最近活跃展示，不破坏排序和兼容性。
-3. 影响层：至少涉及 Web 输出层、前端展示层和文档层。
-4. 风险：时区、旧数据兼容、字段命名一致性、排序语义。
-5. 验证：`pytest`、前端 `lint/build`、手工检查 session 列表展示。
-6. 文档同步：至少同步 [03-web-api-session-and-storage.md](03-web-api-session-and-storage.md)、[05-testing-debugging-and-change-practice.md](05-testing-debugging-and-change-practice.md) 或本章中的对应练习说明。
-
-优秀答案要点：
-
-- 能解释“为什么有些格式化应该放前端，有些应该放后端”。
-- 能明确说明 repository / storage 是否需要改动，而不是默认层层都改。
-- 能补一句如果未来国际化或多时区，要怎样演进这次设计。
-
----
-
-## Part C：评分标准、毕业任务与带教检查表
-
-### 1. 四级评分标准
-
-#### L1：跟读通过
-
-表现：
-
-- 能复述主链和三层结构
-- 能定位关键入口文件
-
-#### L2：上手通过
-
-表现：
-
-- 能画图
-- 能列联动文件
-- 能做低风险小改动
-
-#### L3：工程通过
-
-表现：
-
-- 能讲清设计取舍
-- 能做中风险改动
-- 能选择正确回归
-
-#### L4：维护者通过
-
-表现：
-
-- 能讲系统演进
-- 能做跨层改动
-- 能设计风险控制与文档同步
-
-### 1.1 更细的评分维度
-
-建议从下面 5 个维度评分，每项可打 `1-4` 分：
-
-| 维度 | 1 分 | 2 分 | 3 分 | 4 分 |
-| --- | --- | --- | --- | --- |
-| 主链理解 | 只能说出零散文件 | 能大致复述链路 | 能说清事件与状态 | 能结合代码讲取舍 |
-| 分层理解 | 容易混层 | 能区分主要层 | 能解释边界与联动 | 能说明迁移与演进 |
-| 表达质量 | 口语化、跳跃 | 有结构但不稳 | 结构清楚、有重点 | 兼顾实现、风险和取舍 |
-| 改动意识 | 只会描述功能 | 能列部分影响 | 能写验证计划 | 能控制风险并同步文档 |
-| 面试深度 | 只能答表层问题 | 能答常规问题 | 能答追问 | 能展开演进和反例 |
-
-### 1.2 常见失分点
-
-最常见的失分不是“不会”，而是下面这些：
-
-1. 只背名词，不绑定真实文件和真实链路。
-2. 只讲结果，不讲中间事件和状态变化。
-3. 把 `session`、`memory`、`checkpoint` 混成一件事。
-4. 只说“这样更好维护”，但说不出为什么更好维护。
-5. 作业里只写改动目标，不写风险和验证。
-6. 面试题只给结论，不给对比和取舍。
-
-### 1.3 及格答案与优秀答案的差异
-
-可以用下面这张对照表快速判断自己的答案层级：
-
-| 类型 | 及格答案通常长这样 | 优秀答案通常会多什么 |
-| --- | --- | --- |
-| 主链题 | 能按顺序说出链路 | 会说明每层为什么这么拆 |
-| 分层题 | 能区分 route / service / storage | 会说明 repository 的价值和迁移边界 |
-| Agent 题 | 能说出节点顺序 | 会说明回环、验证、证据链和可靠性设计 |
-| 测试题 | 能列出跑哪些命令 | 会说明为什么这些命令和这次风险匹配 |
-| 面试题 | 能给出标准答法 | 会给出反例、取舍和未来演进 |
-
-### 2. 毕业任务模板
-
-一份合格的毕业任务至少包含：
-
-1. 背景
-2. 目标
-3. 影响层级
-4. 涉及文件
-5. 风险点
-6. 验证矩阵
-7. 文档同步
-8. 若继续扩展，下一步怎么做
-
-### 2.1 推荐交付结构
-
-建议最终提交时固定成下面 8 段，这样最便于带教者和 reviewer 快速看懂：
-
-1. 背景与目标
-2. 当前现象或问题
-3. 设计思路
-4. 影响层级与文件列表
-5. 风险点
-6. 验证矩阵
-7. 文档同步
-8. 后续可扩展点
-
-### 2.2 毕业任务提交模板
-
-```text
-毕业任务标题：
-
-背景与目标：
-
-当前现象/问题：
-
-设计思路：
-
-影响层级：
-
-涉及文件：
-
-风险点：
-
-验证矩阵：
-
-文档同步：
-
-后续可扩展点：
-```
-
-### 3. 带教者检查表
-
-如果你是带教者，最推荐检查下面这 8 件事：
-
-1. 对方能否画出聊天主链
-2. 对方能否区分 `messages` 和 `streamingMessage`
-3. 对方能否解释 Web 分层
-4. 对方能否解释 Agent 状态机和 `verify`
-5. 对方能否区分 session、memory、checkpoint
-6. 对方能否按风险选回归
-7. 对方能否做一次跨两层的小改动
-8. 对方能否把项目讲成一个有取舍的工程案例
-
-### 4. 一个最小毕业任务示例
-
-推荐题目：
-
-给 session 或城市卡增加一个小字段，并把它从：
-
-- Web API
-- 前端展示
-- 测试验证
-- 文档更新
-
-完整打通。
-
-为什么推荐这个题目：
-
-- 跨至少两层
-- 风险中等
-- 不会一上来就把最复杂的 Agent 改挂
-- 能训练联动意识和文档同步意识
-
-## 结尾提醒
-
-这一章不是为了让你背标准答案，而是为了帮你形成一个非常关键的工程能力：
-
-当别人问你“这个系统为什么这样设计、哪里最难、如果扩展怎么办”时，你能回到真实代码和真实链路里，把答案讲得清清楚楚。
+这个项目最能证明的不是“我会调一个大模型接口”，而是“我能把一个 AI 场景做成有分层、有协议、有状态边界、有可靠性设计、有质量门禁的完整工程系统”。

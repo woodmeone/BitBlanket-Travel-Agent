@@ -31,6 +31,7 @@ ensure_project_paths()
 
 from scripts.runtime_data_utils import discover_runtime_files, snapshot_timestamp_slug
 from scripts.runtime_ops_contracts import (
+    CheckpointRuntimeView,
     ReleaseHarnessScorecard,
     ReleaseManifest,
     RuntimeDoctorReport,
@@ -102,6 +103,11 @@ def export_support_bundle(
     doctor_report = RuntimeDoctorReport.from_dict(
         run_runtime_doctor(project_root=project_root, base_url=base_url)
     )
+    checkpoint_runtime = CheckpointRuntimeView.from_dict(
+        doctor_report.checks.get("checkpoint_runtime").details
+        if doctor_report.checks.get("checkpoint_runtime") is not None
+        else {}
+    )
     runtime_files = discover_runtime_files(project_root)
     http_snapshot = _http_snapshot(base_url) if base_url else None
     release_manifest = None
@@ -143,6 +149,10 @@ def export_support_bundle(
         archive.writestr("manifest.json", json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2) + "\n")
         archive.writestr("doctor-report.json", json.dumps(doctor_report.to_dict(), ensure_ascii=False, indent=2) + "\n")
         archive.writestr("doctor-report.txt", render_text_report(doctor_report) + "\n")
+        archive.writestr(
+            "checkpoint-runtime.json",
+            json.dumps(checkpoint_runtime.to_dict(), ensure_ascii=False, indent=2) + "\n",
+        )
         archive.writestr(
             "runtime-files.json",
             json.dumps(

@@ -2,7 +2,7 @@
 
 这份文档记录当前默认 `skills market` 的稳定元数据视图。
 
-代码真相源仍然在 [agent/travel_agent/skills/registry.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/skills/registry.py)，这里的目标是让维护者和 reviewer 能快速看到：
+代码真相源仍然在 [agent/travel_agent/skills/registry.py](../../agent/travel_agent/skills/registry.py)，这里的目标是让维护者和 reviewer 能快速看到：
 
 - 哪些 skill 已经进入默认 catalog
 - 它们分别归谁负责
@@ -61,9 +61,9 @@
 
 这层 policy 现在已经从 subagent prompt 里抽成代码契约，可通过：
 
-- [agent/travel_agent/subagents/base.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/base.py)
-- [agent/travel_agent/subagents/registry.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/registry.py)
-- [agent/travel_agent/runtime/agent_runtime.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/runtime/agent_runtime.py)
+- [agent/travel_agent/subagents/base.py](../../agent/travel_agent/subagents/base.py)
+- [agent/travel_agent/subagents/registry.py](../../agent/travel_agent/subagents/registry.py)
+- [agent/travel_agent/runtime/agent_runtime.py](../../agent/travel_agent/runtime/agent_runtime.py)
 
 读取 `selection_policy()`、`selection_plan()` 和 `subagent_skill_policies` diagnostics。
 
@@ -81,10 +81,10 @@
 
 ## 当前配套入口
 
-- Registry 代码：[agent/travel_agent/skills/registry.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/skills/registry.py)
-- Contract 模型：[agent/travel_agent/contracts/skills.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/contracts/skills.py)
-- Onboarding 清单：[docs/governance/skills-market-onboarding.md](/D:/moyuan/moyuan-travel-agent/docs/governance/skills-market-onboarding.md)
-- 回归测试：[tests/test_skill_registry_unit.py](/D:/moyuan/moyuan-travel-agent/tests/test_skill_registry_unit.py)
+- Registry 代码：[agent/travel_agent/skills/registry.py](../../agent/travel_agent/skills/registry.py)
+- Contract 模型：[agent/travel_agent/contracts/skills.py](../../agent/travel_agent/contracts/skills.py)
+- Onboarding 清单：[docs/governance/skills-market-onboarding.md](../governance/skills-market-onboarding.md)
+- 回归测试：[tests/test_skill_registry_unit.py](../../tests/test_skill_registry_unit.py)
 
 ## 当前限制
 

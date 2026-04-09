@@ -30,11 +30,12 @@
 ## Quality Gate
 
 - CI workflow now executes:
-  - `pytest tests -q`
-  - `agent_benchmark.py`
-  - `agent_benchmark_trend.py`
-  - `agent_golden_eval.py`
-  - `agent_quality_gate.py`
+  - `python scripts/dev.py backend-test --pytest-slice unit`
+  - `python scripts/dev.py backend-test --pytest-slice local`
+  - `python scripts/dev.py benchmark-report`
+  - `python scripts/dev.py benchmark-trend`
+  - `python scripts/dev.py golden-report`
+  - `python scripts/dev.py quality-gate`
 - Gate dimensions:
   - `golden pass_rate`
   - `golden hallucination_rate`

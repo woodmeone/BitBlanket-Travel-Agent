@@ -20,10 +20,18 @@ python scripts/bootstrap.py
 uv pip install -r requirements-dev.txt
 ```
 
+当前本地开发噪音约定是：
+
+- `.venv` 保留在项目根目录
+- `pytest / mypy / Ruff` 的缓存统一写到 `.cache/`
+
 安装完成后，建议先看一眼统一命令入口：
 
 ```bash
 python scripts/dev.py help
+python scripts/dev.py backend-dev
+python scripts/dev.py frontend-dev
+python scripts/dev.py backend-test --pytest-slice unit
 ```
 
 如果你只是想最低成本跑起来，不打算本地执行 `ruff / mypy / pip-audit`，也可以只安装：
@@ -69,7 +77,7 @@ python scripts/bootstrap.py --skip-frontend
 ## 4. 启动后端 API
 
 ```bash
-.\.venv\Scripts\python.exe -m uvicorn moyuan_web.main:app --host 0.0.0.0 --port 38000 --app-dir web
+python scripts/dev.py backend-dev
 ```
 
 启动成功后可访问：
@@ -82,8 +90,7 @@ python scripts/bootstrap.py --skip-frontend
 ## 5. 启动前端
 
 ```bash
-cd frontend
-npm run dev
+python scripts/dev.py frontend-dev
 ```
 
 启动成功后访问：
@@ -95,29 +102,29 @@ npm run dev
 如果想跳过本地手动拉起两个进程，直接以统一容器方式联调：
 
 ```bash
-docker compose up --build
+docker compose --file deploy/compose/compose.yaml up --build
 ```
 
 如果要同时把 Prometheus 和 Grafana 也拉起来，方便看 dashboard 和 alert 资产：
 
 ```bash
-docker compose --profile observability up --build
+docker compose --file deploy/compose/compose.yaml --profile observability up --build
 ```
 
 Compose 默认会：
 
 - 暴露前端 `33001`
 - 暴露后端 `38000`
-- 挂载 `config/`、`data/`、`logs/`
+- 挂载 `backend/config/`、`data/`、`logs/`
 - 为前端注入 `NEXT_PUBLIC_API_BASE`
 - 为后端注入 `MOYUAN_WEB_PORT`、`MOYUAN_FRONTEND_PORT`、`MOYUAN_METRICS_ENABLED`
 
 对应文件：
 
-- [../../compose.yaml](../../compose.yaml)
-- [../../Dockerfile.backend](../../Dockerfile.backend)
-- [../../frontend/Dockerfile](../../frontend/Dockerfile)
-- [../../ops/observability/README.md](../../ops/observability/README.md)
+- [../../deploy/compose/compose.yaml](../../deploy/compose/compose.yaml)
+- [../../deploy/docker/backend.Dockerfile](../../deploy/docker/backend.Dockerfile)
+- [../../deploy/docker/frontend.Dockerfile](../../deploy/docker/frontend.Dockerfile)
+- [../../extend/observability/README.md](../../extend/observability/README.md)
 
 如果你这次改的是端口、环境变量、镜像 build 参数或 observability profile，建议先做一次本地渲染校验：
 
@@ -170,21 +177,15 @@ curl http://localhost:38000/api/metrics
 
 如果 `/api/ready` 返回 `503`，优先检查：
 
-- `config/llm_config.yaml` 是否存在、是否至少有一个 active model
+- `backend/config/llm_config.yaml` 是否存在、是否至少有一个 active model
 - `data/` 目录是否可写
-- `config/server_config.yaml` 是否有非法值
+- `backend/config/server_config.yaml` 是否有非法值
 - 启动日志里是否出现 `startup_validation`
 
 如果需要把现场状态导出给维护者排查，建议再执行：
 
 ```bash
-python scripts/export_support_bundle.py --base-url http://localhost:38000
-```
-
-或者直接走统一入口：
-
-```bash
-python scripts/dev.py support-bundle
+python scripts/dev.py support-bundle --base-url http://localhost:38000
 ```
 
 ## 9. 常用地址
@@ -212,8 +213,8 @@ curl http://localhost:38000/api/ready
 再检查：
 
 - Python 虚拟环境是否正确激活
-- `config/llm_config.yaml` 是否可读
-- `config/server_config.yaml` 是否存在非法端口或路径
+- `backend/config/llm_config.yaml` 是否可读
+- `backend/config/server_config.yaml` 是否存在非法端口或路径
 - 控制台里是否打印出 `startup_validation`
 
 ### 前端能打开但没有回答

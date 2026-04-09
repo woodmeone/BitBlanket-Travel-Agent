@@ -96,6 +96,13 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"Runtime backup archive: {archive_path}")
     print(f"Backed up files: {len(manifest.get('files', []))}")
+    checkpoint_runtime = manifest.get("checkpoint_runtime", {})
+    if isinstance(checkpoint_runtime, dict):
+        print(
+            "Checkpoint runtime: "
+            f"{checkpoint_runtime.get('backend')} "
+            f"({checkpoint_runtime.get('restore_strategy')})"
+        )
     return 0
 
 

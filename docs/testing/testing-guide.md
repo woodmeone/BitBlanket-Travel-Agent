@@ -6,15 +6,20 @@
 
 当前 marker 定义见：
 
-- [`pytest.ini`](/D:/moyuan/moyuan-travel-agent/pytest.ini)
-- [`tests/conftest.py`](/D:/moyuan/moyuan-travel-agent/tests/conftest.py)
+- [`pyproject.toml`](../../pyproject.toml)
+- [`tests/conftest.py`](../../tests/conftest.py)
+
+本地缓存约定：
+
+- `.venv` 保留在项目根目录
+- `pytest / mypy / Ruff` 缓存统一写到 `.cache/`
 
 主要分层：
 
 - `unit`
   - 纯逻辑、模块级、脚本级测试
 - `integration`
-  - 跨层协作测试，覆盖 Web API、Agent、存储和事件链路
+  - 跨层协作测试，覆盖 Backend API、Agent、存储和事件链路
 - `local`
   - 本地 ASGI smoke、本地运行依赖、自检脚本与契约快照测试
 - `external_api`
@@ -40,7 +45,7 @@ npm run build
 - `npm run test:run` 当前会通过 `frontend/vitest.config.ts` 把 `vitest` worker 上限固定为 `2`，避免本地和 CI 在大 fixture 回放下触发进程 OOM
 - `npm run build` 当前固定走 `next build --webpack`，保证默认入口在当前 `Next.js 16` 栈上能稳定完成生产构建
 - `python scripts/dev.py test / infra-check` 当前会自动解析跨平台 npm 可执行文件，在 Windows 上会优先命中 `npm.cmd`
-- `python scripts/runtime_doctor.py --json` 当前在遇到被占用的 runtime 文件时会返回 `degraded` 检查项，而不是直接中断门禁链
+- `python scripts/dev.py runtime-doctor --runtime-doctor-json` 当前在遇到被占用的 runtime 文件时会返回 `degraded` 检查项，而不是直接中断门禁链
 
 ## 2. 推荐的本地回归顺序
 
@@ -55,56 +60,59 @@ python scripts/dev.py compose-config
 python scripts/dev.py container-smoke
 ```
 
-### 2.2 改 Web API、startup、health、metrics、trace、SSE 协议
+### 2.2 改 Backend API、startup、health、metrics、trace、SSE 协议
 
 ```bash
-python -m pytest tests -m "unit and not local and not external_api" -q
-python -m pytest tests -m "local and not external_api" -q
-python -m pytest tests/test_agent_runtime_phase1_unit.py tests/test_agent_subagent_phase2_unit.py tests/test_legacy_runtime_contract_unit.py tests/test_runtime_source_adapters_unit.py tests/test_runtime_event_emitters_unit.py tests/test_runtime_contract_audit_script_unit.py tests/test_chat_stream_local.py tests/test_chat_service_health_metrics_unit.py tests/test_langchain_1x_agent_unit.py -q
-python -m ruff check --config ruff.toml scripts web/moyuan_web
-python scripts/docstring_audit.py --strict
-python scripts/complexity_budget.py --strict
-python scripts/decision_record_audit.py --strict
-python scripts/skills_market_audit.py --strict
-python scripts/runtime_contract_audit.py --strict
-python scripts/export_runtime_doctor_snapshot.py
-python -m mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_openapi_snapshot.py scripts/export_runtime_doctor_snapshot.py scripts/export_release_manifest.py scripts/release_harness_scorecard.py scripts/runtime_contract_audit.py scripts/runtime_ops_contracts.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
-cd frontend
-npm run lint
-npm run build
+python scripts/dev.py backend-test --pytest-slice unit
+python scripts/dev.py backend-test --pytest-slice local
+python scripts/dev.py backend-test --pytest-slice runtime
+python scripts/dev.py ruff
+python scripts/dev.py docstring
+python scripts/dev.py complexity
+python scripts/dev.py decision-records
+python scripts/dev.py skills-market
+python scripts/dev.py runtime-contracts
+python scripts/dev.py snapshots
+python scripts/dev.py mypy
+python scripts/dev.py frontend-lint
+python scripts/dev.py frontend-build
 ```
 
 说明：
 
+- `python scripts/dev.py backend-test` 是当前推荐的后端回归入口，支持 `--pytest-slice unit|local|runtime|ops|all`
+- 如需只跑少量用例，可重复传 `--pytest-path tests/...`，例如 `python scripts/dev.py backend-test --pytest-path tests/test_runtime_doctor_unit.py --pytest-path tests/test_runtime_ops_contracts_unit.py`
 - `python scripts/docstring_audit.py --strict` 当前会同时检查缺失 docstring 与新增低信息量 docstring
 - 历史存量低信息量项通过 `docs/reference/docstring-audit.low-info-baseline.json` 管理，后续变更应避免新增
 - `python scripts/complexity_budget.py --strict` 会对热点文件执行“只减不增”预算门禁，避免复杂区重新无序膨胀
 - `python scripts/decision_record_audit.py --strict` 会审计 ADR / RFC / Design Review 的基础结构，保证大改动有稳定记录入口
 - `python scripts/skills_market_audit.py --strict` 会审计默认 `skills market` 是否补齐 `schema + tests + docs + eval` 四件套，并验证 `docs_path / test_fixture / eval_fixture / onboarding_doc`
-- `python scripts/runtime_contract_audit.py --strict` 会审计 `AgentRuntime -> legacy_bridge -> legacy_runtime -> runtime_sources -> runtime_event_emitters` 这条 runtime seam 的 request/context/result contract、shim 边界、memory source adapter 边界与 event emitter 边界，防止 runtime 兼容层退回 loose kwargs，或直接在 shim 内拼装 memory state / event payload
+- `python scripts/runtime_contract_audit.py --strict` 会审计 `AgentRuntime -> runtime_driver -> runtime_flow -> runtime_sources -> runtime_event_emitters` 这条 runtime seam 的 request/context/result contract、执行层边界、memory source adapter 边界与 event emitter 边界，防止 runtime 再退回 loose kwargs，或直接在执行层内拼装 memory state / event payload
 - `python scripts/export_runtime_doctor_snapshot.py` 会导出 `runtime_doctor` 的 typed report contract 快照，并与 support bundle / release manifest / release harness scorecard / release evidence 共享同一组 ops contract
 - `scripts/dev.py` 与 `scripts/bootstrap.py` 当前也纳入了脚本级单测和 `ruff / mypy` 门禁，避免跨平台入口在 CI 中退化成只能本地手工验证
 
 ### 2.3 改运行维护脚本、契约快照、发布与观测资产
 
 ```bash
-python -m pytest tests/test_runtime_data_lifecycle_unit.py tests/test_runtime_doctor_unit.py tests/test_runtime_ops_contracts_unit.py tests/test_export_openapi_snapshot_script_unit.py tests/test_export_sse_contract_snapshot_script_unit.py tests/test_export_runtime_doctor_snapshot_script_unit.py tests/test_export_release_manifest_script_unit.py tests/test_release_harness_scorecard_script_unit.py tests/test_export_support_bundle_script_unit.py tests/test_observability_assets_unit.py -q
-python scripts/export_openapi_snapshot.py
-python scripts/export_sse_contract_snapshot.py
-python scripts/export_runtime_doctor_snapshot.py
+python scripts/dev.py backend-test --pytest-slice ops
+python scripts/dev.py snapshots
+python scripts/dev.py benchmark-report
+python scripts/dev.py golden-report
+python scripts/dev.py benchmark-trend
+python scripts/dev.py release-scorecard
+python scripts/dev.py quality-gate
 uv run --offline python scripts/agent_subagent_scorecard.py --output-dir docs/benchmarks
-uv run --offline python scripts/release_harness_scorecard.py --strict
-python scripts/export_release_manifest.py --git-sha local --git-ref refs/heads/main --owner local
-python scripts/runtime_doctor.py --json
-python scripts/export_support_bundle.py
+python scripts/dev.py release-manifest --git-sha local --git-ref refs/heads/main --owner local
+python scripts/dev.py runtime-doctor --runtime-doctor-json
+python scripts/dev.py support-bundle
 ```
 
 ### 2.4 改 Docker / compose / release
 
 ```bash
 python scripts/dev.py compose-config
-docker build -f Dockerfile.backend .
-docker build -f frontend/Dockerfile ./frontend
+docker build -f deploy/docker/backend.Dockerfile .
+docker build -f deploy/docker/frontend.Dockerfile .
 ```
 
 如果 Docker Hub 拉取较慢，可以改用镜像站作为基础镜像：
@@ -127,23 +135,37 @@ python scripts/export_runtime_doctor_snapshot.py
 
 产物：
 
-- [`docs/reference/openapi.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/openapi.snapshot.json)
-- [`docs/reference/sse-contract.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/sse-contract.snapshot.json)
-- [`docs/reference/runtime-doctor.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/runtime-doctor.snapshot.json)
-- [`docs/benchmarks/agent_subagent_scorecard_latest.md`](/D:/moyuan/moyuan-travel-agent/docs/benchmarks/agent_subagent_scorecard_latest.md)
-- [`docs/benchmarks/release_harness_scorecard_latest.md`](/D:/moyuan/moyuan-travel-agent/docs/benchmarks/release_harness_scorecard_latest.md)
+- [`docs/reference/openapi.snapshot.json`](../reference/openapi.snapshot.json)
+- [`docs/reference/sse-contract.snapshot.json`](../reference/sse-contract.snapshot.json)
+- [`docs/reference/runtime-doctor.snapshot.json`](../reference/runtime-doctor.snapshot.json)
+- [`docs/benchmarks/agent_subagent_scorecard_latest.md`](../benchmarks/agent_subagent_scorecard_latest.md)
+- [`docs/benchmarks/release_harness_scorecard_latest.md`](../benchmarks/release_harness_scorecard_latest.md)
 
 ## 4. 运行维护脚本
 
 ```bash
-python scripts/runtime_backup.py
-python scripts/runtime_restore.py --archive <archive.zip>
-python scripts/runtime_prune.py --keep-latest 5
-python scripts/runtime_doctor.py --json
-python scripts/runtime_doctor.py --base-url http://localhost:38000 --strict
+python scripts/dev.py runtime-backup
+python scripts/dev.py runtime-restore --restore-archive <archive.zip>
+python scripts/dev.py runtime-prune --prune-keep-latest-backups 5
+python scripts/dev.py runtime-prune --prune-vacuum-checkpoints --prune-checkpoint-backend postgres --prune-checkpoint-db 'postgresql://user:password@localhost:5432/moyuan'
+python scripts/dev.py agent-replay --replay-session-id <session_id> --replay-checkpoint-backend postgres --replay-db 'postgresql://user:password@localhost:5432/moyuan'
+python scripts/dev.py runtime-maintenance --prune-keep-latest-backups 10 --prune-max-backup-age-days 14
+python scripts/dev.py checkpoint-maintenance --replay-session-id <session_id> --prune-checkpoint-backend postgres --prune-checkpoint-db 'postgresql://user:password@localhost:5432/moyuan'
+python scripts/dev.py runtime-doctor --runtime-doctor-json
+python scripts/dev.py runtime-doctor --base-url http://localhost:38000 --runtime-doctor-strict
 python scripts/export_runtime_doctor_snapshot.py
-python scripts/export_support_bundle.py --base-url http://localhost:38000
+python scripts/dev.py support-bundle --base-url http://localhost:38000
 ```
+
+backup / restore 相关核对点：
+
+- `python scripts/dev.py runtime-backup` 产出的 `manifest.json` 应检查 `checkpoint_runtime.backend / target / restore_strategy`
+- `postgres` backend 下，manifest 只能记录 redacted DSN 和恢复说明，不能把外部 checkpoint 表误当作已归档
+- `python scripts/dev.py runtime-restore --restore-archive ...` 应输出 checkpoint 恢复提示，说明是否还需要外部数据库快照
+- `python scripts/dev.py runtime-doctor --runtime-doctor-json` 应能直接看到 `checks.checkpoint_runtime.details.backend / restore_strategy / requires_external_snapshot`
+- `export_support_bundle.py` 产物里应同时检查 `manifest.json.runtime_health.checkpoint_*` 和 `checkpoint-runtime.json`
+- `python scripts/dev.py runtime-maintenance` 的固定顺序是 `runtime-backup -> runtime-doctor --json -> runtime-prune`
+- `python scripts/dev.py checkpoint-maintenance` 的固定顺序是 `runtime-prune --vacuum-checkpoints -> optional agent-replay --dry-run -> runtime-doctor --json`
 
 ## 5. 静态质量门禁
 
@@ -153,60 +175,60 @@ python scripts/complexity_budget.py --strict
 python scripts/decision_record_audit.py --strict
 python scripts/skills_market_audit.py --strict
 python scripts/runtime_contract_audit.py --strict
-ruff check --config ruff.toml scripts web/moyuan_web
-mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_openapi_snapshot.py scripts/export_runtime_doctor_snapshot.py scripts/export_release_manifest.py scripts/release_harness_scorecard.py scripts/runtime_contract_audit.py scripts/runtime_ops_contracts.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
+ruff check scripts backend/moyuan_web
+mypy scripts/dev.py scripts/bootstrap.py scripts/export_openapi_snapshot.py scripts/export_runtime_doctor_snapshot.py scripts/export_release_manifest.py scripts/release_harness_scorecard.py scripts/runtime_contract_audit.py scripts/runtime_ops_contracts.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py backend/moyuan_web/app_meta.py backend/moyuan_web/main.py backend/moyuan_web/middleware/__init__.py backend/moyuan_web/observability.py backend/moyuan_web/routes/chat.py backend/moyuan_web/routes/health.py backend/moyuan_web/services/share_service.py backend/moyuan_web/startup_checks.py
 ```
 
 这条 docstring 门禁不再只是“有没有写”，而是同时检查“写得是不是还有信息量”；complexity budget gate 会继续保护热点复杂文件不被无序长回去；decision record audit 则保证大改动不会再次退回到“只有 PR 描述、没有正式设计记录”的状态。
 
 ## 6. 关键测试文件保护什么
 
-- [`tests/test_api_smoke_local.py`](/D:/moyuan/moyuan-travel-agent/tests/test_api_smoke_local.py)
+- [`tests/test_api_smoke_local.py`](../../tests/test_api_smoke_local.py)
   - 保护 `/`、`/api/health`、`/api/ready`、`/api/live`、`/api/metrics`
-- [`tests/test_chat_stream_local.py`](/D:/moyuan/moyuan-travel-agent/tests/test_chat_stream_local.py)
+- [`tests/test_chat_stream_local.py`](../../tests/test_chat_stream_local.py)
   - 保护 `/api/chat/stream` 和 `request_id / trace_id`
-- [`tests/test_agent_runtime_phase1_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_runtime_phase1_unit.py)
-  - 保护 phase-1 `AgentRuntime / Skills / Artifact` 兼容层
-- [`tests/test_legacy_runtime_contract_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_legacy_runtime_contract_unit.py)
-  - 保护 `legacy_runtime` 是否继续通过 typed request/context 消费 runtime source adapters，而不是回退到散装 kwargs
-- [`tests/test_runtime_source_adapters_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_source_adapters_unit.py)
+- [`tests/test_agent_runtime_phase1_unit.py`](../../tests/test_agent_runtime_phase1_unit.py)
+  - 保护 phase-1 `AgentRuntime / Skills / Artifact` 主链边界
+- [`tests/test_runtime_flow_contract_unit.py`](../../tests/test_runtime_flow_contract_unit.py)
+  - 保护 `runtime_flow` 是否继续通过 typed request/context 消费 runtime source adapters，而不是回退到散装 kwargs
+- [`tests/test_runtime_source_adapters_unit.py`](../../tests/test_runtime_source_adapters_unit.py)
   - 保护 `runtime_sources.py` 对 memory-aware graph / preview state 装配和 supervisor request/context 映射的边界
-- [`tests/test_runtime_event_emitters_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_event_emitters_unit.py)
+- [`tests/test_runtime_event_emitters_unit.py`](../../tests/test_runtime_event_emitters_unit.py)
   - 保护 `runtime_event_emitters.py` 对阶段推进、tool 事件和 done payload 的合同化装配边界
-- [`tests/test_runtime_contract_audit_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_contract_audit_script_unit.py)
-  - 保护 runtime seam 治理脚本继续覆盖 `legacy_runtime -> runtime_sources/runtime_event_emitters` 适配层边界
-- [`tests/test_agent_subagent_phase2_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_subagent_phase2_unit.py)
+- [`tests/test_runtime_contract_audit_script_unit.py`](../../tests/test_runtime_contract_audit_script_unit.py)
+  - 保护 runtime seam 治理脚本继续覆盖 `runtime_flow -> runtime_sources/runtime_event_emitters` 适配层边界
+- [`tests/test_agent_subagent_phase2_unit.py`](../../tests/test_agent_subagent_phase2_unit.py)
   - 保护 phase-2 `Research / Planning / Budget / Verification` subagent 映射、事件编排、skill selection policy 计划，以及统一 `execution receipt`
-- [`tests/test_chat_stream_diagnostics_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_chat_stream_diagnostics_unit.py)
+- [`tests/test_chat_stream_diagnostics_unit.py`](../../tests/test_chat_stream_diagnostics_unit.py)
   - 保护 persisted diagnostics 对 `artifact / subagentEvents / executionReceipt` 的归一化持久化
-- [`tests/test_agent_subagent_scorecard_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_subagent_scorecard_script_unit.py)
+- [`tests/test_agent_subagent_scorecard_script_unit.py`](../../tests/test_agent_subagent_scorecard_script_unit.py)
   - 保护 replay-backed subagent scorecard 的聚合逻辑和报告输出
-- [`tests/test_release_harness_scorecard_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_release_harness_scorecard_script_unit.py)
+- [`tests/test_release_harness_scorecard_script_unit.py`](../../tests/test_release_harness_scorecard_script_unit.py)
   - 保护 release harness scorecard 对 benchmark、delivery snapshot、skills market 和 subagent scorecard 的聚合逻辑
-- [`tests/test_skill_registry_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_skill_registry_unit.py)
+- [`tests/test_skill_registry_unit.py`](../../tests/test_skill_registry_unit.py)
   - 保护 skills market metadata schema、selection policy、默认 catalog 过滤和 runtime diagnostics 暴露
-- [`tests/test_runtime_data_lifecycle_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_data_lifecycle_unit.py)
+- [`tests/test_runtime_data_lifecycle_unit.py`](../../tests/test_runtime_data_lifecycle_unit.py)
   - 保护 backup / restore / prune
-- [`tests/test_runtime_doctor_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_doctor_unit.py)
-  - 保护 runtime doctor
-- [`tests/test_runtime_ops_contracts_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_ops_contracts_unit.py)
+- [`tests/test_runtime_doctor_unit.py`](../../tests/test_runtime_doctor_unit.py)
+  - 保护 runtime doctor，包括 `checkpoint_runtime` 视图和 postgres 外部快照提示
+- [`tests/test_runtime_ops_contracts_unit.py`](../../tests/test_runtime_ops_contracts_unit.py)
   - 保护 runtime doctor / support bundle / release manifest / release harness scorecard typed contract 的 round-trip 与 section 归一化
-- [`tests/test_export_openapi_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_openapi_snapshot_script_unit.py)
+- [`tests/test_export_openapi_snapshot_script_unit.py`](../../tests/test_export_openapi_snapshot_script_unit.py)
   - 保护 OpenAPI 快照导出
-- [`tests/test_export_sse_contract_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_sse_contract_snapshot_script_unit.py)
+- [`tests/test_export_sse_contract_snapshot_script_unit.py`](../../tests/test_export_sse_contract_snapshot_script_unit.py)
   - 保护 SSE 快照导出
-- [`tests/test_export_runtime_doctor_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_runtime_doctor_snapshot_script_unit.py)
+- [`tests/test_export_runtime_doctor_snapshot_script_unit.py`](../../tests/test_export_runtime_doctor_snapshot_script_unit.py)
   - 保护 runtime doctor snapshot 导出
-- [`tests/test_export_release_manifest_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_release_manifest_script_unit.py)
+- [`tests/test_export_release_manifest_script_unit.py`](../../tests/test_export_release_manifest_script_unit.py)
   - 保护 release manifest 与质量证据引用
-- [`tests/test_export_support_bundle_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_support_bundle_script_unit.py)
-  - 保护 support bundle 对 typed release manifest / release scorecard evidence 的打包与 manifest 归一化
-- [`tests/test_observability_assets_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_observability_assets_unit.py)
+- [`tests/test_export_support_bundle_script_unit.py`](../../tests/test_export_support_bundle_script_unit.py)
+  - 保护 support bundle 对 typed release manifest / release scorecard evidence 的打包、`checkpoint-runtime.json` 导出和 manifest 归一化
+- [`tests/test_observability_assets_unit.py`](../../tests/test_observability_assets_unit.py)
   - 保护 dashboard 和 alert 资产
 
 ## 7. CI 当前如何跑
 
-CI 配置见：[`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml)
+CI 配置见：[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)
 
 主要任务包括：
 
@@ -223,10 +245,10 @@ CI 配置见：[`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.gith
 
 - 导出 release manifest
 - 导出 release harness scorecard
-- `docker compose config`
-- `docker compose --profile observability config`
-- `docker build -f Dockerfile.backend .`
-- `docker build -f frontend/Dockerfile ./frontend`
+- `docker compose --file deploy/compose/compose.yaml config`
+- `docker compose --file deploy/compose/compose.yaml --profile observability config`
+- `docker build -f deploy/docker/backend.Dockerfile .`
+- `docker build -f deploy/docker/frontend.Dockerfile .`
 - 上传 `deployment-validation-artifacts`
 
 ## 8. CI 产物与排查路径
@@ -254,11 +276,11 @@ CI 配置见：[`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.gith
 
 ## 9. 常见失败点
 
-- 编码与换行问题：优先检查 [`.editorconfig`](/D:/moyuan/moyuan-travel-agent/.editorconfig) 和 [`.gitattributes`](/D:/moyuan/moyuan-travel-agent/.gitattributes)
-- readiness / 配置问题：优先检查 `config/llm_config.yaml`、`config/server_config.yaml` 和 `/api/ready`
+- 编码与换行问题：优先检查 [`.editorconfig`](../../.editorconfig) 和 [`.gitattributes`](../../.gitattributes)
+- readiness / 配置问题：优先检查 `backend/config/llm_config.yaml`、`backend/config/server_config.yaml` 和 `/api/ready`
 - SSE 流式不稳定：优先检查 `/api/chat/stream`、headers、payload 和 timeout
 - 契约快照失败：优先检查是否刷新 OpenAPI / SSE 快照
-- 容器验证失败：优先检查 `compose.yaml`、Dockerfile 和 release manifest
+- 容器验证失败：优先检查 `deploy/compose/compose.yaml`、Dockerfile 和 release manifest
 
 ## 10. 推荐阅读
 
@@ -274,11 +296,11 @@ The frontend artifact-first slice is currently covered by:
 - trip-plan delivery HTML now has replay-backed snapshot coverage via `frontend/tests/features/trip-plan/travelPlanDeliverySnapshot.test.ts` and `frontend/tests/features/trip-plan/__snapshots__/travelPlanDeliverySnapshot.test.ts.snap`, with input fixture sourced from `tests/golden/frontend_chat_runtime_golden_fixture.json`
 - share replay hydration now has dedicated frontend coverage via `frontend/tests/features/chat/useChatSessionHydration.test.tsx`, locking `delivery_bundle` 回放时的 `artifact / executionReceipt / subagentEvents` 恢复语义
 
-- [`frontend/tests/features/chat/MessageList.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/MessageList.test.tsx)
+- [`frontend/tests/features/chat/MessageList.test.tsx`](../../frontend/tests/features/chat/MessageList.test.tsx)
   - protects assistant rendering, diagnostics, markdown blocks, and artifact-backed toolkit summary
-- [`frontend/tests/features/shared/agentArtifacts.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/shared/agentArtifacts.test.ts)
+- [`frontend/tests/features/shared/agentArtifacts.test.ts`](../../frontend/tests/features/shared/agentArtifacts.test.ts)
   - protects artifact patch merge semantics
-- [`frontend/tests/features/trip-plan/travelPlan.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/trip-plan/travelPlan.test.ts)
+- [`frontend/tests/features/trip-plan/travelPlan.test.ts`](../../frontend/tests/features/trip-plan/travelPlan.test.ts)
   - protects free-text itinerary fallback parsing
 
 Recommended local regression after changing artifact/subagent UI behavior:

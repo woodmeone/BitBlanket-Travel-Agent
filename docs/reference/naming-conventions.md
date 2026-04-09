@@ -16,6 +16,6 @@
 
 ## 目录规则
 
-1. 顶层目录只保留单一职责（`agent`/`web`/`frontend`/`docs`/`tests`）
+1. 顶层目录只保留单一职责（`frontend`/`backend`/`agent`/`extend`/`deploy`/`docs`/`tests`/`scripts`）
 2. 不保留历史兼容目录与冗余入口文档
 3. 缓存、构建产物、运行时数据不纳入版本管理

@@ -16,20 +16,20 @@ def test_build_runtime_contract_audit_report_passes_for_current_repo() -> None:
     assert len(report["audited_files"]) == 6
 
 
-def test_audit_legacy_bridge_module_reports_missing_typed_annotations(tmp_path: Path) -> None:
-    """Flag bridge methods that drift away from typed supervisor contracts."""
+def test_audit_runtime_driver_module_reports_missing_typed_annotations(tmp_path: Path) -> None:
+    """Flag runtime-driver methods that drift away from typed supervisor contracts."""
 
-    bridge_path = tmp_path / "legacy_bridge.py"
+    bridge_path = tmp_path / "runtime_driver.py"
     bridge_path.write_text(
         "\n".join(
             [
                 "from typing import Any, AsyncGenerator, Protocol",
                 "",
-                "class LegacyRuntimeBridge(Protocol):",
+                "class RuntimeDriver(Protocol):",
                 "    async def stream_with_memory(self, *, request, context) -> AsyncGenerator[dict[str, Any], None]:",
                 "        yield {}",
                 "",
-                "class DefaultLegacyRuntimeBridge:",
+                "class DefaultRuntimeDriver:",
                 "    async def stream_with_memory(self, *, request, context) -> AsyncGenerator[dict[str, Any], None]:",
                 "        yield {}",
                 "",
@@ -44,7 +44,7 @@ def test_audit_legacy_bridge_module_reports_missing_typed_annotations(tmp_path: 
         encoding="utf-8",
     )
 
-    findings = runtime_contract_audit.audit_legacy_bridge_module(bridge_path)
+    findings = runtime_contract_audit.audit_runtime_driver_module(bridge_path)
     finding_details = {f"{finding.symbol}|{finding.detail}" for finding in findings}
 
     assert any(
@@ -56,7 +56,7 @@ def test_audit_legacy_bridge_module_reports_missing_typed_annotations(tmp_path: 
         for detail in finding_details
     )
     assert any(
-        detail.endswith("missing typed legacy runtime shim reference")
+        detail.endswith("missing typed runtime flow reference")
         for detail in finding_details
     )
 
@@ -71,11 +71,11 @@ def test_audit_runtime_sources_module_reports_missing_adapters(tmp_path: Path) -
                 "from dataclasses import dataclass",
                 "",
                 "@dataclass",
-                "class LegacyGraphSourceAdapter:",
+                "class GraphRuntimeSource:",
                 "    agent: object",
                 "",
                 "def build_memory_graph_source():",
-                "    return LegacyGraphSourceAdapter(agent=object())",
+                "    return GraphRuntimeSource(agent=object())",
             ]
         )
         + "\n",
@@ -102,7 +102,7 @@ def test_audit_runtime_event_emitters_module_reports_missing_emitter_methods(tmp
     runtime_event_emitters_path.write_text(
         "\n".join(
             [
-                "class LegacySupervisorEventEmitter:",
+                "class SupervisorEventEmitter:",
                 "    def emit_initial(self):",
                 "        return {}",
             ]
@@ -115,7 +115,7 @@ def test_audit_runtime_event_emitters_module_reports_missing_emitter_methods(tmp
     finding_details = {f"{finding.symbol}|{finding.detail}" for finding in findings}
 
     assert any(
-        detail.startswith("LegacySupervisorEventEmitter.emit_node_start|missing runtime event emitter method")
+        detail.startswith("SupervisorEventEmitter.emit_node_start|missing runtime event emitter method")
         for detail in finding_details
     )
     assert any(

@@ -1,127 +1,30 @@
 # Harness Engineering Runtime Source Roadmap (2026-03-28)
 
-## 1. Background
+> Status: 已关闭的路线图执行稿。本文保留为运行时治理演进记录，不作为当前实现真相源。
+> 当前维护请优先看 [../README.md](../README.md)、[system-architecture.md](system-architecture.md)、[infrastructure-foundations.md](infrastructure-foundations.md)、[data-storage.md](data-storage.md)。
 
-By 2026-03-28, the previous next-cycle Harness Engineering roadmap had been fully closed:
+## 当前维护者速查
 
-- `Delivery Harness` already converged on a shared artifact delivery descriptor, HTML snapshot replay, and artifact-first share/export paths.
-- `Skills Market Harness` already shipped governed metadata, onboarding docs, selection policy, and the `schema + tests + docs + eval` audit gate.
-- `Eval / Release Harness` already shipped subagent scorecards, release scorecards, CI checks, and release-manifest wiring.
-- `Runtime Decoupling` already introduced the explicit bridge seam, supervisor request/context contracts, supervisor event contracts, typed preview payloads, typed tool-health diagnostics, and the first `legacy_runtime` shim.
+这份已关闭路线图的当前价值可以压成 4 条：
 
-That roadmap is now retired. This document is the active roadmap for the next cycle.
+| 主题 | 历史结论 |
+| --- | --- |
+| Runtime seam | `AgentRuntime -> runtime_driver -> runtime_flow -> runtime_sources / runtime_event_emitters` 已成为稳定主链，`runtime_contract_audit` 是这条 seam 的执行门禁。 |
+| Ops contracts | `runtime_doctor`、support bundle、release manifest、release harness scorecard 已共享 typed ops contract，不再各自拼装 loose dict。 |
+| Delivery bundle | `artifact + execution receipt + html content + share metadata` 已收口成统一 delivery bundle，并有 replay / snapshot 保护。 |
+| 治理闭环 | 运行时演进已经纳入本地脚本、CI、release evidence 同一治理面，不再依赖口头约定。 |
 
-## 2. Goals
+## 历史执行摘要
 
-The next cycle is no longer about splitting giant modules for the first time. The new focus is to make the typed runtime seam become the single source of truth for runtime evolution:
+这轮路线图的历史完成项主要是：
 
-1. Keep `AgentRuntime` consuming only explicit supervisor/runtime contracts.
-2. Make `legacy_runtime` a replaceable source layer instead of a long-lived compatibility dumping ground.
-3. Contractize runtime/ops artifacts so replay, support, delivery, and release evidence all share stable payloads.
-4. Keep governance executable through local scripts, CI gates, and release evidence.
+1. 给 runtime seam 补上 `runtime_contract_audit`，并接入本地与 CI。
+2. 把 memory-aware source state 和 normalized event assembly 分别下沉到 `runtime_sources.py` 与 `runtime_event_emitters.py`。
+3. 把 runtime doctor、support bundle、release evidence 统一到 `scripts/runtime_ops_contracts.py`。
+4. 把 share / replay / snapshot 收口到 delivery bundle contract。
 
-## 3. Workstreams
+## 当前阅读建议
 
-### 3.1 Runtime Source Harness
-
-Goal:
-- Replace remaining legacy graph runtime sources behind the typed seam without letting `AgentRuntime` drift back to loose kwargs or direct graph imports.
-
-Planned actions:
-- [completed 2026-03-28] Add `scripts/runtime_contract_audit.py` and wire it into `python scripts/dev.py infra-check` plus CI to guard the typed runtime seam.
-- [completed 2026-03-29] Replace remaining `legacy_runtime` event assembly paths with contract-first emitters.
-- [completed 2026-03-29] Move memory-aware source-state assembly out of the legacy shim and into smaller runtime-source adapters.
-- Keep `AgentRuntime -> legacy_bridge -> legacy_runtime` as the only allowed compatibility chain.
-
-### 3.2 Ops Artifact Harness
-
-Goal:
-- Make runtime doctor, support bundle, release manifest, and diagnostics outputs share typed artifact/report contracts.
-
-Planned actions:
-- [completed 2026-03-28] Add a typed runtime-doctor report contract and snapshot.
-- [completed 2026-03-28] Contractize support-bundle manifest sections around runtime health, release evidence, and delivery evidence.
-- [completed 2026-03-29] Make release evidence reuse the same typed report sources instead of rebuilding ad-hoc dict payloads.
-
-### 3.3 Delivery Bundle Harness
-
-Goal:
-- Upgrade the delivery path from “HTML plus share metadata” to a full artifact/delivery bundle that can be replayed and audited.
-
-Planned actions:
-- [completed 2026-03-29] Package `artifact + execution receipt + HTML content + share metadata` as one delivery bundle descriptor.
-- [completed 2026-03-29] Add replay/snapshot coverage for the persisted share route and delivery bundle payload.
-- [completed 2026-03-29] Keep frontend delivery views consuming bundle/descriptor contracts instead of raw assistant text.
-
-### 3.4 Governance Closure
-
-Goal:
-- Ensure future runtime/source changes cannot bypass executable governance.
-
-Planned actions:
-- Extend infra checks with runtime-source specific governance gates.
-- Roll release scorecards forward to include runtime contract health.
-- Keep README, docs index, and maintainer docs pointing at the active roadmap only.
-
-## 4. Execution Phases
-
-### Phase A: Runtime Contract Guardrails
-
-- [completed 2026-03-28] Land `runtime_contract_audit` and wire it into local + CI checks.
-- Lock the typed seam around `AgentRuntime`, `legacy_bridge`, `legacy_runtime`, and supervisor contracts.
-
-### Phase B: Runtime Source Replacement
-
-- [completed 2026-03-29] Replace remaining legacy source assembly with contract-native adapters for memory/state prep and normalized event emission.
-- [completed 2026-03-29] Move memory/state preparation closer to source adapters and out of wide compatibility functions.
-
-Progress update:
-- [completed 2026-03-29] Added `agent/travel_agent/runtime_sources.py` so memory-aware graph/preview state assembly and default checkpointer creation live outside `legacy_runtime.py`.
-- [completed 2026-03-29] Refactored `legacy_runtime.py` to consume prebuilt runtime sources for supervisor stream/preview so source orchestration no longer assembles memory-aware state inline.
-- [completed 2026-03-29] Extended `scripts/runtime_contract_audit.py` and unit coverage to guard the `legacy_runtime -> runtime_sources` adapter boundary and block direct `memory_integration` drift back into the shim.
-- [completed 2026-03-29] Added `agent/travel_agent/runtime_event_emitters.py` so normalized `stage / reasoning / chunk / tool_* / done` payload assembly is emitted through one dedicated contract-first layer instead of living inline inside `legacy_runtime.py`.
-- [completed 2026-03-29] Refactored `legacy_runtime._stream_graph_source()` to delegate event assembly to `LegacySupervisorEventEmitter`, keeping the shim focused on source orchestration and persistence handoff.
-- [completed 2026-03-29] Extended `runtime_contract_audit` and runtime seam unit tests to guard the `legacy_runtime -> runtime_event_emitters` boundary and block event-contract drift back into the shim.
-
-### Phase C: Ops Artifact Contracts
-
-- [completed 2026-03-28] Add typed runtime doctor outputs.
-- [completed 2026-03-28] Add typed support-bundle/report payloads.
-- [completed 2026-03-29] Reuse the same report contracts in release evidence.
-
-Progress update:
-- [completed 2026-03-29] Extended `scripts/runtime_ops_contracts.py` with typed release-manifest and release-harness-scorecard contracts, plus richer support-bundle release-evidence metadata derived from those contracts.
-- [completed 2026-03-29] Refactored `scripts/export_release_manifest.py` and `scripts/release_harness_scorecard.py` to emit release evidence through the shared typed ops-contract layer instead of building loose dict payloads inline.
-- [completed 2026-03-29] Refactored `scripts/export_support_bundle.py` to load typed release manifest and release scorecard evidence, surface git/status metadata in the support-bundle manifest, and include the release scorecard artifact in exported bundles.
-- [completed 2026-03-29] Added and refreshed unit coverage for `runtime_ops_contracts`, release manifest export, release harness scorecard export, and support bundle export so release evidence stays aligned with the shared contract layer.
-
-### Phase D: Delivery Bundle Closure
-
-- [completed 2026-03-29] Package delivery bundle contracts.
-- [completed 2026-03-29] Add replay + snapshot coverage for persisted share/delivery routes.
-- [completed 2026-03-29] Keep frontend delivery UI consuming bundle contracts only.
-
-Progress update:
-- [completed 2026-03-29] Added a shared frontend `ArtifactDeliveryBundle` contract so `artifact + execution receipt + htmlContent + share` metadata travel together through share-link creation instead of being rebuilt from loose top-level fields.
-- [completed 2026-03-29] Refactored `useTravelPlanToolkitActions.ts`, `share.py`, `share_service.py`, and share schemas/types so persisted share links now round-trip `delivery_bundle` alongside compatibility `title / content / html_content`.
-- [completed 2026-03-29] Refactored `useChatSessionHydration.ts` to prefer persisted delivery bundles during share replay and restore artifact/execution-receipt diagnostics back into shared assistant messages for artifact-first UI recovery.
-- [completed 2026-03-29] Extended backend share-route tests plus frontend replay/snapshot coverage so delivery bundle persistence, hydration, and HTML snapshots stay locked to one contract surface.
-
-## 5. Exit Criteria
-
-This roadmap is complete when:
-
-- `AgentRuntime` only depends on explicit runtime contracts and the bridge seam.
-- Runtime source replacement no longer relies on ad-hoc kwargs expansion or direct graph imports outside the seam.
-- Runtime doctor, support bundle, release evidence, and delivery bundle all have stable typed contracts or snapshots.
-- `runtime_contract_audit` remains green in local and CI checks, alongside existing docstring, complexity, governance, skills-market, and release gates.
-
-## 6. Current First Priorities
-
-1. [completed 2026-03-28] Add the runtime contract audit gate.
-2. [completed 2026-03-28] Contractize runtime doctor and support bundle outputs.
-3. [completed 2026-03-29] Move memory-aware runtime source assembly into dedicated runtime-source adapters and guard the boundary with audit coverage.
-4. [completed 2026-03-29] Move normalized legacy runtime event assembly into dedicated contract-first emitters and guard the boundary with audit coverage.
-5. [completed 2026-03-29] Reuse typed runtime/ops report contracts in release evidence instead of rebuilding ad-hoc payloads.
-6. [completed 2026-03-29] Package `artifact + execution receipt + HTML content + share metadata` as one delivery bundle descriptor.
-7. Extend infra checks with runtime-source specific governance gates.
+- 如果你现在在维护运行时主链，请优先看 [system-architecture.md](system-architecture.md)、[infrastructure-foundations.md](infrastructure-foundations.md)、[data-storage.md](data-storage.md)。
+- 如果你只是想知道“这份历史稿最后沉淀了什么”，看完上面的两节就够了。
+- 下面不再追加新的执行清单；后续运行时治理以当前 reference / architecture 文档为准。

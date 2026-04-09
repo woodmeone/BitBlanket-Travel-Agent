@@ -1,4 +1,4 @@
-"""Unit tests for runtime source adapters used by the legacy supervisor seam."""
+"""Unit tests for runtime source adapters used by the supervisor execution seam."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ from agent.travel_agent.contracts import (
     SupervisorRuntimeContext,
 )
 from agent.travel_agent.runtime_sources import (
-    LegacyGraphSourceAdapter,
-    LegacyPlanPreviewSourceAdapter,
+    GraphRuntimeSource,
+    PlanPreviewSource,
     build_memory_graph_source,
     build_memory_plan_preview_source,
     build_supervisor_plan_preview_source,
@@ -20,7 +20,7 @@ from agent.travel_agent.runtime_sources import (
 
 
 def test_build_memory_graph_source_prepares_state_and_graph(monkeypatch):
-    """Memory graph source should own state preparation instead of legacy_runtime."""
+    """Memory graph source should own state preparation instead of runtime_flow."""
 
     observed: dict[str, object] = {}
     memory_manager = SimpleNamespace(name="memory")
@@ -69,7 +69,7 @@ def test_build_memory_graph_source_prepares_state_and_graph(monkeypatch):
         manager_defaults={"max_history": 10, "summary_threshold": 15},
     )
 
-    assert isinstance(source, LegacyGraphSourceAdapter)
+    assert isinstance(source, GraphRuntimeSource)
     assert source.agent is agent
     assert source.memory_manager is memory_manager
     assert source.initial_state["run_id"] == "run-1"
@@ -79,7 +79,7 @@ def test_build_memory_graph_source_prepares_state_and_graph(monkeypatch):
 
 
 def test_build_memory_plan_preview_source_prepares_nodes_and_state(monkeypatch):
-    """Plan preview adapter should build preview state outside the legacy shim."""
+    """Plan preview adapter should build preview state outside the runtime flow."""
 
     observed: dict[str, object] = {}
     memory_manager = SimpleNamespace(name="memory")
@@ -118,7 +118,7 @@ def test_build_memory_plan_preview_source_prepares_nodes_and_state(monkeypatch):
         routing_llm=SimpleNamespace(name="router"),
     )
 
-    assert isinstance(source, LegacyPlanPreviewSourceAdapter)
+    assert isinstance(source, PlanPreviewSource)
     assert source.nodes is nodes
     assert source.memory_manager is memory_manager
     assert observed["initial_state_args"]["chat_mode"] == "react"

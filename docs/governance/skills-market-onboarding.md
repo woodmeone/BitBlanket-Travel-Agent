@@ -17,7 +17,7 @@
 新 skill 合入前，至少要补齐下面四件套：
 
 1. `schema`
-   - 在 [agent/travel_agent/contracts/skills.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/contracts/skills.py) 对应的 `SkillContract` 中补齐：
+   - 在 [agent/travel_agent/contracts/skills.py](../../agent/travel_agent/contracts/skills.py) 对应的 `SkillContract` 中补齐：
      - `name`
      - `allowed_subagents`
      - `input_contract.required_context`
@@ -30,11 +30,11 @@
      - `market_metadata.test_fixture`
      - `selection_policy.priority / intent_signals / preferred_context / notes`
 2. `tests`
-   - 至少补一条 registry 级单测，落在 [tests/test_skill_registry_unit.py](/D:/moyuan/moyuan-travel-agent/tests/test_skill_registry_unit.py)
+   - 至少补一条 registry 级单测，落在 [tests/test_skill_registry_unit.py](../../tests/test_skill_registry_unit.py)
    - 如果 skill 会影响 subagent 路由、selection policy、artifact patch 或 diagnostics，再补对应 runtime / stream 测试
 3. `docs`
-   - 更新 [docs/reference/skills-market-catalog.md](/D:/moyuan/moyuan-travel-agent/docs/reference/skills-market-catalog.md)
-   - 如果会改变架构边界，再同步 [docs/architecture/agent-subagent-skills-architecture-roadmap.md](/D:/moyuan/moyuan-travel-agent/docs/architecture/agent-subagent-skills-architecture-roadmap.md)
+   - 更新 [docs/reference/skills-market-catalog.md](../reference/skills-market-catalog.md)
+   - 如果会改变架构边界，再同步 [docs/architecture/agent-subagent-skills-architecture-roadmap.md](../architecture/agent-subagent-skills-architecture-roadmap.md)
 4. `eval`
    - 在 `market_metadata.eval_fixture` 里挂上至少一个可追溯的验证入口
    - 默认优先复用 registry / runtime 单测；高风险 skill 再追加 benchmark 或 golden eval
@@ -46,9 +46,9 @@
 
 ## 推荐接入步骤
 
-1. 在 [agent/travel_agent/skills/registry.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/skills/registry.py) 注册新 skill，并补齐元数据。
+1. 在 [agent/travel_agent/skills/registry.py](../../agent/travel_agent/skills/registry.py) 注册新 skill，并补齐元数据。
 2. 如果需要新增 tool provider、改 selection policy，或更换 evidence/fallback 逻辑，先补对应 contract，再改 subagent 消费方。
-3. 把 skill 写入 [docs/reference/skills-market-catalog.md](/D:/moyuan/moyuan-travel-agent/docs/reference/skills-market-catalog.md)，说明 owner、输入输出、证据要求和失败回退。
+3. 把 skill 写入 [docs/reference/skills-market-catalog.md](../reference/skills-market-catalog.md)，说明 owner、输入输出、证据要求和失败回退。
 4. 运行最小回归：
    - `uv run --offline --with pytest --with pytest-asyncio python -m pytest tests/test_skill_registry_unit.py -q`
    - `uv run --offline --with pytest --with pytest-asyncio python -m pytest tests/test_agent_subagent_phase2_unit.py -q`
@@ -69,6 +69,6 @@
 
 当前默认 catalog 已经把研究、规划、预算相关 skill 收口成显式 schema，见：
 
-- [agent/travel_agent/skills/registry.py](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/skills/registry.py)
-- [docs/reference/skills-market-catalog.md](/D:/moyuan/moyuan-travel-agent/docs/reference/skills-market-catalog.md)
-- [tests/test_skill_registry_unit.py](/D:/moyuan/moyuan-travel-agent/tests/test_skill_registry_unit.py)
+- [agent/travel_agent/skills/registry.py](../../agent/travel_agent/skills/registry.py)
+- [docs/reference/skills-market-catalog.md](../reference/skills-market-catalog.md)
+- [tests/test_skill_registry_unit.py](../../tests/test_skill_registry_unit.py)

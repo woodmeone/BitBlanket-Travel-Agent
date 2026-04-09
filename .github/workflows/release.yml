@@ -3,11 +3,10 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      publish_latest:
-        description: "Also publish latest tags"
-        required: false
-        default: false
-        type: boolean
+      release_tag:
+        description: "Release tag to publish, for example v3.3.0 or 2026.04.04-rc1"
+        required: true
+        type: string
   push:
     tags:
       - "v*"
@@ -22,8 +21,6 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      WORKFLOW_PUBLISH_LATEST: ${{ github.event.inputs.publish_latest || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,23 +37,19 @@ jobs:
           set -euo pipefail
           short_sha="${GITHUB_SHA::7}"
           created_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-          release_tag="sha-${short_sha}"
-          publish_latest="false"
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             release_tag="${GITHUB_REF_NAME}"
-            publish_latest="true"
+          else
+            release_tag="${{ github.event.inputs.release_tag || '' }}"
           fi
-          if [[ "${WORKFLOW_PUBLISH_LATEST}" == "true" ]]; then
-            publish_latest="true"
+          if [[ -z "${release_tag}" ]]; then
+            echo "release_tag is required for manual releases." >&2
+            exit 1
           fi
           backend_image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/moyuan-travel-agent-backend"
           frontend_image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/moyuan-travel-agent-frontend"
           backend_tags="${backend_image}:${release_tag},${backend_image}:sha-${short_sha}"
           frontend_tags="${frontend_image}:${release_tag},${frontend_image}:sha-${short_sha}"
-          if [[ "${publish_latest}" == "true" ]]; then
-            backend_tags="${backend_tags},${backend_image}:latest"
-            frontend_tags="${frontend_tags},${frontend_image}:latest"
-          fi
           {
             echo "created_at=${created_at}"
             echo "release_tag=${release_tag}"
@@ -64,14 +57,14 @@ jobs:
             echo "frontend_image=${frontend_image}"
             echo "backend_tags=${backend_tags}"
             echo "frontend_tags=${frontend_tags}"
-            echo "publish_latest=${publish_latest}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Export release manifest
         run: |
-          python scripts/export_release_manifest.py \
+          python scripts/dev.py release-manifest \
             --git-sha "${{ github.sha }}" \
             --git-ref "${{ github.ref_name }}" \
+            --release-tag "${{ steps.release_meta.outputs.release_tag }}" \
             --owner "${{ github.repository_owner }}"
 
       - name: Upload release manifest
@@ -94,7 +87,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.backend
+          file: deploy/docker/backend.Dockerfile
           push: true
           tags: ${{ steps.release_meta.outputs.backend_tags }}
           build-args: |
@@ -104,8 +97,8 @@ jobs:
       - name: Build and push frontend image
         uses: docker/build-push-action@v6
         with:
-          context: ./frontend
-          file: frontend/Dockerfile
+          context: .
+          file: deploy/docker/frontend.Dockerfile
           push: true
           tags: ${{ steps.release_meta.outputs.frontend_tags }}
           build-args: |
@@ -139,5 +132,4 @@ jobs:
             echo "- Backend image: \`${{ steps.release_meta.outputs.backend_tags }}\`"
             echo "- Frontend image: \`${{ steps.release_meta.outputs.frontend_tags }}\`"
             echo "- Release manifest: \`artifacts/release/release-manifest.json\`"
-            echo "- Publish latest: \`${{ steps.release_meta.outputs.publish_latest }}\`"
           } >> "$GITHUB_STEP_SUMMARY"

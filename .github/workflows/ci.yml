@@ -23,85 +23,35 @@ jobs:
 
       - name: Prepare runtime config for CI
         run: |
-          cp config/llm_config.yaml.example config/llm_config.yaml
-          cp config/server_config.yaml.example config/server_config.yaml
+          cp backend/config/llm_config.yaml.example backend/config/llm_config.yaml
+          cp backend/config/server_config.yaml.example backend/config/server_config.yaml
 
       - name: Run backend unit tests
-        run: pytest tests -m "unit and not local and not external_api" -q
+        run: python scripts/dev.py backend-test --pytest-slice unit
 
       - name: Run backend local smoke tests
-        run: pytest tests -m "local and not external_api" -q
+        run: python scripts/dev.py backend-test --pytest-slice local
 
       - name: Run docstring audit
-        run: python scripts/docstring_audit.py --strict
+        run: python scripts/dev.py docstring
 
       - name: Run complexity budget gate
-        run: python scripts/complexity_budget.py --strict
+        run: python scripts/dev.py complexity
 
       - name: Run decision record audit
-        run: python scripts/decision_record_audit.py --strict
+        run: python scripts/dev.py decision-records
 
       - name: Run skills market audit
-        run: python scripts/skills_market_audit.py --strict
+        run: python scripts/dev.py skills-market
 
       - name: Run runtime contract audit
-        run: python scripts/runtime_contract_audit.py --strict
+        run: python scripts/dev.py runtime-contracts
 
       - name: Run Ruff static checks
-        run: |
-          ruff check --config ruff.toml \
-            scripts/dev.py \
-            scripts/bootstrap.py \
-            scripts/export_openapi_snapshot.py \
-            scripts/export_runtime_doctor_snapshot.py \
-            scripts/export_release_manifest.py \
-            scripts/release_harness_scorecard.py \
-            scripts/runtime_contract_audit.py \
-            scripts/runtime_ops_contracts.py \
-            scripts/skills_market_audit.py \
-            scripts/export_support_bundle.py \
-            scripts/export_sse_contract_snapshot.py \
-            scripts/runtime_backup.py \
-            scripts/runtime_data_utils.py \
-            scripts/runtime_doctor.py \
-            scripts/runtime_prune.py \
-            scripts/runtime_restore.py \
-            web/moyuan_web/app_meta.py \
-            web/moyuan_web/main.py \
-            web/moyuan_web/middleware/__init__.py \
-            web/moyuan_web/observability.py \
-            web/moyuan_web/routes/chat.py \
-            web/moyuan_web/routes/health.py \
-            web/moyuan_web/services/share_service.py \
-            web/moyuan_web/startup_checks.py
+        run: python scripts/dev.py ruff
 
       - name: Run mypy static checks
-        run: |
-          mypy --config-file mypy.ini \
-            scripts/dev.py \
-            scripts/bootstrap.py \
-            scripts/export_openapi_snapshot.py \
-            scripts/export_runtime_doctor_snapshot.py \
-            scripts/export_release_manifest.py \
-            scripts/release_harness_scorecard.py \
-            scripts/runtime_contract_audit.py \
-            scripts/runtime_ops_contracts.py \
-            scripts/skills_market_audit.py \
-            scripts/export_support_bundle.py \
-            scripts/export_sse_contract_snapshot.py \
-            scripts/runtime_backup.py \
-            scripts/runtime_data_utils.py \
-            scripts/runtime_doctor.py \
-            scripts/runtime_prune.py \
-            scripts/runtime_restore.py \
-            web/moyuan_web/app_meta.py \
-            web/moyuan_web/main.py \
-            web/moyuan_web/middleware/__init__.py \
-            web/moyuan_web/observability.py \
-            web/moyuan_web/routes/chat.py \
-            web/moyuan_web/routes/health.py \
-            web/moyuan_web/services/share_service.py \
-            web/moyuan_web/startup_checks.py
+        run: python scripts/dev.py mypy
 
       - name: Run pip-audit
         env:
@@ -117,53 +67,35 @@ jobs:
           docker run --rm \
             -v "$PWD:/repo" \
             zricethezav/gitleaks:v8.24.2 \
-            dir /repo --config /repo/.gitleaks.toml --no-banner --redact \
+            dir /repo --config /repo/deploy/security/gitleaks.toml --no-banner --redact \
             --report-format json --report-path /repo/artifacts/ci/gitleaks-report.json
 
-      - name: Export OpenAPI snapshot
-        run: python scripts/export_openapi_snapshot.py
+      - name: Export contract snapshots
+        run: python scripts/dev.py snapshots
 
       - name: Verify OpenAPI snapshot is up to date
         run: git diff --exit-code -- docs/reference/openapi.snapshot.json
 
-      - name: Export SSE contract snapshot
-        run: python scripts/export_sse_contract_snapshot.py
-
       - name: Verify SSE contract snapshot is up to date
         run: git diff --exit-code -- docs/reference/sse-contract.snapshot.json
-
-      - name: Export runtime doctor snapshot
-        run: python scripts/export_runtime_doctor_snapshot.py
 
       - name: Verify runtime doctor snapshot is up to date
         run: git diff --exit-code -- docs/reference/runtime-doctor.snapshot.json
 
       - name: Run benchmark report
-        run: python scripts/agent_benchmark.py --output-dir docs/benchmarks
+        run: python scripts/dev.py benchmark-report
 
       - name: Run golden report
-        run: python scripts/agent_golden_eval.py --dataset tests/golden/agent_react_golden.json --report docs/benchmarks/agent_golden_eval_latest.json --min-pass-rate 0.0
+        run: python scripts/dev.py golden-report
 
       - name: Run release harness scorecard
-        run: python scripts/release_harness_scorecard.py --strict
+        run: python scripts/dev.py release-scorecard
 
       - name: Run benchmark trend report
-        run: python scripts/agent_benchmark_trend.py --current docs/benchmarks/agent_benchmark_latest.json --baseline docs/benchmarks/agent_benchmark_baseline.json --output docs/benchmarks/agent_benchmark_trend_latest.md
+        run: python scripts/dev.py benchmark-trend
 
       - name: Run quality gate
-        run: |
-          python scripts/agent_quality_gate.py \
-            --golden-report docs/benchmarks/agent_golden_eval_latest.json \
-            --benchmark-report docs/benchmarks/agent_benchmark_latest.json \
-            --baseline-benchmark-report docs/benchmarks/agent_benchmark_baseline.json \
-            --min-golden-pass-rate 0.96 \
-            --max-golden-hallucination-rate 0.05 \
-            --min-benchmark-success-rate 0.60 \
-            --max-benchmark-hallucination-rate 0.05 \
-            --max-benchmark-fallback-steps-total 5 \
-            --max-success-rate-regression 0.05 \
-            --max-hallucination-rate-regression 0.02 \
-            --max-fallback-steps-regression 2
+        run: python scripts/dev.py quality-gate
 
       - name: Upload backend quality artifacts
         uses: actions/upload-artifact@v4
@@ -186,26 +118,28 @@ jobs:
           {
             echo "## Backend Quality Summary"
             echo ""
-            echo "- Unit tests: \`pytest tests -m \"unit and not local and not external_api\" -q\`"
-            echo "- Local smoke tests: \`pytest tests -m \"local and not external_api\" -q\`"
-            echo "- Docstring audit: \`python scripts/docstring_audit.py --strict\`"
-            echo "- Complexity budget gate: \`python scripts/complexity_budget.py --strict\`"
-            echo "- Decision record audit: \`python scripts/decision_record_audit.py --strict\`"
-            echo "- Skills market audit: \`python scripts/skills_market_audit.py --strict\`"
-            echo "- Runtime contract audit: \`python scripts/runtime_contract_audit.py --strict\`"
-            echo "- Ruff: \`ruff check --config ruff.toml ...\`"
-            echo "- mypy: \`mypy --config-file mypy.ini ...\`"
+            echo "- Unit tests: \`python scripts/dev.py backend-test --pytest-slice unit\`"
+            echo "- Local smoke tests: \`python scripts/dev.py backend-test --pytest-slice local\`"
+            echo "- Docstring audit: \`python scripts/dev.py docstring\`"
+            echo "- Complexity budget gate: \`python scripts/dev.py complexity\`"
+            echo "- Decision record audit: \`python scripts/dev.py decision-records\`"
+            echo "- Skills market audit: \`python scripts/dev.py skills-market\`"
+            echo "- Runtime contract audit: \`python scripts/dev.py runtime-contracts\`"
+            echo "- Ruff: \`python scripts/dev.py ruff\`"
+            echo "- mypy: \`python scripts/dev.py mypy\`"
             echo "- Dependency audit: \`pip-audit -r requirements.txt\`"
-            echo "- Secret scan: \`gitleaks dir /repo --config /repo/.gitleaks.toml\`"
+            echo "- Secret scan: \`gitleaks dir /repo --config /repo/deploy/security/gitleaks.toml\`"
+            echo "- Contract snapshots: \`python scripts/dev.py snapshots\`"
             echo "- OpenAPI snapshot: \`docs/reference/openapi.snapshot.json\`"
             echo "- SSE snapshot: \`docs/reference/sse-contract.snapshot.json\`"
             echo "- Runtime doctor snapshot: \`docs/reference/runtime-doctor.snapshot.json\`"
-            echo "- Support bundle script: \`python scripts/export_support_bundle.py\`"
-            echo "- Benchmark report: \`docs/benchmarks/agent_benchmark_latest.md\`"
-            echo "- Trend report: \`docs/benchmarks/agent_benchmark_trend_latest.md\`"
-            echo "- Golden eval: \`docs/benchmarks/agent_golden_eval_latest.json\`"
+            echo "- Support bundle script: \`python scripts/dev.py support-bundle\`"
+            echo "- Benchmark report: \`python scripts/dev.py benchmark-report\`"
+            echo "- Trend report: \`python scripts/dev.py benchmark-trend\`"
+            echo "- Golden eval: \`python scripts/dev.py golden-report\`"
             echo "- Subagent scorecard: \`docs/benchmarks/agent_subagent_scorecard_latest.md\`"
-            echo "- Release harness scorecard: \`docs/benchmarks/release_harness_scorecard_latest.md\`"
+            echo "- Release harness scorecard: \`python scripts/dev.py release-scorecard\`"
+            echo "- Quality gate: \`python scripts/dev.py quality-gate\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   frontend-test:
@@ -259,7 +193,7 @@ jobs:
 
       - name: Export release manifest
         run: |
-          python scripts/export_release_manifest.py \
+          python scripts/dev.py release-manifest \
             --git-sha "${{ github.sha }}" \
             --git-ref "${{ github.ref_name }}" \
             --owner "${{ github.repository_owner }}"
@@ -267,15 +201,15 @@ jobs:
       - name: Validate default compose config
         run: |
           mkdir -p artifacts/ci
-          docker compose config > artifacts/ci/compose-default.rendered.yaml
+          docker compose --file deploy/compose/compose.yaml config > artifacts/ci/compose-default.rendered.yaml
 
       - name: Validate observability compose config
-        run: docker compose --profile observability config > artifacts/ci/compose-observability.rendered.yaml
+        run: docker compose --file deploy/compose/compose.yaml --profile observability config > artifacts/ci/compose-observability.rendered.yaml
 
       - name: Build backend image smoke
         run: |
           docker build \
-            --file Dockerfile.backend \
+            --file deploy/docker/backend.Dockerfile \
             --build-arg APP_BUILD_SHA="${{ github.sha }}" \
             --build-arg APP_BUILD_CREATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
             --tag moyuan-backend:ci .
@@ -283,12 +217,12 @@ jobs:
       - name: Build frontend image smoke
         run: |
           docker build \
-            --file frontend/Dockerfile \
+            --file deploy/docker/frontend.Dockerfile \
             --build-arg NEXT_PUBLIC_API_BASE=http://localhost:38000 \
             --build-arg INTERNAL_API_BASE=http://backend:38000 \
             --build-arg APP_BUILD_SHA="${{ github.sha }}" \
             --build-arg APP_BUILD_CREATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-            --tag moyuan-frontend:ci ./frontend
+            --tag moyuan-frontend:ci .
 
       - name: Upload deployment validation artifacts
         uses: actions/upload-artifact@v4
@@ -307,6 +241,6 @@ jobs:
             echo "- Release manifest: \`artifacts/release/release-manifest.json\`"
             echo "- Default compose render: \`artifacts/ci/compose-default.rendered.yaml\`"
             echo "- Observability compose render: \`artifacts/ci/compose-observability.rendered.yaml\`"
-            echo "- Backend image smoke: \`docker build -f Dockerfile.backend .\`"
-            echo "- Frontend image smoke: \`docker build -f frontend/Dockerfile ./frontend\`"
+            echo "- Backend image smoke: \`docker build -f deploy/docker/backend.Dockerfile .\`"
+            echo "- Frontend image smoke: \`docker build -f deploy/docker/frontend.Dockerfile .\`"
           } >> "$GITHUB_STEP_SUMMARY"

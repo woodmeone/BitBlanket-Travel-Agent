@@ -65,7 +65,7 @@ CHANGELOG.md
 .env
 .env.local
 .env.*.local
-config/llm_config.yaml
+backend/config/llm_config.yaml
 
 # =============================================================================
 # Node.js (前端)

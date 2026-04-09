@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,7 +30,6 @@ RUNTIME_FILE_SPECS: tuple[RuntimeFileSpec, ...] = (
     RuntimeFileSpec("sessions_backup", "data/sessions/sessions.json.bak"),
     RuntimeFileSpec("agent_memory", "data/agent_memory.json"),
     RuntimeFileSpec("agent_memory_backup", "data/agent_memory.json.bak"),
-    RuntimeFileSpec("checkpoints", "data/langgraph_checkpoints.sqlite3"),
     RuntimeFileSpec("share_links", "data/share_links.json"),
     RuntimeFileSpec("share_links_backup", "data/share_links.json.bak"),
     RuntimeFileSpec("runtime_failures", "data/runtime_failure_clusters.jsonl"),
@@ -54,6 +55,105 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _safe_relative_to_project(path: Path, project_root: Path) -> str | None:
+    try:
+        return str(path.resolve().relative_to(project_root.resolve())).replace("\\", "/")
+    except Exception:
+        return None
+
+
+def _redact_checkpoint_target(target: str) -> str:
+    parts = urlsplit(str(target))
+    if not parts.scheme:
+        return str(target)
+    netloc = parts.netloc
+    if "@" in netloc:
+        credentials, host = netloc.rsplit("@", 1)
+        if ":" in credentials:
+            username, _password = credentials.split(":", 1)
+            netloc = f"{username}:***@{host}"
+        else:
+            netloc = f"{credentials}@{host}"
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+
+
+def resolve_checkpoint_runtime(project_root: Path) -> dict[str, Any]:
+    """Resolve current checkpoint backend metadata used by backup/restore manifests."""
+
+    from agent.travel_agent.runtime_sources import resolve_checkpointer_config
+
+    backend_override = os.getenv("AGENT_CHECKPOINT_BACKEND") or None
+    dsn_override = os.getenv("AGENT_CHECKPOINT_DSN") or None
+    target_override = None
+    if backend_override != "postgres" and not dsn_override:
+        target_override = os.getenv("AGENT_CHECKPOINT_DB") or str(project_root / "data" / "langgraph_checkpoints.sqlite3")
+
+    config = resolve_checkpointer_config(
+        backend_override=backend_override,
+        target_override=target_override,
+        dsn_override=dsn_override,
+    )
+    target = str(config.target)
+    archived_files: list[str] = []
+    archive_contains_checkpoint_data = False
+    restore_strategy = "metadata_only"
+
+    if config.backend == "postgres":
+        return {
+            "backend": "postgres",
+            "target": _redact_checkpoint_target(target),
+            "archive_contains_checkpoint_data": False,
+            "archived_files": archived_files,
+            "restore_strategy": "external_snapshot",
+        }
+
+    target_path = Path(target)
+    relative_target = _safe_relative_to_project(target_path, project_root)
+    if relative_target is not None and target_path.exists():
+        archived_files = [relative_target]
+        archive_contains_checkpoint_data = True
+        restore_strategy = "archive_file"
+    elif target_path.exists():
+        restore_strategy = "external_file"
+
+    return {
+        "backend": "sqlite",
+        "target": relative_target or str(target_path),
+        "archive_contains_checkpoint_data": archive_contains_checkpoint_data,
+        "archived_files": archived_files,
+        "restore_strategy": restore_strategy,
+    }
+
+
+def build_restore_instructions(checkpoint_runtime: dict[str, Any]) -> list[str]:
+    """Build user-facing restore instructions derived from checkpoint runtime metadata."""
+
+    backend = str(checkpoint_runtime.get("backend") or "sqlite")
+    target = str(checkpoint_runtime.get("target") or "")
+    archive_contains = bool(checkpoint_runtime.get("archive_contains_checkpoint_data"))
+    strategy = str(checkpoint_runtime.get("restore_strategy") or "metadata_only")
+    if backend == "postgres":
+        return [
+            "Checkpoint backend is postgres; restore checkpoint tables from an external database snapshot before switching runtime back to postgres.",
+            f"Recorded checkpoint target: {target}",
+            "This runtime backup archive stores checkpoint backend metadata only and does not export PostgreSQL checkpoint rows.",
+        ]
+    if archive_contains:
+        return [
+            "Checkpoint backend is sqlite; the archive contains the checkpoint database file and restore will place it back into the recorded runtime path.",
+            f"Recorded checkpoint target: {target}",
+        ]
+    if strategy == "external_file":
+        return [
+            "Checkpoint backend is sqlite but the checkpoint file lives outside the project root, so this archive only records metadata.",
+            f"Back up and restore the external checkpoint file separately: {target}",
+        ]
+    return [
+        "No checkpoint database file was present at backup time; restore will only recover file-based runtime state included in the archive.",
+        f"Recorded checkpoint target: {target}",
+    ]
+
+
 def discover_runtime_files(project_root: Path) -> list[dict[str, Any]]:
     """Return metadata for runtime files that currently exist under the project root."""
     results: list[dict[str, Any]] = []
@@ -72,15 +172,40 @@ def discover_runtime_files(project_root: Path) -> list[dict[str, Any]]:
                 "sha256": sha256_file(path),
             }
         )
+
+    checkpoint_runtime = resolve_checkpoint_runtime(project_root)
+    for relative_path in checkpoint_runtime.get("archived_files", []):
+        path = project_root / Path(relative_path)
+        if not path.exists():
+            continue
+        results.append(
+            {
+                "key": "checkpoints",
+                "relative_path": relative_path,
+                "absolute_path": path,
+                "size_bytes": path.stat().st_size,
+                "sha256": sha256_file(path),
+            }
+        )
     return results
 
 
 def build_manifest(project_root: Path, files: list[dict[str, Any]]) -> dict[str, Any]:
     """Build structured manifest stored next to runtime backup contents."""
+    checkpoint_runtime = resolve_checkpoint_runtime(project_root)
+    archived_paths = {str(item["relative_path"]) for item in files}
+    checkpoint_runtime["archived_files"] = [
+        str(relative_path)
+        for relative_path in checkpoint_runtime.get("archived_files", [])
+        if str(relative_path) in archived_paths
+    ]
+    checkpoint_runtime["archive_contains_checkpoint_data"] = bool(checkpoint_runtime["archived_files"])
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "created_at": utc_now_iso(),
         "project_root": str(project_root),
+        "checkpoint_runtime": checkpoint_runtime,
+        "restore_instructions": build_restore_instructions(checkpoint_runtime),
         "files": [
             {
                 "key": item["key"],

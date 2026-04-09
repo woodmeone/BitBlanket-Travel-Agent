@@ -114,6 +114,37 @@ Prometheus 指标出口。
 - `build.sha`
 - `build.created_at`
 
+## Error Contract
+
+当前 API 已统一错误响应格式：
+
+```json
+{
+  "detail": {
+    "success": false,
+    "error": "Request validation failed.",
+    "code": "REQUEST_VALIDATION_FAILED",
+    "details": [
+      {
+        "field": "body.mode",
+        "message": "Input should be 'direct', 'react' or 'plan'",
+        "issueType": "literal_error"
+      }
+    ]
+  }
+}
+```
+
+规则：
+
+- 请求体、Query、Path 校验失败统一返回 `422 + REQUEST_VALIDATION_FAILED`
+- 业务语义错误返回稳定业务码，例如 `SESSION_NOT_FOUND`、`MODEL_NOT_FOUND`
+- 现在 request model 默认会做 `strip whitespace + forbid extra fields`
+
+当前错误码总表见：
+
+- [error-code-reference.md](error-code-reference.md)
+
 ## 2. Chat
 
 ### `POST /api/chat/stream`
@@ -135,6 +166,7 @@ Prometheus 指标出口。
 - `message`: 用户输入
 - `session_id`: 可选；为空时后端可创建新会话
 - `mode`: `direct | react | plan`
+- 额外未声明字段会触发 `REQUEST_VALIDATION_FAILED`
 
 ### 推荐请求头
 
@@ -176,7 +208,7 @@ Prometheus 指标出口。
 
 当前仓库会额外维护一份稳定的 SSE 契约快照，便于评审字段和顺序变更：
 
-- [sse-contract.snapshot.json](/D:/moyuan/moyuan-travel-agent/docs/reference/sse-contract.snapshot.json)
+- [sse-contract.snapshot.json](sse-contract.snapshot.json)
 
 导出命令：
 
@@ -331,7 +363,12 @@ python scripts/export_sse_contract_snapshot.py
 - `PUT /api/session/{session_id}/model`
 - `GET /api/session/{session_id}/model`
 - `POST /api/clear/{session_id}`
-- `POST /api/clear?session_id=...`
+
+说明：
+
+- `name` 当前会做非空和长度校验
+- `model_id` 当前会做格式校验
+- `PUT /api/session/{session_id}/model` 现在会显式校验模型是否存在，不再接受任意字符串
 
 ## 4. Model
 
@@ -437,8 +474,8 @@ python scripts/export_sse_contract_snapshot.py
 
 当前仓库还会维护一份 OpenAPI 快照文件：
 
-- [`openapi.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/openapi.snapshot.json)
-- [`sse-contract.snapshot.json`](/D:/moyuan/moyuan-travel-agent/docs/reference/sse-contract.snapshot.json)
+- [`openapi.snapshot.json`](openapi.snapshot.json)
+- [`sse-contract.snapshot.json`](sse-contract.snapshot.json)
 
 ## 9. 调试建议
 
@@ -471,10 +508,11 @@ The current frontend streaming consumer now treats these SSE fields as first-cla
 
 Primary frontend landing points:
 
-- [`frontend/src/services/api.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api.ts)
-- [`frontend/src/components/ChatArea.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)
-- [`frontend/src/components/MessageList.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)
-- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
+- [`frontend/src/services/api/chatClient.ts`](../../frontend/src/services/api/chatClient.ts)
+- [`frontend/src/services/api/chatStreamParser.ts`](../../frontend/src/services/api/chatStreamParser.ts)
+- [`frontend/src/components/ChatArea.tsx`](../../frontend/src/components/ChatArea.tsx)
+- [`frontend/src/components/MessageList.tsx`](../../frontend/src/components/MessageList.tsx)
+- [`frontend/src/components/TravelPlanToolkit.tsx`](../../frontend/src/components/TravelPlanToolkit.tsx)
 
 Compatibility rule:
 

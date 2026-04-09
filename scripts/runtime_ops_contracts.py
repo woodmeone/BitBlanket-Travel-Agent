@@ -100,6 +100,47 @@ class RuntimeDoctorSummary:
 
 
 @dataclass(slots=True)
+class CheckpointRuntimeView:
+    """Describe one normalized checkpoint-runtime view."""
+
+    backend: str = ""
+    target: str = ""
+    restore_strategy: str = ""
+    archive_contains_checkpoint_data: bool = False
+    archived_files: list[str] = field(default_factory=list)
+    requires_external_snapshot: bool = False
+    restore_instructions: list[str] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "CheckpointRuntimeView":
+        """Build one checkpoint-runtime view from a loose dictionary payload."""
+
+        item = dict(payload) if isinstance(payload, dict) else {}
+        return cls(
+            backend=_coerce_text(item.get("backend")),
+            target=_coerce_text(item.get("target")),
+            restore_strategy=_coerce_text(item.get("restore_strategy")),
+            archive_contains_checkpoint_data=bool(item.get("archive_contains_checkpoint_data")),
+            archived_files=_copy_str_list(item.get("archived_files")),
+            requires_external_snapshot=bool(item.get("requires_external_snapshot")),
+            restore_instructions=_copy_str_list(item.get("restore_instructions")),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return one JSON-serializable checkpoint-runtime payload."""
+
+        return {
+            "backend": self.backend,
+            "target": self.target,
+            "restore_strategy": self.restore_strategy,
+            "archive_contains_checkpoint_data": self.archive_contains_checkpoint_data,
+            "archived_files": list(self.archived_files),
+            "requires_external_snapshot": self.requires_external_snapshot,
+            "restore_instructions": list(self.restore_instructions),
+        }
+
+
+@dataclass(slots=True)
 class RuntimeDoctorReport:
     """Describe the full runtime-doctor report contract."""
 
@@ -178,6 +219,8 @@ class ReleaseApplicationEntry:
     name: str
     version: str
     image: str
+    image_tag: str = ""
+    image_ref: str = ""
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "ReleaseApplicationEntry":
@@ -188,16 +231,23 @@ class ReleaseApplicationEntry:
             name=_coerce_text(item.get("name")),
             version=_coerce_text(item.get("version")),
             image=_coerce_text(item.get("image")),
+            image_tag=_coerce_text(item.get("image_tag")),
+            image_ref=_coerce_text(item.get("image_ref")),
         )
 
     def to_dict(self) -> dict[str, str]:
         """Return one JSON-serializable application manifest entry."""
 
-        return {
+        payload = {
             "name": self.name,
             "version": self.version,
             "image": self.image,
         }
+        if self.image_tag:
+            payload["image_tag"] = self.image_tag
+        if self.image_ref:
+            payload["image_ref"] = self.image_ref
+        return payload
 
 
 @dataclass(slots=True)
@@ -586,6 +636,9 @@ class SupportBundleRuntimeHealthSection:
     checks_total: int
     checks_degraded: int
     checks_not_ready: int
+    checkpoint_backend: str = ""
+    checkpoint_restore_strategy: str = ""
+    checkpoint_requires_external_snapshot: bool = False
 
     @classmethod
     def from_doctor_report(cls, report: RuntimeDoctorReport) -> "SupportBundleRuntimeHealthSection":
@@ -595,24 +648,37 @@ class SupportBundleRuntimeHealthSection:
         details = runtime_files.details if runtime_files else {}
         files = details.get("files")
         runtime_files_count = len(files) if isinstance(files, list) else 0
+        checkpoint_view = CheckpointRuntimeView.from_dict(
+            report.checks.get("checkpoint_runtime").details
+            if report.checks.get("checkpoint_runtime") is not None
+            else {}
+        )
         return cls(
             doctor_status=report.status,
             runtime_files_count=runtime_files_count,
             checks_total=report.summary.checks_total,
             checks_degraded=report.summary.checks_degraded,
             checks_not_ready=report.summary.checks_not_ready,
+            checkpoint_backend=checkpoint_view.backend,
+            checkpoint_restore_strategy=checkpoint_view.restore_strategy,
+            checkpoint_requires_external_snapshot=checkpoint_view.requires_external_snapshot,
         )
 
     def to_dict(self) -> dict[str, Any]:
         """Return one JSON-serializable runtime-health manifest section."""
 
-        return {
+        payload = {
             "doctor_status": self.doctor_status,
             "runtime_files_count": self.runtime_files_count,
             "checks_total": self.checks_total,
             "checks_degraded": self.checks_degraded,
             "checks_not_ready": self.checks_not_ready,
         }
+        if self.checkpoint_backend:
+            payload["checkpoint_backend"] = self.checkpoint_backend
+            payload["checkpoint_restore_strategy"] = self.checkpoint_restore_strategy
+            payload["checkpoint_requires_external_snapshot"] = self.checkpoint_requires_external_snapshot
+        return payload
 
 
 @dataclass(slots=True)
@@ -710,6 +776,9 @@ class SupportBundleManifest:
                 checks_total=int(runtime_health.get("checks_total", 0) or 0),
                 checks_degraded=int(runtime_health.get("checks_degraded", 0) or 0),
                 checks_not_ready=int(runtime_health.get("checks_not_ready", 0) or 0),
+                checkpoint_backend=_coerce_text(runtime_health.get("checkpoint_backend")),
+                checkpoint_restore_strategy=_coerce_text(runtime_health.get("checkpoint_restore_strategy")),
+                checkpoint_requires_external_snapshot=bool(runtime_health.get("checkpoint_requires_external_snapshot")),
             ),
             release_evidence=SupportBundleReleaseEvidenceSection(
                 release_manifest_exists=bool(release_evidence.get("release_manifest_exists")),
@@ -748,8 +817,8 @@ def build_runtime_doctor_contract_snapshot() -> dict[str, Any]:
         checked_at="<iso8601-utc>",
         project_root="<project_root>",
         summary=RuntimeDoctorSummary(
-            checks_total=7,
-            checks_ok=7,
+            checks_total=8,
+            checks_ok=8,
             checks_degraded=0,
             checks_not_ready=0,
         ),
@@ -759,7 +828,7 @@ def build_runtime_doctor_contract_snapshot() -> dict[str, Any]:
                 status="ok",
                 message="Server config parsed successfully.",
                 details={
-                    "path": "<project_root>/config/server_config.yaml",
+                    "path": "<project_root>/backend/config/server_config.yaml",
                     "exists": True,
                     "web_host": "0.0.0.0",
                     "web_port": 38000,
@@ -773,7 +842,7 @@ def build_runtime_doctor_contract_snapshot() -> dict[str, Any]:
                 status="ok",
                 message="LLM config parsed successfully.",
                 details={
-                    "path": "<project_root>/config/llm_config.yaml",
+                    "path": "<project_root>/backend/config/llm_config.yaml",
                     "exists": True,
                     "default_model": "<default_model>",
                     "active_models": ["<default_model>"],
@@ -796,6 +865,23 @@ def build_runtime_doctor_contract_snapshot() -> dict[str, Any]:
                         {"key": "share_links", "relative_path": "data/share_links.json", "size_bytes": 256},
                     ]
                 },
+            ),
+            "checkpoint_runtime": RuntimeDoctorCheck(
+                name="checkpoint_runtime",
+                status="ok",
+                message="Checkpoint runtime is configured for sqlite with archive-file recovery.",
+                details=CheckpointRuntimeView(
+                    backend="sqlite",
+                    target="data/langgraph_checkpoints.sqlite3",
+                    restore_strategy="archive_file",
+                    archive_contains_checkpoint_data=True,
+                    archived_files=["data/langgraph_checkpoints.sqlite3"],
+                    requires_external_snapshot=False,
+                    restore_instructions=[
+                        "Checkpoint backend is sqlite; the archive contains the checkpoint database file and restore will place it back into the recorded runtime path.",
+                        "Recorded checkpoint target: data/langgraph_checkpoints.sqlite3",
+                    ],
+                ).to_dict(),
             ),
             "backups": RuntimeDoctorCheck(
                 name="backups",

@@ -301,7 +301,7 @@ def build_travel_agent(
         routing_llm=routing_llm,
     )
 
-from .legacy_runtime import (  # noqa: E402
+from .runtime_flow import (  # noqa: E402
     _extract_text_from_chunk,
     generate_plan_preview_with_memory,
     get_tool_health_diagnostics,

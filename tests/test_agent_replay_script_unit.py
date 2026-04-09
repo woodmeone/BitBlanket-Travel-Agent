@@ -14,6 +14,7 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
 from agent.travel_agent.graph.builder import build_travel_agent
+from agent.travel_agent.graph.postgres_checkpointer import PersistentPostgresSaver
 from agent.travel_agent.graph.persistent_checkpointer import PersistentSqliteSaver
 from agent.travel_agent.graph.state import TRAVEL_AGENT_SYSTEM_PROMPT, create_initial_state
 
@@ -71,6 +72,24 @@ def _seed_checkpoint(db_path: Path, session_id: str, user_message: str) -> None:
     assert result.get("answer")
 
 
+def _seed_postgres_checkpoint(database_url: str, session_id: str, user_message: str) -> None:
+    saver = PersistentPostgresSaver(database_url)
+    agent = build_travel_agent(
+        llm=FakeLLM(),
+        tools=[],
+        system_prompt=TRAVEL_AGENT_SYSTEM_PROMPT,
+        checkpointer=saver,
+    )
+    result = agent.invoke(
+        create_initial_state(
+            user_message=user_message,
+            session_id=session_id,
+            system_message=TRAVEL_AGENT_SYSTEM_PROMPT,
+        )
+    )
+    assert result.get("answer")
+
+
 def test_extract_latest_user_message_prefers_latest_human_message():
     replay = _load_replay_module()
     messages = [
@@ -110,6 +129,24 @@ def test_generate_replay_report_dry_run_and_write_files(tmp_path: Path):
     assert json_path.exists()
     assert md_path.exists()
     assert "Agent Checkpoint Replay Report" in md_path.read_text(encoding="utf-8")
+
+
+def test_load_checkpoint_source_supports_postgres_backend(tmp_path: Path):
+    replay = _load_replay_module()
+    database_url = f"sqlite+pysqlite:///{tmp_path / 'checkpoint-postgres.db'}"
+    session_id = "replay-postgres-session"
+    _seed_postgres_checkpoint(database_url, session_id, "给我一个预算友好的周末城市建议")
+
+    source = replay.load_checkpoint_source(
+        session_id=session_id,
+        db_path=database_url,
+        checkpoint_ns="",
+        checkpoint_backend="postgres",
+    )
+
+    assert source["session_id"] == session_id
+    assert source["checkpoint_backend"] == "postgres"
+    assert source["user_message"] == "给我一个预算友好的周末城市建议"
 
 
 def test_generate_replay_report_raises_when_no_user_message(monkeypatch):

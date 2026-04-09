@@ -1,5 +1,8 @@
 # Agent P0 Hardening Roadmap
 
+> Status: 历史执行计划。本文保留为早期硬化范围记录，不作为当前实现真相源。
+> 当前维护请优先看 [../README.md](../README.md)、[system-architecture.md](system-architecture.md)、[infrastructure-foundations.md](infrastructure-foundations.md)、[backend-database-devops-maintenance-plan.md](backend-database-devops-maintenance-plan.md)。
+
 本文件定义 Agent 在 P0 阶段（优先级最高）的完善范围、验收标准和交付顺序。
 
 ## Scope

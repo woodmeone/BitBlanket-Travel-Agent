@@ -11,6 +11,25 @@
       "name": "backups",
       "status": "ok"
     },
+    "checkpoint_runtime": {
+      "details": {
+        "archive_contains_checkpoint_data": true,
+        "archived_files": [
+          "data/langgraph_checkpoints.sqlite3"
+        ],
+        "backend": "sqlite",
+        "requires_external_snapshot": false,
+        "restore_instructions": [
+          "Checkpoint backend is sqlite; the archive contains the checkpoint database file and restore will place it back into the recorded runtime path.",
+          "Recorded checkpoint target: data/langgraph_checkpoints.sqlite3"
+        ],
+        "restore_strategy": "archive_file",
+        "target": "data/langgraph_checkpoints.sqlite3"
+      },
+      "message": "Checkpoint runtime is configured for sqlite with archive-file recovery.",
+      "name": "checkpoint_runtime",
+      "status": "ok"
+    },
     "contract_snapshots": {
       "details": {
         "snapshots": {
@@ -109,7 +128,7 @@
         "default_model": "<default_model>",
         "exists": true,
         "models_count": 1,
-        "path": "<project_root>/config/llm_config.yaml"
+        "path": "<project_root>/backend/config/llm_config.yaml"
       },
       "message": "LLM config parsed successfully.",
       "name": "llm_config",
@@ -140,7 +159,7 @@
         "frontend_port": 33001,
         "metrics_enabled": true,
         "metrics_path": "/api/metrics",
-        "path": "<project_root>/config/server_config.yaml",
+        "path": "<project_root>/backend/config/server_config.yaml",
         "web_host": "0.0.0.0",
         "web_port": 38000
       },
@@ -154,7 +173,7 @@
   "summary": {
     "checks_degraded": 0,
     "checks_not_ready": 0,
-    "checks_ok": 7,
-    "checks_total": 7
+    "checks_ok": 8,
+    "checks_total": 8
   }
 }

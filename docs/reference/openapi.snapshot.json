@@ -154,11 +154,13 @@
         "type": "object"
       },
       "ChatRequest": {
+        "additionalProperties": false,
         "description": "Request payload for the streaming chat endpoint.",
         "properties": {
           "display_message": {
             "anyOf": [
               {
+                "maxLength": 5000,
                 "type": "string"
               },
               {
@@ -168,24 +170,27 @@
             "title": "Display Message"
           },
           "message": {
+            "maxLength": 5000,
+            "minLength": 1,
             "title": "Message",
             "type": "string"
           },
           "mode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
             "default": "react",
-            "title": "Mode"
+            "enum": [
+              "direct",
+              "react",
+              "plan"
+            ],
+            "title": "Mode",
+            "type": "string"
           },
           "session_id": {
             "anyOf": [
               {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
                 "type": "string"
               },
               {
@@ -438,6 +443,292 @@
           "data_source"
         ],
         "title": "CitySummary",
+        "type": "object"
+      },
+      "DeliveryBundleDescriptor": {
+        "description": "Structured delivery descriptor shared across frontend replay/export paths.",
+        "properties": {
+          "filenameBase": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Filenamebase",
+            "type": "string"
+          },
+          "htmlDocumentTitle": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Htmldocumenttitle",
+            "type": "string"
+          },
+          "htmlSections": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryBundleSection"
+            },
+            "maxItems": 12,
+            "title": "Htmlsections",
+            "type": "array"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryBundleMetric"
+            },
+            "maxItems": 16,
+            "title": "Metrics",
+            "type": "array"
+          },
+          "shareContent": {
+            "maxLength": 50000,
+            "minLength": 1,
+            "title": "Sharecontent",
+            "type": "string"
+          },
+          "subagentTrail": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Subagenttrail",
+            "type": "array"
+          },
+          "summary": {
+            "default": "",
+            "maxLength": 5000,
+            "title": "Summary",
+            "type": "string"
+          },
+          "summaryLines": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Summarylines",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "title",
+          "filenameBase",
+          "shareContent",
+          "htmlDocumentTitle"
+        ],
+        "title": "DeliveryBundleDescriptor",
+        "type": "object"
+      },
+      "DeliveryBundleMetric": {
+        "description": "One delivery overview metric surfaced to share/export clients.",
+        "properties": {
+          "label": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "enum": [
+                  "default",
+                  "success",
+                  "warning",
+                  "danger",
+                  "info"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tone"
+          },
+          "value": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "DeliveryBundleMetric",
+        "type": "object"
+      },
+      "DeliveryBundlePayload-Input": {
+        "description": "Full delivery bundle persisted behind share links.",
+        "properties": {
+          "artifact": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact"
+          },
+          "descriptor": {
+            "$ref": "#/components/schemas/DeliveryBundleDescriptor"
+          },
+          "executionReceipt": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Executionreceipt"
+          },
+          "htmlContent": {
+            "maxLength": 200000,
+            "minLength": 1,
+            "title": "Htmlcontent",
+            "type": "string"
+          },
+          "schemaVersion": {
+            "const": "2026-03-29",
+            "default": "2026-03-29",
+            "title": "Schemaversion",
+            "type": "string"
+          },
+          "share": {
+            "$ref": "#/components/schemas/DeliveryBundleShareMetadata"
+          }
+        },
+        "required": [
+          "descriptor",
+          "htmlContent",
+          "share"
+        ],
+        "title": "DeliveryBundlePayload",
+        "type": "object"
+      },
+      "DeliveryBundlePayload-Output": {
+        "description": "Full delivery bundle persisted behind share links.",
+        "properties": {
+          "artifact": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact"
+          },
+          "descriptor": {
+            "$ref": "#/components/schemas/DeliveryBundleDescriptor"
+          },
+          "executionReceipt": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Executionreceipt"
+          },
+          "htmlContent": {
+            "maxLength": 200000,
+            "minLength": 1,
+            "title": "Htmlcontent",
+            "type": "string"
+          },
+          "schemaVersion": {
+            "const": "2026-03-29",
+            "default": "2026-03-29",
+            "title": "Schemaversion",
+            "type": "string"
+          },
+          "share": {
+            "$ref": "#/components/schemas/DeliveryBundleShareMetadata"
+          }
+        },
+        "required": [
+          "descriptor",
+          "htmlContent",
+          "share"
+        ],
+        "title": "DeliveryBundlePayload",
+        "type": "object"
+      },
+      "DeliveryBundleSection": {
+        "description": "Structured section used by delivery HTML and replay snapshots.",
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Items",
+            "type": "array"
+          },
+          "key": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Key",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title"
+        ],
+        "title": "DeliveryBundleSection",
+        "type": "object"
+      },
+      "DeliveryBundleShareMetadata": {
+        "description": "Share metadata co-packaged with delivery artifacts.",
+        "properties": {
+          "content": {
+            "maxLength": 50000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "content"
+        ],
+        "title": "DeliveryBundleShareMetadata",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -823,11 +1114,13 @@
         "type": "object"
       },
       "RoutePreviewRequest": {
+        "additionalProperties": false,
         "description": "Request payload for route preview.",
         "properties": {
           "city": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -837,19 +1130,15 @@
             "title": "City"
           },
           "provider": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "const": "amap",
             "default": "amap",
-            "title": "Provider"
+            "title": "Provider",
+            "type": "string"
           },
           "spots": {
             "items": {
+              "maxLength": 120,
+              "minLength": 1,
               "type": "string"
             },
             "maxItems": 10,
@@ -925,35 +1214,25 @@
         "type": "object"
       },
       "SetModelRequest": {
+        "additionalProperties": false,
         "description": "Payload for binding a model to a session.",
         "properties": {
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
           "model_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model Id"
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Model Id",
+            "type": "string"
           }
         },
+        "required": [
+          "model_id"
+        ],
         "title": "SetModelRequest",
         "type": "object"
       },
       "ShareCreateRequest": {
+        "additionalProperties": false,
         "description": "Create share-link request body.",
         "properties": {
           "content": {
@@ -961,6 +1240,16 @@
             "minLength": 1,
             "title": "Content",
             "type": "string"
+          },
+          "delivery_bundle": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeliveryBundlePayload-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "html_content": {
             "anyOf": [
@@ -1027,6 +1316,16 @@
           "created_at": {
             "title": "Created At",
             "type": "string"
+          },
+          "delivery_bundle": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeliveryBundlePayload-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "html_content": {
             "anyOf": [
@@ -1267,9 +1566,12 @@
         "type": "object"
       },
       "UpdateNameRequest": {
+        "additionalProperties": false,
         "description": "Payload for updating session display name.",
         "properties": {
           "name": {
+            "maxLength": 120,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           }
@@ -1401,6 +1703,9 @@
             "name": "session_id",
             "required": true,
             "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
               "title": "Session Id",
               "type": "string"
             }
@@ -1456,6 +1761,9 @@
             "name": "session_id",
             "required": true,
             "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
               "title": "Session Id",
               "type": "string"
             }
@@ -1542,6 +1850,9 @@
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "pattern": ".*\\S.*",
                   "type": "string"
                 },
                 {
@@ -1560,6 +1871,9 @@
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "pattern": ".*\\S.*",
                   "type": "string"
                 },
                 {
@@ -1609,6 +1923,9 @@
             "name": "city_id",
             "required": true,
             "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
               "title": "City Id",
               "type": "string"
             }
@@ -1652,6 +1969,9 @@
             "name": "city_id",
             "required": true,
             "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
               "title": "City Id",
               "type": "string"
             }
@@ -1685,49 +2005,6 @@
         ]
       }
     },
-    "/api/clear": {
-      "post": {
-        "description": "Backward-compatible clear endpoint that accepts session_id query param.",
-        "operationId": "clear_chat_with_query_api_clear_post",
-        "parameters": [
-          {
-            "description": "Session ID",
-            "in": "query",
-            "name": "session_id",
-            "required": true,
-            "schema": {
-              "description": "Session ID",
-              "title": "Session Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Clear Chat With Query",
-        "tags": [
-          "session"
-        ]
-      }
-    },
     "/api/clear/{session_id}": {
       "post": {
         "description": "Clear all messages in the target session.",
@@ -1738,6 +2015,9 @@
             "name": "session_id",
             "required": true,
             "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
               "title": "Session Id",
               "type": "string"
             }
@@ -1923,7 +2203,7 @@
     },
     "/api/models": {
       "get": {
-        "description": "List available models from runtime config or fallback catalog.",
+        "description": "List available models from the runtime configuration.",
         "operationId": "list_models_api_models_get",
         "responses": {
           "200": {
@@ -1943,7 +2223,7 @@
     },
     "/api/models/{model_id}": {
       "get": {
-        "description": "Get one model by id from runtime config or fallback catalog.",
+        "description": "Get one configured model by ID.",
         "operationId": "get_model_api_models__model_id__get",
         "parameters": [
           {
@@ -1951,6 +2231,9 @@
             "name": "model_id",
             "required": true,
             "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
               "title": "Model Id",
               "type": "string"
             }
@@ -2038,6 +2321,9 @@
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "pattern": ".*\\S.*",
                   "type": "string"
                 },
                 {
@@ -2084,6 +2370,9 @@
             "name": "session_id",
             "required": true,
             "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
               "title": "Session Id",
               "type": "string"
             }
@@ -2125,6 +2414,9 @@
             "name": "session_id",
             "required": true,
             "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
               "title": "Session Id",
               "type": "string"
             }
@@ -2166,6 +2458,9 @@
             "name": "session_id",
             "required": true,
             "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
               "title": "Session Id",
               "type": "string"
             }
@@ -2205,6 +2500,9 @@
             "name": "session_id",
             "required": true,
             "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
               "title": "Session Id",
               "type": "string"
             }
@@ -2256,6 +2554,9 @@
             "name": "session_id",
             "required": true,
             "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
               "title": "Session Id",
               "type": "string"
             }
@@ -2391,6 +2692,9 @@
             "name": "share_id",
             "required": true,
             "schema": {
+              "maxLength": 10,
+              "minLength": 10,
+              "pattern": "^[a-f0-9]{10}$",
               "title": "Share Id",
               "type": "string"
             }

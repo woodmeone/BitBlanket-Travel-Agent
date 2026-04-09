@@ -19,4 +19,5 @@ def test_export_runtime_doctor_snapshot_writes_stable_contract_shape(tmp_path: P
     assert snapshot["status"] == "ok"
     assert snapshot["checked_at"] == "<iso8601-utc>"
     assert "server_config" in snapshot["checks"]
+    assert "checkpoint_runtime" in snapshot["checks"]
     assert "http_probe" in snapshot["checks"]

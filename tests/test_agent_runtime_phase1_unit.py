@@ -1,4 +1,4 @@
-"""Automated tests for phase-1 supervisor runtime compatibility."""
+"""Automated tests for phase-1 supervisor runtime orchestration."""
 
 from __future__ import annotations
 
@@ -92,7 +92,7 @@ def test_build_trip_plan_artifact_from_plan_preview_contains_validation():
 def test_agent_runtime_enriches_done_stream_event():
     observed: dict[str, object] = {}
 
-    class _LegacyBridge:
+    class _RuntimeDriver:
         async def stream_with_memory(self, *, request, context):
             observed["request"] = request
             observed["context"] = context
@@ -116,7 +116,7 @@ def test_agent_runtime_enriches_done_stream_event():
         llm=SimpleNamespace(),
         tools=[SimpleNamespace(name="search_cities")],
         memory_manager=SimpleNamespace(),
-        legacy_bridge=_LegacyBridge(),
+        runtime_driver=_RuntimeDriver(),
     )
 
     async def _collect():
@@ -148,7 +148,7 @@ def test_agent_runtime_enriches_done_stream_event():
 def test_agent_runtime_preview_attaches_artifact():
     observed: dict[str, object] = {}
 
-    class _LegacyBridge:
+    class _RuntimeDriver:
         async def stream_with_memory(self, *, request, context):
             _ = (request, context)
             if False:  # pragma: no cover - async generator marker
@@ -173,7 +173,7 @@ def test_agent_runtime_preview_attaches_artifact():
         llm=SimpleNamespace(),
         tools=[SimpleNamespace(name="plan_itinerary")],
         memory_manager=SimpleNamespace(),
-        legacy_bridge=_LegacyBridge(),
+        runtime_driver=_RuntimeDriver(),
     )
 
     preview = runtime.generate_plan_preview_with_memory(
@@ -190,8 +190,8 @@ def test_agent_runtime_preview_attaches_artifact():
     assert observed["context"].tools[0].name == "plan_itinerary"
 
 
-def test_agent_runtime_diagnostics_merge_legacy_bridge_payload():
-    class _LegacyBridge:
+def test_agent_runtime_diagnostics_merge_runtime_driver_payload():
+    class _RuntimeDriver:
         async def stream_with_memory(self, *, request, context):
             _ = (request, context)
             if False:  # pragma: no cover - async generator marker
@@ -202,16 +202,16 @@ def test_agent_runtime_diagnostics_merge_legacy_bridge_payload():
             return {}
 
         def get_tool_health_diagnostics(self):
-            return {"legacy_runtime": {"status": "ok"}}
+            return {"runtime_flow": {"status": "ok"}}
 
     runtime = AgentRuntime(
         llm=SimpleNamespace(),
         tools=[SimpleNamespace(name="plan_itinerary")],
         memory_manager=SimpleNamespace(),
-        legacy_bridge=_LegacyBridge(),
+        runtime_driver=_RuntimeDriver(),
     )
 
     diagnostics = runtime.get_tool_health_diagnostics()
 
-    assert diagnostics["legacy_runtime"]["status"] == "ok"
+    assert diagnostics["runtime_flow"]["status"] == "ok"
     assert diagnostics["architecture_phase"] == "phase2-supervisor-subagents"

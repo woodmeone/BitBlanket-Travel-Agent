@@ -17,6 +17,7 @@ def test_export_release_manifest_writes_versions_and_images(tmp_path):
         git_ref="v3.3.0",
         registry="ghcr.io",
         owner="tiammomo",
+        release_tag="v3.3.0",
     )
 
     payload = json.loads(target.read_text(encoding="utf-8"))
@@ -27,6 +28,10 @@ def test_export_release_manifest_writes_versions_and_images(tmp_path):
     assert payload["applications"]["frontend"]["version"]
     assert payload["applications"]["backend"]["image"].endswith("/moyuan-travel-agent-backend")
     assert payload["applications"]["frontend"]["image"].endswith("/moyuan-travel-agent-frontend")
+    assert payload["applications"]["backend"]["image_tag"] == "v3.3.0"
+    assert payload["applications"]["frontend"]["image_tag"] == "v3.3.0"
+    assert payload["applications"]["backend"]["image_ref"].endswith("/moyuan-travel-agent-backend:v3.3.0")
+    assert payload["applications"]["frontend"]["image_ref"].endswith("/moyuan-travel-agent-frontend:v3.3.0")
     assert payload["quality"]["release_check_command"] == "python scripts/release_harness_scorecard.py --strict"
     assert payload["quality"]["artifacts"]["subagent_scorecard_report"] == "docs/benchmarks/agent_subagent_scorecard_latest.json"
     assert payload["quality"]["artifacts"]["delivery_snapshot"].endswith(

@@ -29,7 +29,7 @@ ensure_project_paths = _bootstrap_paths.ensure_project_paths
 ensure_project_paths()
 
 from scripts.runtime_backup import create_runtime_backup
-from scripts.runtime_data_utils import DEFAULT_BACKUP_DIR, ensure_relative_path
+from scripts.runtime_data_utils import DEFAULT_BACKUP_DIR, build_restore_instructions, ensure_relative_path
 
 
 def _load_manifest(archive_path: Path) -> dict[str, Any]:
@@ -50,6 +50,7 @@ def restore_runtime_backup(
         raise FileNotFoundError(f"Backup archive does not exist: {archive_path}")
 
     manifest = _load_manifest(archive_path)
+    checkpoint_runtime = dict(manifest.get("checkpoint_runtime") or {})
     restored_files: list[str] = []
     safety_archive: str | None = None
 
@@ -76,10 +77,16 @@ def restore_runtime_backup(
             shutil.copy2(source, target)
             restored_files.append(str(relative).replace("\\", "/"))
 
+    restore_instructions = list(manifest.get("restore_instructions") or [])
+    if not restore_instructions and checkpoint_runtime:
+        restore_instructions = build_restore_instructions(checkpoint_runtime)
+
     return {
         "archive_path": str(archive_path),
         "safety_archive": safety_archive,
         "restored_files": restored_files,
+        "checkpoint_runtime": checkpoint_runtime,
+        "restore_instructions": restore_instructions,
     }
 
 
@@ -119,6 +126,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Restored files: {len(result['restored_files'])}")
     if result.get("safety_archive"):
         print(f"Safety backup: {result['safety_archive']}")
+    for instruction in result.get("restore_instructions", []):
+        print(f"Restore note: {instruction}")
     return 0
 
 

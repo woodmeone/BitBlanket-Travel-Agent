@@ -1,69 +1,58 @@
 # Project Structure
 
-## 顶层目录
+## 顶层入口与根目录规范
 
-```text
-moyuan-travel-agent/
-├── .editorconfig         # 编辑器编码、换行、缩进规范
-├── .gitattributes        # Git 文本归一化与二进制文件策略
-├── agent/                # LangGraph Agent 逻辑
-├── web/                  # FastAPI 服务
-├── frontend/             # Next.js 前端
-├── config/               # YAML 配置模板与解析
-├── docs/                 # 文档中心
-├── tests/                # API / 集成 / 质量测试
-├── data/                 # 运行时数据
-├── logs/                 # 本地日志
-├── ops/                  # 观测与运维资产
-├── scripts/              # 运行维护、快照、质量脚本和跨平台命令入口
-├── compose.yaml          # 根目录 Docker Compose
-├── Dockerfile.backend    # Web API 镜像构建文件
-├── requirements-dev.txt  # 本地开发与静态检查依赖
-├── mypy.ini              # mypy 检查范围与规则
-└── ruff.toml             # Ruff 检查规则
-```
+维护时优先记这张“常用目录”表：
 
-## 根目录规范文件
+| 目录 / 文件 | 作用 |
+| --- | --- |
+| `.github/` | GitHub workflows、仓库治理入口与平台识别文件。 |
+| `agent/` | LangGraph Agent、runtime seam、supervisor、skills、tools。 |
+| `backend/` | FastAPI route、service、repository、persistence、observability。 |
+| `frontend/` | Next.js 前端页面、feature workspace、API client。 |
+| `extend/` | 观测可视化等扩展能力。 |
+| `deploy/` | Compose、Dockerfile、migration、安全扫描等发版资产。 |
+| `docs/` | 当前架构、reference、testing、governance 文档中心。 |
+| `tests/` | 本地 smoke、runtime、contract snapshot、运维脚本回归。 |
+| `scripts/` | `scripts/dev.py` 统一入口，以及 runtime / release / snapshot / quality 脚本。 |
+| `data/` | 运行时数据目录。 |
 
-### `.editorconfig`
+其余顶层目录 / 文件按需再看：
 
-统一这些基础行为：
+| 目录 / 文件 | 作用 |
+| --- | --- |
+| `logs/` | 本地日志。 |
+| `pyproject.toml` | 根目录 `pytest / mypy / Ruff` 统一工具配置。 |
+| `requirements-dev.txt` | 本地开发与静态检查依赖。 |
+| `requirements.txt` | 运行时依赖与安全审计输入。 |
 
-- `UTF-8`
-- 默认 `LF`
-- Markdown 允许保留行尾空格
-- Python 4 空格缩进
-- TypeScript / JSON / YAML 2 空格缩进
-- 全仓文本默认使用 `LF`
+当前根目录精炼原则：
 
-### `.gitattributes`
+- 只保留仓库入口、运行入口、构建入口和依赖入口
+- Python 工具链配置统一收口到根级 `pyproject.toml`
+- migration 专属配置下沉到 `deploy/migrations/`
+- GitHub 平台识别文件统一放到 `.github/`
+- 安全扫描配置统一放到 `deploy/security/`
+- `.venv` 保留在项目根目录，工具缓存统一收口到 `.cache/`
 
-统一这些 Git 行为：
+根目录关键文件：
 
-- 常见文本文件按规则归一化换行
-- 常见文本文件统一为 `LF`
-- 图片、PDF、Zip、SQLite 以 binary 处理
-
-### `scripts/dev.py`
-
-这是本地最推荐的统一入口，负责收口：
-
-- 测试
-- `ruff`
-- `mypy`
-- docstring 覆盖率与低信息量审计
-- 热点文件复杂度预算门禁
-- skills market 四件套治理审计
-- OpenAPI / SSE 快照导出
-- release manifest
-- release harness scorecard
-- support bundle
-- compose 渲染校验
+| 位置 | 主要职责 |
+| --- | --- |
+| [`.editorconfig`](../../.editorconfig) | 统一编码、换行和缩进。 |
+| [`.gitattributes`](../../.gitattributes) | 统一文本归一化和二进制识别。 |
+| [`pyproject.toml`](../../pyproject.toml) | 收口 `pytest / mypy / Ruff` 配置和 `.cache/` 目录。 |
+| [`.github/`](../../.github) | 承接 `CONTRIBUTING`、`SECURITY`、`dependabot`、`ci.yml`、`release.yml`。 |
+| [`scripts/dev.py`](../../scripts/dev.py) | 统一本地命令入口，收口测试、lint、runtime maintenance、snapshots、quality gate、support bundle、compose 校验等任务。 |
 
 优先命令：
 
 ```bash
 python scripts/dev.py help
+python scripts/dev.py backend-dev
+python scripts/dev.py frontend-dev
+python scripts/dev.py backend-test --pytest-slice unit
+python scripts/dev.py runtime-maintenance
 ```
 
 ## 关键目录说明
@@ -72,309 +61,175 @@ python scripts/dev.py help
 
 负责旅行 Agent 的推理执行链路。
 
-重点子目录：
+维护时优先按这张表定位：
 
-- `travel_agent/runtime/`
-  - Web/API 层调用的应用级入口，封装 supervisor、skills、artifact 组合
-  - `legacy_bridge.py` 负责把 `AgentRuntime` 与旧 `graph.builder` 的 streaming / preview / diagnostics 兼容调用收口成显式 bridge
-- `travel_agent/runtime_sources.py`
-  - 位于 runtime seam 与 legacy graph 之间的 source adapter 层，统一承接 memory-aware state 装配、默认 checkpointer 选择，以及 supervisor request/context 到 legacy source 的映射
-- `travel_agent/runtime_event_emitters.py`
-  - 位于 runtime seam 与 legacy graph 之间的 event emitter 层，统一承接 legacy supervisor stream 的阶段推进、reasoning、tool 事件与 done payload 合同化装配
-- `travel_agent/supervisor/`
-  - Phase 1 兼容层，先用 supervisor 外壳承接当前单图
-- `travel_agent/subagents/`
-  - Phase 2 到 Phase 3 过渡期的 subagent 实现与注册表，当前包含 research / planning / budget / verification
-- `travel_agent/skills/`
-  - skill registry 与领域能力契约映射；当前默认 catalog 已显式补齐 `owner / version / input / output / evidence / freshness / fallback / docs / eval` 元数据
-- `travel_agent/artifacts/`
-  - 结构化行程产物与 artifact builder
-- `travel_agent/contracts/`
-  - skills、supervisor orchestration、supervisor events、execution receipt 等上层契约模型
-- `travel_agent/memory/`
-  - 从 legacy graph 中逐步拆出的 memory 协作器，当前包含 `persistence.py` 与 `conflict_resolution.py`
-- `travel_agent/graph/`
-  - 图构建、节点、运行时配置、legacy 执行兼容入口、checkpoint
-- `travel_agent/tools/`
-  - 工具定义、provider 适配
-- `travel_agent/llm/`
-  - LLM 适配层
+| 关注面 | 最短入口 | 职责 |
+| --- | --- | --- |
+| 运行时主链 | `travel_agent/runtime/`、`runtime_driver.py`、`runtime_sources.py`、`runtime_event_emitters.py` | 收口 Web/API 入口、source adapter、event emitter、默认 checkpointer 选择。 |
+| 图执行 | `travel_agent/graph/` | 图构建、节点、执行入口、checkpoint。 |
+| 编排与扩展 | `travel_agent/supervisor/`、`travel_agent/subagents/`、`travel_agent/skills/`、`travel_agent/contracts/` | supervisor request、subagent dispatch、skills registry 和上层 typed contract。 |
+| 状态与产物 | `travel_agent/memory/`、`travel_agent/artifacts/` | 记忆协作、画像合并、结构化 itinerary artifact。 |
+| 外部依赖 | `travel_agent/tools/`、`travel_agent/llm/` | tool provider 适配、LLM 适配。 |
 
-### `web/`
+### `backend/`
 
-负责 Web API 路由、服务层、仓储层、存储层，以及 startup validation、middleware、observability。
+负责 Backend API 路由、服务层、repository 层、SQL persistence 层，以及 startup validation、middleware、observability。
 
-重点路径：
+维护时优先按这张表定位：
 
-- [`web/moyuan_web/main.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/main.py)
-- [`web/moyuan_web/routes/`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes)
-- [`web/moyuan_web/services/`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services)
-- [`web/moyuan_web/repositories/`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/repositories)
-- [`web/moyuan_web/storage/`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/storage)
-- [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py)
-- [`web/moyuan_web/startup_checks.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/startup_checks.py)
+| 关注面 | 最短入口 | 职责 |
+| --- | --- | --- |
+| 启动与装配 | [`backend/moyuan_web/main.py`](../../backend/moyuan_web/main.py)、[`backend/moyuan_web/startup_checks.py`](../../backend/moyuan_web/startup_checks.py) | App 装配、startup validation、依赖检查。 |
+| HTTP / SSE 出口 | [`backend/moyuan_web/routes/`](../../backend/moyuan_web/routes)、[`backend/moyuan_web/services/`](../../backend/moyuan_web/services) | 请求校验、业务编排、SSE 事件输出。 |
+| 持久化 | [`backend/moyuan_web/repositories/`](../../backend/moyuan_web/repositories)、[`backend/moyuan_web/repositories/file_session_repository.py`](../../backend/moyuan_web/repositories/file_session_repository.py)、`backend/moyuan_web/persistence/` | repository 抽象、`file | postgres` 切换、SQLAlchemy metadata 与 schema bootstrap。 |
+| 观测与中间件 | [`backend/moyuan_web/observability.py`](../../backend/moyuan_web/observability.py)、`middleware/` | 健康指标、Prometheus 暴露、请求日志、限流和超时控制。 |
 
 ### `frontend/`
 
 负责所有用户可见的交互界面。
 
-重点路径：
+维护时优先按这张表定位：
 
-- [`frontend/src/app/`](/D:/moyuan/moyuan-travel-agent/frontend/src/app)
-- [`frontend/src/components/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components)
-- [`frontend/src/components/chat-area/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area)
-- [`frontend/src/components/message-list/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/message-list)
-- [`frontend/src/components/travel-plan-toolkit/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit)
-- [`frontend/src/components/city-explorer/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/city-explorer)
-- [`frontend/src/context/`](/D:/moyuan/moyuan-travel-agent/frontend/src/context)
-- [`frontend/src/services/api/`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api)
-- [`frontend/src/utils/`](/D:/moyuan/moyuan-travel-agent/frontend/src/utils)
-- [`frontend/Dockerfile`](/D:/moyuan/moyuan-travel-agent/frontend/Dockerfile)
-
-当前前端目录的职责已经明显分层：
-
-- `ChatArea.tsx`、`MessageList.tsx`、`TravelPlanToolkit.tsx`、`CityExplorer.tsx`
-  - 都是薄入口，负责 feature 装配与向后兼容
-- `chat-area/`
-  - 聊天运行时状态、流缓冲、artifact 运行态、input policy、send lifecycle、输入区、执行洞察与对话区协作器
-- `message-list/`
-  - Markdown 归一化、消息区块、诊断区块与复制/导出动作
-- `travel-plan-toolkit/`
-  - 行程概览、对比、checklist、practical、冲突检测等视图块
-  - `useTravelPlanToolkitActions.ts / actionPrompts.ts` 继续承接 favorites、route、export、share 与 continue prompt 的动作编排，其中 continue/edit prompt 已优先带上 artifact 上下文，export 会优先消费 artifact 派生标题、摘要与文件名，share 则会把 `artifact + executionReceipt + htmlContent + share` 一起打成 `delivery_bundle`
-  - `sections/itinerary/day-card/` 继续承接单日行程卡里的风险提醒、景点决策卡与 tips 视图
-  - `sections/itinerary/budget-panel/` 继续承接预算档位、预算统计、quick refine 与 confidence 风险提示视图
-  - `sections/compare-tab/` 继续承接空态、对比表和继续细化动作视图
-  - `sections/conflicts-tab/` 继续承接冲突摘要标签、按日冲突卡和一键修复动作视图
-  - `sections/practical-tab/` 继续承接实用信息卡网格、单卡内容和 tone 标签视图
-  - `sections/reminders-tab/` 继续承接提醒卡列表、单卡内容和阶段标签视图
-  - `sections/checklist-tab/` 继续承接清单列表、单项行和完成状态 affordance
-- `shared/` 继续承接 timeline、budget、risk、practical、reminder、checklist、content 和 subagent label helper
-  - `artifact.ts` 继续承接 artifact-first 的 overview descriptor、destinations / budget / verification 摘要，以及 `ArtifactDeliveryBundle`、share payload / export descriptor 构造
-- `city-explorer/`
-  - 场景 prompt、筛选器、shortlist、对比池、城市网格与详情抽屉
-  - `sections.tsx` 仅保留兼容导出，真实 section modules 位于 `city-explorer/sections/`
-- `services/api/`
-  - chat / city / map / health / session / share / artifact 等分域 client 与 stream parser；其中 share client 现在会透传持久化 `delivery_bundle`
+| 关注面 | 最短入口 | 职责 |
+| --- | --- | --- |
+| 页面壳层 | [`frontend/src/app/`](../../frontend/src/app)、[`frontend/src/components/`](../../frontend/src/components) | 页面装配、顶层 feature 连接。 |
+| 聊天主链 | [`frontend/src/components/chat-area/`](../../frontend/src/components/chat-area)、[`frontend/src/context/`](../../frontend/src/context) | streaming、artifact runtime、input policy、session hydration。 |
+| 呈现与工具区 | [`frontend/src/components/message-list/`](../../frontend/src/components/message-list)、[`frontend/src/components/travel-plan-toolkit/`](../../frontend/src/components/travel-plan-toolkit)、[`frontend/src/components/city-explorer/`](../../frontend/src/components/city-explorer) | Markdown 渲染、诊断展示、artifact-first itinerary、city compare/shortlist/detail。 |
+| API client 与通用工具 | [`frontend/src/services/api/`](../../frontend/src/services/api)、[`frontend/src/utils/`](../../frontend/src/utils)、[`deploy/docker/frontend.Dockerfile`](../../deploy/docker/frontend.Dockerfile) | chat / city / map / session / share / artifact client，工具函数和前端镜像构建。 |
 
 ### `docs/governance/`
 
 负责统一管理 `ADR / RFC / Design Review` 记录。
 
-重点路径：
+维护时优先按这张表定位：
 
-- [`docs/governance/README.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/README.md)
-- [`docs/governance/skills-market-onboarding.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/skills-market-onboarding.md)
-- [`docs/governance/adr/ADR-0001-governance-record-flow.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/adr/ADR-0001-governance-record-flow.md)
-- [`docs/governance/adr/ADR-0000-template.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/adr/ADR-0000-template.md)
-- [`docs/governance/rfcs/RFC-0000-template.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/rfcs/RFC-0000-template.md)
-- [`docs/governance/design-reviews/DR-0000-template.md`](/D:/moyuan/moyuan-travel-agent/docs/governance/design-reviews/DR-0000-template.md)
+| 关注面 | 最短入口 | 作用 |
+| --- | --- | --- |
+| 治理入口 | [`docs/governance/README.md`](../governance/README.md)、[`docs/governance/skills-market-onboarding.md`](../governance/skills-market-onboarding.md) | ADR / RFC / DR 流程与 skills market 规则。 |
+| 模板 | [`docs/governance/adr/ADR-0000-template.md`](../governance/adr/ADR-0000-template.md)、[`docs/governance/rfcs/RFC-0000-template.md`](../governance/rfcs/RFC-0000-template.md)、[`docs/governance/design-reviews/DR-0000-template.md`](../governance/design-reviews/DR-0000-template.md) | 新记录统一按模板落盘。 |
+| 审计门禁 | [`scripts/decision_record_audit.py`](../../scripts/decision_record_audit.py)、[`scripts/skills_market_audit.py`](../../scripts/skills_market_audit.py)、[`scripts/runtime_contract_audit.py`](../../scripts/runtime_contract_audit.py) | 结构完整性、skills 四件套、runtime seam typed contract 门禁；都已接入 `python scripts/dev.py infra-check` 和 CI。 |
+| 运行态报告合同 | [`scripts/runtime_ops_contracts.py`](../../scripts/runtime_ops_contracts.py)、[`scripts/export_runtime_doctor_snapshot.py`](../../scripts/export_runtime_doctor_snapshot.py) | runtime_doctor、support bundle、release manifest、scorecard 共用 typed report contract。 |
 
-配套的结构审计脚本是 [`scripts/decision_record_audit.py`](/D:/moyuan/moyuan-travel-agent/scripts/decision_record_audit.py)，当前已接入本地 `python scripts/dev.py infra-check` 和 CI。
-配套的 skills 四件套审计脚本是 [`scripts/skills_market_audit.py`](/D:/moyuan/moyuan-travel-agent/scripts/skills_market_audit.py)，当前也已接入本地 `python scripts/dev.py infra-check` 和 CI。
-配套的 runtime seam 审计脚本是 [`scripts/runtime_contract_audit.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_contract_audit.py)，当前会固定 `AgentRuntime -> legacy_bridge -> legacy_runtime -> runtime_sources -> runtime_event_emitters` 的 typed contract 边界，并阻止 `legacy_runtime.py` 重新直接依赖 `memory_integration` 或重新内联 event contract 装配；该门禁已接入本地 `python scripts/dev.py infra-check` 和 CI。
-配套的运行态报告 contract 入口是 [`scripts/runtime_ops_contracts.py`](/D:/moyuan/moyuan-travel-agent/scripts/runtime_ops_contracts.py)，`runtime_doctor`、support bundle、release manifest、release harness scorecard 和 release evidence 会共用这套 typed report 模型；对应 snapshot 导出脚本是 [`scripts/export_runtime_doctor_snapshot.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_runtime_doctor_snapshot.py)。
-
-### `config/`
+### `backend/config/`
 
 负责配置模板和配置解析。
 
-关键文件：
+最常用入口只有 3 个：
 
-- [`config/__init__.py`](/D:/moyuan/moyuan-travel-agent/config/__init__.py)
-- [`config/server_config.yaml.example`](/D:/moyuan/moyuan-travel-agent/config/server_config.yaml.example)
-- [`config/llm_config.yaml.example`](/D:/moyuan/moyuan-travel-agent/config/llm_config.yaml.example)
+| 入口 | 作用 |
+| --- | --- |
+| [`backend/config/__init__.py`](../../backend/config/__init__.py) | 统一配置解析入口。 |
+| [`backend/config/server_config.yaml.example`](../../backend/config/server_config.yaml.example) | Web/API 运行参数模板。 |
+| [`backend/config/llm_config.yaml.example`](../../backend/config/llm_config.yaml.example) | LLM/provider 配置模板。 |
 
 ### `tests/`
 
 以后端与本地 smoke 为主，同时覆盖契约、运行维护脚本、观测资产和质量门禁。
 
-重点文件：
+维护时优先按这张表定位：
 
-- [`tests/test_api_smoke_local.py`](/D:/moyuan/moyuan-travel-agent/tests/test_api_smoke_local.py)
-- [`tests/test_chat_stream_local.py`](/D:/moyuan/moyuan-travel-agent/tests/test_chat_stream_local.py)
-- [`tests/test_agent_runtime_phase1_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_runtime_phase1_unit.py)
-- [`tests/test_agent_subagent_phase2_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_agent_subagent_phase2_unit.py)
-- [`tests/test_runtime_data_lifecycle_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_runtime_data_lifecycle_unit.py)
-- [`tests/test_export_openapi_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_openapi_snapshot_script_unit.py)
-- [`tests/test_export_sse_contract_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_sse_contract_snapshot_script_unit.py)
-- [`tests/test_export_runtime_doctor_snapshot_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_runtime_doctor_snapshot_script_unit.py)
-- [`tests/test_export_frontend_chat_runtime_golden_fixture_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_frontend_chat_runtime_golden_fixture_script_unit.py)
-- [`tests/test_export_support_bundle_script_unit.py`](/D:/moyuan/moyuan-travel-agent/tests/test_export_support_bundle_script_unit.py)
-- [`tests/conftest.py`](/D:/moyuan/moyuan-travel-agent/tests/conftest.py)
-  - 统一承接 pytest fixtures、CI guard 和 repo root / `web/` 导入 bootstrap，root tests 不再各自写 `sys.path` 补丁
+| 场景 | 最短入口 | 作用 |
+| --- | --- | --- |
+| API / 本地 smoke | [`tests/test_api_smoke_local.py`](../../tests/test_api_smoke_local.py)、[`tests/test_chat_stream_local.py`](../../tests/test_chat_stream_local.py) | 本地接口、SSE、主链回归。 |
+| Agent 主链 | [`tests/test_agent_runtime_phase1_unit.py`](../../tests/test_agent_runtime_phase1_unit.py)、[`tests/test_agent_subagent_phase2_unit.py`](../../tests/test_agent_subagent_phase2_unit.py) | runtime seam、subagent orchestration。 |
+| 运行维护脚本 | [`tests/test_runtime_data_lifecycle_unit.py`](../../tests/test_runtime_data_lifecycle_unit.py)、[`tests/test_export_support_bundle_script_unit.py`](../../tests/test_export_support_bundle_script_unit.py) | backup / restore / prune / doctor / support bundle。 |
+| 合同快照 | [`tests/test_export_openapi_snapshot_script_unit.py`](../../tests/test_export_openapi_snapshot_script_unit.py)、[`tests/test_export_sse_contract_snapshot_script_unit.py`](../../tests/test_export_sse_contract_snapshot_script_unit.py)、[`tests/test_export_runtime_doctor_snapshot_script_unit.py`](../../tests/test_export_runtime_doctor_snapshot_script_unit.py)、[`tests/test_export_frontend_chat_runtime_golden_fixture_script_unit.py`](../../tests/test_export_frontend_chat_runtime_golden_fixture_script_unit.py) | OpenAPI、SSE、runtime doctor、frontend chat runtime snapshot。 |
+| pytest bootstrap | [`tests/conftest.py`](../../tests/conftest.py) | 统一 fixtures、CI guard、repo root / `backend/` 导入 bootstrap。 |
 
 ### `docs/`
 
-项目文档中心，分为：
+项目文档中心，维护时优先看这张表：
 
-- `getting-started/`
-- `product/`
-- `architecture/`
-- `reference/`
-- `testing/`
-- `benchmarks/`
-- `assets/`
-- `teaching/`
-
-维护者最常用：
-
-- [`docs/architecture/infrastructure-foundations.md`](/D:/moyuan/moyuan-travel-agent/docs/architecture/infrastructure-foundations.md)
-- [`docs/reference/backend-maintainer-playbook.md`](/D:/moyuan/moyuan-travel-agent/docs/reference/backend-maintainer-playbook.md)
-- [`docs/testing/testing-guide.md`](/D:/moyuan/moyuan-travel-agent/docs/testing/testing-guide.md)
+| 区域 | 作用 | 最常用入口 |
+| --- | --- | --- |
+| `getting-started/` | 本地启动、开发工作流 | `development-workflow.md` |
+| `architecture/` | 当前系统结构、数据与基础设施 | [`infrastructure-foundations.md`](../architecture/infrastructure-foundations.md) |
+| `reference/` | 维护者速查、API/config/project structure | [`backend-maintainer-playbook.md`](backend-maintainer-playbook.md) |
+| `testing/` | 测试入口、快照和质量门禁 | [`testing-guide.md`](../testing/testing-guide.md) |
+| `benchmarks/` / `assets/` / `teaching/` | 报告、静态资源、教学材料 | 按需查阅，不作为当前实现真相源。 |
 
 ### `scripts/`
 
 辅助脚本与质量门禁工具。
 
-当前主要覆盖：
+维护时优先按这张表定位：
 
-- benchmark / golden eval / quality gate
-- release harness checklist / scorecard
-- runtime backup / restore / prune / doctor
-- OpenAPI / SSE contract snapshot export
-- runtime doctor report contract + snapshot export
-- frontend chat runtime replay fixture export
-- release manifest export
-- release harness scorecard export
-- support bundle export
-- docstring audit
-- `scripts/bootstrap_paths.py` 统一承接 repo root / `web/` 的导入初始化，benchmark、replay、runtime、snapshot 脚本不再各自写 `sys.path` 注入
+| 场景 | 最短入口 | 作用 |
+| --- | --- | --- |
+| 统一入口 | [`scripts/dev.py`](../../scripts/dev.py) | 本地测试、lint、runtime maintenance、snapshots、quality gate、support bundle、compose 校验。 |
+| 运行维护 | `runtime_backup.py`、`runtime_restore.py`、`runtime_prune.py`、`runtime_doctor.py`、`agent_replay.py` | backup / restore / prune / doctor / replay。 |
+| 发布与报告 | `export_release_manifest.py`、`release_harness_scorecard.py`、`export_support_bundle.py` | release manifest、scorecard、support bundle。 |
+| 合同与快照 | `export_openapi_snapshot.py`、`export_sse_contract_snapshot.py`、`export_runtime_doctor_snapshot.py`、`export_frontend_chat_runtime_golden_fixture.py` | 各类 contract snapshot 与前端 replay fixture。 |
+| 导入初始化 | [`scripts/bootstrap_paths.py`](../../scripts/bootstrap_paths.py) | 统一 repo root / `backend/` 导入 bootstrap，避免脚本各自写 `sys.path` 注入。 |
 
-### `ops/`
+### `extend/` + `deploy/`
 
-基础设施运行资产目录，当前重点是 `observability/`：
+扩展能力与发版资产目录，维护时优先按这张表定位：
 
-- [`ops/observability/README.md`](/D:/moyuan/moyuan-travel-agent/ops/observability/README.md)
-- [`ops/observability/grafana-dashboard.json`](/D:/moyuan/moyuan-travel-agent/ops/observability/grafana-dashboard.json)
-- [`ops/observability/prometheus-alerts.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus-alerts.yml)
-- [`ops/observability/prometheus.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus.yml)
-- [`ops/observability/grafana-provisioning/`](/D:/moyuan/moyuan-travel-agent/ops/observability/grafana-provisioning)
+| 区域 | 最短入口 | 作用 |
+| --- | --- | --- |
+| observability | [`extend/observability/README.md`](../../extend/observability/README.md)、[`extend/observability/grafana-dashboard.json`](../../extend/observability/grafana-dashboard.json)、[`extend/observability/prometheus-alerts.yml`](../../extend/observability/prometheus-alerts.yml)、[`extend/observability/prometheus.yml`](../../extend/observability/prometheus.yml)、[`extend/observability/grafana-provisioning/`](../../extend/observability/grafana-provisioning) | 仪表盘、Prometheus 抓取和告警资产。 |
+| deploy assets | [`deploy/compose/compose.yaml`](../../deploy/compose/compose.yaml)、[`deploy/docker/backend.Dockerfile`](../../deploy/docker/backend.Dockerfile)、[`deploy/docker/frontend.Dockerfile`](../../deploy/docker/frontend.Dockerfile)、[`deploy/migrations/`](../../deploy/migrations) | Compose、镜像构建与 schema migration。 |
+| security | [`deploy/security/README.md`](../../deploy/security/README.md)、[`deploy/security/gitleaks.toml`](../../deploy/security/gitleaks.toml) | secret scan 规则与安全扫描说明。 |
 
 ## 当前最常用的代码入口
 
-### 前端
+前端主链入口：
 
-当前这些顶层文件大多已经退化为薄入口，阅读时建议连同对应的 feature 协作器目录一起看。
+| 场景 | 最短入口 |
+| --- | --- |
+| 聊天壳层 | [`ChatArea.tsx`](../../frontend/src/components/ChatArea.tsx)、[`chat-area/`](../../frontend/src/components/chat-area) |
+| 消息渲染 | [`MessageList.tsx`](../../frontend/src/components/MessageList.tsx)、[`message-list/`](../../frontend/src/components/message-list) |
+| itinerary / city UI | [`TravelPlanToolkit.tsx`](../../frontend/src/components/TravelPlanToolkit.tsx)、[`travel-plan-toolkit/`](../../frontend/src/components/travel-plan-toolkit)、[`CityExplorer.tsx`](../../frontend/src/components/CityExplorer.tsx)、[`city-explorer/`](../../frontend/src/components/city-explorer) |
+| API client | [`services/api/`](../../frontend/src/services/api) |
 
-- [`frontend/src/components/ChatArea.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/ChatArea.tsx)
-- [`frontend/src/components/chat-area/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area)
-- [`frontend/src/components/MessageList.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/MessageList.tsx)
-- [`frontend/src/components/message-list/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/message-list)
-- [`frontend/src/components/TravelPlanToolkit.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/TravelPlanToolkit.tsx)
-- [`frontend/src/components/travel-plan-toolkit/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit)
-- [`frontend/src/components/CityExplorer.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/CityExplorer.tsx)
-- [`frontend/src/components/city-explorer/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/city-explorer)
-- [`frontend/src/services/api/`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api)
+后端主链入口：
 
-### 后端
+| 场景 | 最短入口 |
+| --- | --- |
+| chat / health / artifact route | [`routes/chat.py`](../../backend/moyuan_web/routes/chat.py)、[`routes/health.py`](../../backend/moyuan_web/routes/health.py)、[`routes/artifact.py`](../../backend/moyuan_web/routes/artifact.py) |
+| 核心服务 | [`services/chat_service.py`](../../backend/moyuan_web/services/chat_service.py)、[`services/artifact_service.py`](../../backend/moyuan_web/services/artifact_service.py)、[`services/share_service.py`](../../backend/moyuan_web/services/share_service.py) |
+| 启动与观测 | [`observability.py`](../../backend/moyuan_web/observability.py)、[`startup_checks.py`](../../backend/moyuan_web/startup_checks.py) |
 
-- [`web/moyuan_web/routes/chat.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/chat.py)
-- [`web/moyuan_web/routes/health.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/health.py)
-- [`web/moyuan_web/routes/artifact.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/routes/artifact.py)
-  - `GET /api/artifacts/{session_id}/latest` 与 `GET /api/artifacts/{session_id}/history`
-- [`web/moyuan_web/services/chat_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/chat_service.py)
-- [`web/moyuan_web/services/artifact_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/artifact_service.py)
-  - persisted artifact latest/history 读取与 camelCase normalize
-- [`web/moyuan_web/services/share_service.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/services/share_service.py)
-  - share-link 持久化服务；当前会同时保留兼容 `title / content / html_content` 与结构化 `delivery_bundle`
-- [`web/moyuan_web/observability.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/observability.py)
-- [`web/moyuan_web/startup_checks.py`](/D:/moyuan/moyuan-travel-agent/web/moyuan_web/startup_checks.py)
+Agent 主链入口：
 
-### Agent
+| 场景 | 最短入口 |
+| --- | --- |
+| runtime seam | [`runtime/agent_runtime.py`](../../agent/travel_agent/runtime/agent_runtime.py)、[`runtime/runtime_driver.py`](../../agent/travel_agent/runtime/runtime_driver.py)、[`runtime_sources.py`](../../agent/travel_agent/runtime_sources.py)、[`runtime_event_emitters.py`](../../agent/travel_agent/runtime_event_emitters.py) |
+| graph 执行 | [`graph/runtime_flow.py`](../../agent/travel_agent/graph/runtime_flow.py)、[`graph/builder.py`](../../agent/travel_agent/graph/builder.py)、[`graph/nodes.py`](../../agent/travel_agent/graph/nodes.py)、[`graph/memory_integration.py`](../../agent/travel_agent/graph/memory_integration.py) |
 
-- [`agent/travel_agent/runtime/agent_runtime.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/runtime/agent_runtime.py)
-- [`agent/travel_agent/supervisor/builder.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/supervisor/builder.py)
-- [`agent/travel_agent/supervisor/nodes.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/supervisor/nodes.py)
-- [`agent/travel_agent/subagents/registry.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/registry.py)
-  - subagent 到 skill 的拥有关系、tool 映射，以及 `selection_policy / selection_plan`
-- [`agent/travel_agent/contracts/execution_receipt.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/contracts/execution_receipt.py)
-  - `subagent order / tools used / artifact patch sections / stage history` 的统一 receipt contract
-- [`agent/travel_agent/contracts/supervisor_orchestration.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/contracts/supervisor_orchestration.py)
-  - `SupervisorRunRequest / SupervisorPlanPreviewRequest / SupervisorRuntimeContext / SupervisorPlanPreview / SupervisorToolHealthDiagnostics` 五类 contract，用来收口 `AgentRuntime -> legacy bridge -> legacy_runtime` 的编排状态、preview 结果与 diagnostics 结果
-- [`agent/travel_agent/contracts/supervisor_events.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/contracts/supervisor_events.py)
-  - `SupervisorStageEvent / SupervisorReasoningEvent / SupervisorChunkEvent / SupervisorToolStartEvent / SupervisorToolEndEvent / SupervisorDoneEvent` 六类 contract，用来收口 legacy graph 归一化后的 runtime 事件形状
-- [`agent/travel_agent/runtime_sources.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/runtime_sources.py)
-  - memory-aware graph / preview source adapter 层，统一承接 `AgentStateWithMemory`、memory manager 默认值与 default checkpointer 选择
-- [`agent/travel_agent/runtime_event_emitters.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/runtime_event_emitters.py)
-  - contract-first event emitter 层，统一承接 `SupervisorStageEvent / SupervisorReasoningEvent / SupervisorChunkEvent / SupervisorTool*Event / SupervisorDoneEvent` 的归一化装配
-- [`agent/travel_agent/graph/legacy_runtime.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/legacy_runtime.py)
-  - legacy graph 的 `run / stream / stream_with_memory / plan preview / diagnostics` 兼容执行入口；现在通过 `stream_supervisor_run()` / `generate_supervisor_plan_preview()` 直接消费 `SupervisorRunRequest / SupervisorPlanPreviewRequest / SupervisorRuntimeContext`，并把 memory-aware source/state 装配委托给 `runtime_sources.py`、把事件归一化装配委托给 `runtime_event_emitters.py`，自己主要保留 shim 与 source orchestration 逻辑
-- [`agent/travel_agent/subagents/research.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/research.py)
-- [`agent/travel_agent/subagents/planning.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/planning.py)
-- [`agent/travel_agent/subagents/budget.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/budget.py)
-- [`agent/travel_agent/subagents/verification.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/subagents/verification.py)
-- [`agent/travel_agent/skills/registry.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/skills/registry.py)
-  - 默认 skills market catalog，包含 owner、版本、输入输出 contract、selection policy、evidence/freshness/fallback 与 docs/eval 钩子
-- [`docs/reference/skills-market-catalog.md`](/D:/moyuan/moyuan-travel-agent/docs/reference/skills-market-catalog.md)
-  - 当前默认 skills market 的文档化视图
-- [`scripts/agent_subagent_scorecard.py`](/D:/moyuan/moyuan-travel-agent/scripts/agent_subagent_scorecard.py)
-  - 基于 replay fixture 生成 `research / planning / budget / verification` 的协作覆盖 scorecard 基线
-- [`scripts/release_harness_scorecard.py`](/D:/moyuan/moyuan-travel-agent/scripts/release_harness_scorecard.py)
-  - 收口 golden / benchmark / subagent scorecard / delivery snapshot / skills market 的 release checklist，并通过 `runtime_ops_contracts.py` 输出 typed release scorecard
-- [`scripts/export_release_manifest.py`](/D:/moyuan/moyuan-travel-agent/scripts/export_release_manifest.py)
-  - 输出 typed release manifest，并把 benchmark / golden eval / subagent scorecard / release harness scorecard / delivery snapshot / skills catalog 作为显式质量证据引用收入口径
-- [`agent/travel_agent/artifacts/models.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/artifacts/models.py)
-- [`agent/travel_agent/memory/conflict_resolution.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/memory/conflict_resolution.py)
-- [`agent/travel_agent/memory/persistence.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/memory/persistence.py)
-- [`agent/travel_agent/graph/builder.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/builder.py)
-- [`agent/travel_agent/graph/nodes.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/nodes.py)
-- [`agent/travel_agent/graph/runtime_config.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/runtime_config.py)
-- [`agent/travel_agent/graph/memory_integration.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/graph/memory_integration.py)
-- [`agent/travel_agent/tools/travel_tools.py`](/D:/moyuan/moyuan-travel-agent/agent/travel_agent/tools/travel_tools.py)
+Agent 扩展入口：
+
+| 场景 | 最短入口 |
+| --- | --- |
+| 编排与注册 | [`supervisor/`](../../agent/travel_agent/supervisor)、[`subagents/`](../../agent/travel_agent/subagents)、[`skills/registry.py`](../../agent/travel_agent/skills/registry.py)、[`contracts/`](../../agent/travel_agent/contracts) |
+| 产物、工具与状态 | [`artifacts/models.py`](../../agent/travel_agent/artifacts/models.py)、[`tools/travel_tools.py`](../../agent/travel_agent/tools/travel_tools.py)、[`memory/`](../../agent/travel_agent/memory) |
 
 ## 修改时的联动建议
 
-### 改 UI / 交互
+前端改动：
 
-通常需要同时关注：
+| 改什么 | 一起看什么 |
+| --- | --- |
+| UI / 交互 | `frontend/src/components/*`、`frontend/src/services/api/*`、`frontend/src/utils/travelPlan.ts`、对应后端接口与类型。 |
 
-- `frontend/src/components/*`
-- `frontend/src/services/api/*`
-- `frontend/src/utils/travelPlan.ts`
-- 对应的后端接口与类型
+后端改动：
 
-### 改 API / startup / observability
+| 改什么 | 一起看什么 |
+| --- | --- |
+| API / startup / observability | `backend/moyuan_web/main.py`、`error_handlers.py`、`middleware/__init__.py`、`api/error_codes.py`、`api/schemas/error.py`、`routes/*`、`services/*`、`backend/config/__init__.py`、`tests/test_api_smoke_local.py`、`tests/test_api_error_contract_local.py`、`tests/test_chat_stream_local.py`、`docs/reference/api-reference.md`、`docs/reference/error-code-reference.md`、`docs/testing/testing-guide.md`。 |
 
-通常需要同时关注：
+Agent 改动：
 
-- `web/moyuan_web/main.py`
-- `web/moyuan_web/middleware/__init__.py`
-- `web/moyuan_web/routes/*`
-- `web/moyuan_web/services/*`
-- `config/__init__.py`
-- `tests/test_api_smoke_local.py`
-- `tests/test_chat_stream_local.py`
-- `docs/reference/api-reference.md`
-- `docs/testing/testing-guide.md`
+| 改什么 | 一起看什么 |
+| --- | --- |
+| Agent 架构 / supervisor / skills / artifact | `agent/travel_agent/runtime/*`、`supervisor/*`、`subagents/*`、`skills/*`、`artifacts/*`、`graph/*`、`backend/moyuan_web/services/chat_service.py`、`tests/test_agent_runtime_phase1_unit.py`、`tests/test_agent_subagent_phase2_unit.py`、`docs/architecture/system-architecture.md`。 |
 
-### 改 Agent 架构 / supervisor / skills / artifact
+仓库治理改动：
 
-通常需要同时关注：
-
-- `agent/travel_agent/runtime/*`
-- `agent/travel_agent/supervisor/*`
-- `agent/travel_agent/subagents/*`
-- `agent/travel_agent/skills/*`
-- `agent/travel_agent/artifacts/*`
-- `agent/travel_agent/graph/*`
-- `web/moyuan_web/services/chat_service.py`
-- `tests/test_agent_runtime_phase1_unit.py`
-- `tests/test_agent_subagent_phase2_unit.py`
-- `docs/architecture/system-architecture.md`
-- `docs/architecture/agent-subagent-skills-architecture-roadmap.md`
-
-### 改仓库规范 / 命令入口 / Compose
-
-通常需要同时关注：
-
-- `/.editorconfig`
-- `/.gitattributes`
-- `/scripts/dev.py`
-- `/compose.yaml`
-- `/.github/workflows/ci.yml`
-- `docs/getting-started/development-workflow.md`
-- `docs/architecture/infrastructure-foundations.md`
+| 改什么 | 一起看什么 |
+| --- | --- |
+| 仓库规范 / 命令入口 / Compose | `/.editorconfig`、`/.gitattributes`、`/.github/CONTRIBUTING.md`、`/.github/SECURITY.md`、`/scripts/dev.py`、`/deploy/compose/compose.yaml`、`/deploy/security/gitleaks.toml`、`/.github/workflows/ci.yml`、`docs/getting-started/development-workflow.md`、`docs/architecture/infrastructure-foundations.md`。 |
 
 ## 命名与结构约定
 
@@ -384,109 +239,22 @@ python scripts/dev.py help
 - 运行时数据统一放在 `data/`
 - benchmark / replay 产物统一放在 `docs/benchmarks/`
 - 截图等静态资源统一放在 `docs/assets/`
-## Phase 3 Frontend Files
 
-这一轮前端已经形成“薄入口 + feature 协作器 + 分域 API client”的结构：
+## 当前高频协作链
 
-- [`frontend/src/services/api/`](/D:/moyuan/moyuan-travel-agent/frontend/src/services/api)
-  - chat / city / map / health / session / share client，以及 `chatStreamParser.ts`
-- [`frontend/src/types/index.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/types/index.ts)
-  - streaming artifact / subagent event / share `delivery_bundle` contracts
-- [`frontend/src/utils/agentArtifacts.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/utils/agentArtifacts.ts)
-  - frontend-side artifact merge helpers
-- [`frontend/src/components/chat-area/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area)
-  - `useChatRuntime.ts` 作为主编排 hook，继续委托 `useStreamBuffer.ts / useArtifactRuntimeState.ts / useChatRunState.ts / useChatSessionHydration.ts / chatInputPolicy.ts / runtimeMessageBuilders.ts`
-- [`frontend/src/components/chat-area/useStreamBuffer.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useStreamBuffer.ts)
-  - 流缓冲、平滑刷新与滚动同步
-- [`frontend/src/components/chat-area/useArtifactRuntimeState.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useArtifactRuntimeState.ts)
-  - artifact / subagent 运行态与 reset 语义
-- [`frontend/src/components/chat-area/useChatRunState.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useChatRunState.ts)
-  - waiting / thinking / tool / stage / runtime log 生命周期收口
-- [`frontend/src/components/chat-area/useChatSessionHydration.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/useChatSessionHydration.ts)
-  - share query 恢复、session 切换 reset、metadata ref 与 skip-next-session-reset 语义
-- [`frontend/src/components/chat-area/chatRuntimeReplay.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/chatRuntimeReplay.ts)
-  - 复用 `chatStreamParser.ts / runtimeMessageBuilders.ts / agentArtifacts.ts`，把后端 golden fixture 回放成前端最终运行时快照
-- [`frontend/src/context/useSessionHistoryState.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/context/useSessionHistoryState.ts)
-  - session 列表过滤、localStorage 恢复、会话消息缓存、切换回放、persisted artifact 回填、diagnostics.sessionId 回补与 model recovery
-- [`frontend/src/context/useModelBootstrapState.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/context/useModelBootstrapState.ts)
-  - 模型列表拉取、当前模型恢复、session model 同步与 bootstrap 选型回退
-- [`frontend/src/components/chat-area/chatInputPolicy.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/chatInputPolicy.ts)
-  - 输入校验、增强 prompt、session name 与 stopped message 规则
-- [`frontend/src/components/chat-area/runtimeMessageBuilders.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/chat-area/runtimeMessageBuilders.ts)
-  - completion / stopped diagnostics 与 reasoning timestamp 拼装
-- [`frontend/src/components/message-list/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/message-list)
-  - markdown 渲染、思考区块、诊断区块与复制/导出动作
-- [`frontend/src/components/travel-plan-toolkit/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit)
-  - 结构化行程概览、方案对比、checklist、practical、reminders、conflicts
-- [`frontend/src/components/travel-plan-toolkit/sections/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/sections)
-  - `ToolkitOverviewPanel / ToolkitItineraryTab / ToolkitCompareTab / ToolkitChecklistTab / ToolkitFavoritesTab / ToolkitPracticalTab / ToolkitRemindersTab / ToolkitConflictsTab` 真实 section adapters
-- [`frontend/src/components/travel-plan-toolkit/useArtifactHistoryCompare.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/useArtifactHistoryCompare.ts)
-  - 基于 `artifactClient.getArtifactHistory(sessionId)` 组装 compare variants，优先把 persisted artifact snapshots 送进 compare/history UI
-- [`frontend/src/components/travel-plan-toolkit/sections/compare-tab/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/sections/compare-tab)
-  - `CompareEmptyState / VariantComparisonTable / VariantActionBar` 三个 view adapters，分别承接空态、对比表和 variant action bar；`VariantComparisonTable` 现在同时支持 text-first 与 artifact-history compare
-- [`frontend/src/components/travel-plan-toolkit/sections/conflicts-tab/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/sections/conflicts-tab)
-  - `ConflictSummaryTag / ConflictCardContent / DayConflictCard` 三个 view adapters，分别承接冲突摘要、按日冲突卡与一键修复动作
-- [`frontend/src/components/travel-plan-toolkit/sections/practical-tab/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/sections/practical-tab)
-  - `PracticalInfoGrid / PracticalInfoCardItem / PracticalToneTag` 三个 view adapters，分别承接信息卡网格、单卡内容与 tone 标签
-- [`frontend/src/components/travel-plan-toolkit/sections/reminders-tab/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/sections/reminders-tab)
-  - `RemindersList / ReminderCardContent / ReminderPhaseTag` 三个 view adapters，分别承接提醒卡列表、单卡内容与阶段标签
-- [`frontend/src/components/travel-plan-toolkit/sections/checklist-tab/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/sections/checklist-tab)
-  - `ChecklistList / ChecklistItemRow / ChecklistStatusTag` 三个 view adapters，分别承接清单列表、单项行与完成状态 affordance
-- [`frontend/src/components/travel-plan-toolkit/shared/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/shared)
-  - `timeline / budget / risk / practical / reminders / checklist / content / subagents / artifact / types` 领域 helper，`shared.tsx` 仅保留兼容 facade
-- [`frontend/src/components/travel-plan-toolkit/useTravelPlanToolkitActions.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/useTravelPlanToolkitActions.ts)
-  - favorites 池重做方案、variant continue、route preview、reorder、图片导出和分享动作编排；当前 share / export 已统一消费 `artifact delivery descriptor`，并把 `html_content` 一并带进 share-link contract
-- [`frontend/src/components/travel-plan-toolkit/actionPrompts.ts`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/actionPrompts.ts)
-  - `variant continue`、favorites quick refine 与 artifact-aware continue/edit prompt builder
-- [`frontend/src/components/travel-plan-toolkit/sections/itinerary/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/sections/itinerary)
-  - `ItineraryBudgetPanel / ItineraryDayCard` 继续承接每日行程里的预算控制与单日卡片
-- [`frontend/src/components/travel-plan-toolkit/sections/itinerary/budget-panel/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/sections/itinerary/budget-panel)
-  - `BudgetModeToolbar / BudgetStatsSummary / BudgetQuickRefineBar / BudgetConfidencePanel` 四个 view adapters，分别承接预算档位、预算统计、quick refine 动作和 confidence 风险提示
-- [`frontend/src/components/travel-plan-toolkit/sections/itinerary/day-card/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/travel-plan-toolkit/sections/itinerary/day-card)
-  - `ItineraryConflictSection / ItinerarySpotDecisionGrid / ItineraryTipsBlock` 三个 view adapters，分别承接风险提醒、景点决策卡与 tips 区块
-- [`frontend/src/components/city-explorer/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/city-explorer)
-  - 场景 prompt、筛选器、shortlist、城市网格、对比池与详情抽屉
-- [`frontend/src/components/city-explorer/sections/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/city-explorer/sections)
-  - `HeroSection / FilterBarSection / ComparePanelSection / GridSection / DetailDrawerSection` 五个 section modules，`sections.tsx` 只保留 facade
-- [`frontend/src/components/city-explorer/sections/hero/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/city-explorer/sections/hero)
-  - `HeroSummaryHeader / CuratedPromptPanel / FavoriteShortlistPanel` 三个 view 协作器，继续承接 `HeroSection` 的 header、场景卡和 shortlist
-- [`frontend/src/components/city-explorer/sections/grid/`](/D:/moyuan/moyuan-travel-agent/frontend/src/components/city-explorer/sections/grid)
-  - `GridSummaryBar / CityGridCard / CityGridCardMetrics / CityGridCardActions` 四个 view 协作器，继续承接 `GridSection` 的统计条、城市卡、指标区和操作条
-- [`frontend/tests/features/`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features)
-  - 前端测试当前按 `chat / app-shell / trip-plan / city-explorer / shared` 五类 feature workspace 组织，避免继续按 `components / utils / context` 漂移
-- [`frontend/tests/features/chat/ChatComposer.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/ChatComposer.test.tsx)
-  - 锁住发送/停止与约束展示边界
-- [`frontend/tests/features/chat/runtimeMessageBuilders.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/runtimeMessageBuilders.test.ts)
-  - 锁住 reasoning timestamp 与 completion/stopped diagnostics 语义
-- [`frontend/tests/features/chat/useChatSessionHydration.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/useChatSessionHydration.test.tsx)
-  - 锁住 share 恢复、session 切换 reset 与 skip reset 语义
-- [`frontend/tests/features/chat/useChatRunState.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/useChatRunState.test.ts)
-  - 锁住 waiting / thinking / tool / stage runtime lifecycle
-- [`frontend/tests/features/chat/chatInputPolicy.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/chatInputPolicy.test.ts)
-  - 锁住输入校验、增强 prompt 与 stopped message 语义
-- [`frontend/tests/features/chat/chatRuntimeReplay.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/chat/chatRuntimeReplay.test.ts)
-  - 锁住 parser / artifact merge / completion diagnostics 的最终态，以及前端 golden fixture 基线
-- [`frontend/tests/features/trip-plan/TravelPlanToolkit.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/trip-plan/TravelPlanToolkit.test.tsx)
-  - 锁住 tab 切换、每日行程动作、方案对比与 checklist/practical 入口
-- [`frontend/tests/features/trip-plan/travelPlanActionPrompts.test.ts`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/trip-plan/travelPlanActionPrompts.test.ts)
-  - 锁住 favorites quick refine prompt 与 variant continue prompt builder
-- [`frontend/tests/features/city-explorer/CityExplorer.test.tsx`](/D:/moyuan/moyuan-travel-agent/frontend/tests/features/city-explorer/CityExplorer.test.tsx)
-  - 锁住场景 prompt、shortlist 规划、城市卡规划、详情抽屉加载与对比 prompt 边界
+前端协作链：
 
-## Session Hydration Additions
+| 场景 | 最短入口 | 通常一起看 |
+| --- | --- | --- |
+| 聊天 UI | `frontend/src/components/chat-area/`、`useChatRuntime.ts`、`frontend/src/services/api/chatClient.ts`、`chatStreamParser.ts` | `MessageList.tsx`、`TravelPlanToolkit.tsx` |
+| session hydration | `frontend/src/context/useSessionHistoryState.ts`、`frontend/src/context/useModelBootstrapState.ts` | `frontend/src/services/api/artifactClient.ts`、`tests/test_api_smoke_local.py` |
+| artifact / share | `frontend/src/components/travel-plan-toolkit/`、`frontend/src/services/api/artifactClient.ts`、`frontend/src/services/api/shareClient.ts` | `backend/moyuan_web/routes/artifact.py`、`backend/moyuan_web/services/share_service.py`、`docs/reference/api-reference.md` |
+| city explorer | `frontend/src/components/city-explorer/`、`frontend/src/services/api/cityClient.ts` | `backend/moyuan_web/routes/city.py`、`tests/test_api_smoke_local.py` |
 
-- `web/moyuan_web/routes/session.py`
-  - 新增 `GET /session/{session_id}/messages`，作为前端恢复会话消息的公开入口
-- `web/moyuan_web/services/chat_service.py`
-  - assistant 消息现在会把 `diagnostics.artifact` 与 `diagnostics.subagentEvents` 一并落盘
-  - user 消息支持 `display_message` / `model_content` 分离
-- `frontend/src/context/AppContext.tsx`
-  - 现在主要负责 provider 装配与流式全局状态
-- `frontend/src/context/useSessionHistoryState.ts`
-  - 负责 session 切换、刷新恢复、当前 session id 的本地持久化、消息缓存回放，以及通过 `artifactClient` 回填最新 persisted artifact 并补回 `diagnostics.sessionId`
-- `frontend/src/services/api/artifactClient.ts`
-  - latest/history 两类 artifact 读取 client，供 session restore、artifact-history compare 与 compare/history UI 复用
-- `frontend/src/context/useModelBootstrapState.ts`
-  - 负责模型列表 bootstrap、当前模型恢复与 session model 同步
-- `frontend/src/utils/sessionMessages.ts`
-  - 负责把后端持久化消息标准化成前端 `Message` 结构
+后端-Agent 协作链：
+
+| 场景 | 最短入口 | 通常一起看 |
+| --- | --- | --- |
+| 聊天请求执行 | `backend/moyuan_web/routes/chat.py`、`backend/moyuan_web/services/chat_service.py`、`agent/travel_agent/runtime/agent_runtime.py`、`agent/travel_agent/runtime/runtime_driver.py` | `agent/travel_agent/graph/runtime_flow.py`、`agent/travel_agent/graph/builder.py`、`agent/travel_agent/graph/nodes.py` |
+| session 持久化恢复 | `backend/moyuan_web/routes/session.py`、`backend/moyuan_web/services/chat_service.py`、`backend/moyuan_web/repositories/` | `frontend/src/context/useSessionHistoryState.ts`、`frontend/src/services/api/artifactClient.ts`、`tests/test_api_smoke_local.py` |
+| tool / artifact 交付 | `agent/travel_agent/tools/travel_tools.py`、`agent/travel_agent/artifacts/`、`backend/moyuan_web/services/share_service.py` | `docs/architecture/system-architecture.md`、`docs/reference/api-reference.md` |

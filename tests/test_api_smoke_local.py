@@ -9,8 +9,44 @@ from moyuan_web.main import create_app  # noqa: E402
 from config import server_config  # noqa: E402
 
 
+class _FakeModelConfigManager:
+    """Minimal model catalog for local API smoke tests."""
+
+    def get_available_models(self) -> list[dict[str, str]]:
+        """Return one configured model entry."""
+
+        return [
+            {
+                "model_id": "gpt-4o-mini",
+                "name": "GPT-4o Mini",
+                "provider": "openai",
+            }
+        ]
+
+    def get_model_config(self, model_id: str) -> dict[str, str]:
+        """Return one model config or raise when unknown."""
+
+        if model_id != "gpt-4o-mini":
+            raise ValueError(model_id)
+        return {
+            "name": "GPT-4o Mini",
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+        }
+
+
+def _install_fake_model_config_manager(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Patch route/bootstrap model-config accessors with deterministic test data."""
+
+    manager = _FakeModelConfigManager()
+    monkeypatch.setattr("moyuan_web.bootstrap_app.get_model_config_manager", lambda: manager)
+    monkeypatch.setattr("moyuan_web.routes.model.get_model_config_manager", lambda: manager)
+    monkeypatch.setattr("moyuan_web.routes.session.get_model_config_manager", lambda: manager)
+
+
 @pytest.mark.asyncio
-async def test_models_session_clear_smoke():
+async def test_models_session_clear_smoke(monkeypatch):
+    _install_fake_model_config_manager(monkeypatch)
     app = create_app()
     transport = httpx.ASGITransport(app=app)
 
@@ -33,16 +69,15 @@ async def test_models_session_clear_smoke():
         assert messages_resp.json().get("success") is True
         assert messages_resp.json().get("messages") == []
 
-        # Backward compatibility: allow legacy `model` field besides `model_id`.
         set_model_resp = await client.put(
             f"/api/session/{session_id}/model",
-            json={"model": "gpt-4o-mini"},
+            json={"model_id": "gpt-4o-mini"},
         )
         assert set_model_resp.status_code == 200
         assert set_model_resp.json().get("success") is True
         assert set_model_resp.json().get("model_id") == "gpt-4o-mini"
 
-        clear_resp = await client.post("/api/clear", params={"session_id": session_id})
+        clear_resp = await client.post(f"/api/clear/{session_id}")
         assert clear_resp.status_code == 200
         clear_data = clear_resp.json()
         assert clear_data.get("success") is True
@@ -195,6 +230,7 @@ async def test_city_routes_smoke():
 
 @pytest.mark.asyncio
 async def test_metrics_alias_and_rate_limit_config_smoke(monkeypatch):
+    _install_fake_model_config_manager(monkeypatch)
     monkeypatch.setenv("MOYUAN_METRICS_PATH", "/internal/metrics")
     monkeypatch.setenv("MOYUAN_RATE_LIMIT_MAX_REQUESTS", "2")
     monkeypatch.setenv("MOYUAN_RATE_LIMIT_WINDOW_SECONDS", "60")

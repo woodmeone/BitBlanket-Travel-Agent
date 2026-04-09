@@ -58,6 +58,22 @@ def _load_frontend_version(project_root: Path) -> str:
     return str(payload.get("version") or "unknown")
 
 
+def _derive_release_tag(*, git_sha: str, git_ref: str, release_tag: str | None) -> str:
+    """Resolve one explicit release tag used by image publication and manifests."""
+    normalized = str(release_tag or "").strip()
+    if normalized:
+        return normalized
+
+    ref_name = str(git_ref or "").strip()
+    if ref_name.startswith("refs/tags/"):
+        return ref_name.split("/", 2)[-1]
+    if ref_name and "/" not in ref_name:
+        return ref_name
+
+    short_sha = str(git_sha or "").strip()[:7] or "local"
+    return f"sha-{short_sha}"
+
+
 def export_release_manifest(
     output_path: Path = DEFAULT_OUTPUT,
     *,
@@ -65,10 +81,14 @@ def export_release_manifest(
     git_ref: str,
     registry: str,
     owner: str,
+    release_tag: str | None = None,
 ) -> Path:
     """Write one release manifest that release workflows can upload and publish."""
     owner = owner.strip().lower()
     registry = registry.rstrip("/")
+    resolved_release_tag = _derive_release_tag(git_sha=git_sha, git_ref=git_ref, release_tag=release_tag)
+    backend_image = f"{registry}/{owner}/moyuan-travel-agent-backend"
+    frontend_image = f"{registry}/{owner}/moyuan-travel-agent-frontend"
     manifest = ReleaseManifest(
         created_at=utc_now_iso(),
         source=ReleaseManifestSource(
@@ -79,12 +99,16 @@ def export_release_manifest(
             "backend": ReleaseApplicationEntry(
                 name=APP_NAME,
                 version=APP_VERSION,
-                image=f"{registry}/{owner}/moyuan-travel-agent-backend",
+                image=backend_image,
+                image_tag=resolved_release_tag,
+                image_ref=f"{backend_image}:{resolved_release_tag}",
             ),
             "frontend": ReleaseApplicationEntry(
                 name="moyuan-travel-agent-frontend",
                 version=_load_frontend_version(ROOT),
-                image=f"{registry}/{owner}/moyuan-travel-agent-frontend",
+                image=frontend_image,
+                image_tag=resolved_release_tag,
+                image_ref=f"{frontend_image}:{resolved_release_tag}",
             ),
         },
         quality=ReleaseManifestQuality(
@@ -106,6 +130,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT), help="Output path for the release manifest.")
     parser.add_argument("--git-sha", required=True, help="Git SHA recorded in the release manifest.")
     parser.add_argument("--git-ref", required=True, help="Git ref or tag recorded in the release manifest.")
+    parser.add_argument("--release-tag", default="", help="Explicit image tag recorded in the release manifest.")
     parser.add_argument("--registry", default="ghcr.io", help="Container registry host.")
     parser.add_argument("--owner", required=True, help="Container/image owner or namespace.")
     return parser
@@ -121,6 +146,7 @@ def main(argv: list[str] | None = None) -> int:
         git_ref=str(args.git_ref),
         registry=str(args.registry),
         owner=str(args.owner),
+        release_tag=str(args.release_tag),
     )
     print(f"Release manifest exported to: {target}")
     return 0

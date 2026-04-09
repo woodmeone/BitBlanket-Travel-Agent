@@ -6,6 +6,7 @@ import json
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 from scripts.runtime_backup import create_runtime_backup
 from scripts.runtime_prune import prune_runtime_data
@@ -30,9 +31,60 @@ def test_create_runtime_backup_archives_runtime_files(tmp_path):
     assert archive_path.exists()
     assert archive_path.suffix == ".zip"
     assert len(manifest["files"]) >= 2
+    assert manifest["schema_version"] == 2
     archived_paths = {item["relative_path"] for item in manifest["files"]}
     assert "data/sessions/sessions.json" in archived_paths
     assert "data/agent_memory.json" in archived_paths
+    assert manifest["checkpoint_runtime"]["backend"] == "sqlite"
+    assert manifest["checkpoint_runtime"]["archive_contains_checkpoint_data"] is False
+    assert manifest["restore_instructions"]
+
+
+def test_create_runtime_backup_tracks_custom_sqlite_checkpoint_path(monkeypatch, tmp_path):
+    checkpoint_path = tmp_path / "runtime" / "custom-checkpoints.sqlite3"
+    _write_runtime_file(tmp_path / "data" / "sessions" / "sessions.json", '{"s1": {"session_id": "s1"}}')
+    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(checkpoint_path) as connection:
+        connection.execute("CREATE TABLE demo(id INTEGER PRIMARY KEY)")
+        connection.commit()
+
+    monkeypatch.setenv("AGENT_CHECKPOINT_DB", str(checkpoint_path))
+
+    archive_path, manifest = create_runtime_backup(
+        project_root=tmp_path,
+        output_dir=tmp_path / "artifacts" / "runtime_backups",
+    )
+
+    archived_paths = {item["relative_path"] for item in manifest["files"]}
+    assert archive_path.exists()
+    assert "runtime/custom-checkpoints.sqlite3" in archived_paths
+    assert manifest["checkpoint_runtime"] == {
+        "backend": "sqlite",
+        "target": "runtime/custom-checkpoints.sqlite3",
+        "archive_contains_checkpoint_data": True,
+        "archived_files": ["runtime/custom-checkpoints.sqlite3"],
+        "restore_strategy": "archive_file",
+    }
+
+
+def test_create_runtime_backup_records_postgres_checkpoint_metadata(monkeypatch, tmp_path):
+    _write_runtime_file(tmp_path / "data" / "sessions" / "sessions.json", '{"s1": {"session_id": "s1"}}')
+    monkeypatch.setenv("AGENT_CHECKPOINT_BACKEND", "postgres")
+    monkeypatch.setenv("AGENT_CHECKPOINT_DSN", "postgresql://demo:secret@db.example.com:5432/moyuan")
+
+    _archive_path, manifest = create_runtime_backup(
+        project_root=tmp_path,
+        output_dir=tmp_path / "artifacts" / "runtime_backups",
+    )
+
+    checkpoint_runtime = manifest["checkpoint_runtime"]
+    assert checkpoint_runtime["backend"] == "postgres"
+    assert checkpoint_runtime["archive_contains_checkpoint_data"] is False
+    assert checkpoint_runtime["restore_strategy"] == "external_snapshot"
+    assert checkpoint_runtime["archived_files"] == []
+    assert checkpoint_runtime["target"] == "postgresql://demo:***@db.example.com:5432/moyuan"
+    assert "secret" not in checkpoint_runtime["target"]
+    assert any("external database snapshot" in item for item in manifest["restore_instructions"])
 
 
 def test_restore_runtime_backup_recovers_modified_files(tmp_path):
@@ -55,6 +107,31 @@ def test_restore_runtime_backup_recovers_modified_files(tmp_path):
     assert "s1" in restored
     assert result["safety_archive"] is None
     assert "data/sessions/sessions.json" in result["restored_files"]
+    assert result["checkpoint_runtime"]["backend"] == "sqlite"
+    assert result["restore_instructions"]
+
+
+def test_restore_runtime_backup_reports_external_checkpoint_instructions(monkeypatch, tmp_path):
+    sessions_path = tmp_path / "data" / "sessions" / "sessions.json"
+    _write_runtime_file(sessions_path, '{"s1": {"session_id": "s1", "messages": []}}')
+    monkeypatch.setenv("AGENT_CHECKPOINT_BACKEND", "postgres")
+    monkeypatch.setenv("AGENT_CHECKPOINT_DSN", "postgresql://demo:secret@db.example.com:5432/moyuan")
+
+    archive_path, manifest = create_runtime_backup(
+        project_root=tmp_path,
+        output_dir=tmp_path / "artifacts" / "runtime_backups",
+    )
+    _write_runtime_file(sessions_path, '{"broken": true}')
+
+    result = restore_runtime_backup(
+        archive_path=archive_path,
+        project_root=tmp_path,
+        create_safety_backup=False,
+    )
+
+    assert manifest["checkpoint_runtime"]["backend"] == "postgres"
+    assert result["checkpoint_runtime"]["backend"] == "postgres"
+    assert any("external database snapshot" in item for item in result["restore_instructions"])
 
 
 def test_prune_runtime_data_cleans_backups_sessions_failures_and_vacuums(tmp_path):
@@ -138,3 +215,41 @@ def test_prune_runtime_data_cleans_backups_sessions_failures_and_vacuums(tmp_pat
     assert result["deleted_sessions"] == 1
     assert result["deleted_failure_records"] == 1
     assert result["vacuumed_checkpoints"] is True
+
+
+def test_prune_runtime_data_uses_checkpoint_factory_for_postgres_backend(monkeypatch, tmp_path):
+    observed: dict[str, object] = {}
+
+    class _FakeCheckpointer:
+        storage = {"thread-1": {"ns-1": {"cp-1": {}, "cp-2": {}}}}
+
+        def get_checkpoint_count(self, thread_id: str, checkpoint_ns: str = "") -> int:
+            observed.setdefault("count_calls", []).append((thread_id, checkpoint_ns))
+            return 2
+
+    def _fake_resolve_checkpointer_config(**kwargs):
+        observed["resolve_kwargs"] = kwargs
+        return SimpleNamespace(backend="postgres", target="sqlite+pysqlite:////tmp/checkpoints.db")
+
+    monkeypatch.setattr("scripts.runtime_prune.resolve_checkpointer_config", _fake_resolve_checkpointer_config)
+    monkeypatch.setattr("scripts.runtime_prune.create_checkpointer", lambda _config: _FakeCheckpointer())
+    monkeypatch.setattr("scripts.runtime_prune.close_checkpointer", lambda _checkpointer: observed.setdefault("closed", True))
+
+    result = prune_runtime_data(
+        project_root=tmp_path,
+        vacuum_checkpoints_enabled=True,
+        checkpoint_backend="postgres",
+        checkpoint_target="sqlite+pysqlite:////tmp/checkpoints.db",
+    )
+
+    assert observed["resolve_kwargs"]["backend_override"] == "postgres"
+    assert observed["resolve_kwargs"]["target_override"] == "sqlite+pysqlite:////tmp/checkpoints.db"
+    assert observed["count_calls"] == [("thread-1", "ns-1")]
+    assert observed["closed"] is True
+    assert result["vacuumed_checkpoints"] is False
+    assert result["checkpoint_maintenance"] == {
+        "backend": "postgres",
+        "action": "compact",
+        "performed": True,
+        "namespaces_touched": 1,
+    }

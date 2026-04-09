@@ -29,8 +29,19 @@ else:
 ensure_project_paths = _bootstrap_paths.ensure_project_paths
 ensure_project_paths()
 
-from scripts.runtime_data_utils import DEFAULT_BACKUP_DIR, ROOT, discover_runtime_files
-from scripts.runtime_ops_contracts import RuntimeDoctorCheck, RuntimeDoctorReport, RuntimeDoctorSummary
+from scripts.runtime_data_utils import (
+    DEFAULT_BACKUP_DIR,
+    ROOT,
+    build_restore_instructions,
+    discover_runtime_files,
+    resolve_checkpoint_runtime,
+)
+from scripts.runtime_ops_contracts import (
+    CheckpointRuntimeView,
+    RuntimeDoctorCheck,
+    RuntimeDoctorReport,
+    RuntimeDoctorSummary,
+)
 
 
 DEFAULT_OPENAPI_SNAPSHOT = ROOT / "docs" / "reference" / "openapi.snapshot.json"
@@ -207,6 +218,46 @@ def _check_runtime_files(project_root: Path) -> RuntimeDoctorCheck:
     )
 
 
+def _check_checkpoint_runtime(project_root: Path) -> RuntimeDoctorCheck:
+    """Summarize checkpoint backend metadata and restore requirements."""
+
+    try:
+        checkpoint_runtime = resolve_checkpoint_runtime(project_root)
+        checkpoint_view = CheckpointRuntimeView.from_dict(
+            {
+                **checkpoint_runtime,
+                "requires_external_snapshot": bool(
+                    checkpoint_runtime.get("restore_strategy") == "external_snapshot"
+                ),
+                "restore_instructions": build_restore_instructions(checkpoint_runtime),
+            }
+        )
+    except Exception as exc:
+        return _build_check(
+            "checkpoint_runtime",
+            "degraded",
+            f"Checkpoint runtime metadata could not be resolved: {exc}",
+            error_type=type(exc).__name__,
+            project_root=str(project_root),
+        )
+
+    backend = checkpoint_view.backend or "unknown"
+    restore_strategy = checkpoint_view.restore_strategy or "metadata_only"
+    if checkpoint_view.requires_external_snapshot:
+        message = (
+            f"Checkpoint runtime uses {backend} and requires an external database snapshot "
+            f"for {restore_strategy} recovery."
+        )
+    else:
+        message = f"Checkpoint runtime uses {backend} with {restore_strategy} recovery."
+    return _build_check(
+        "checkpoint_runtime",
+        "ok",
+        message,
+        **checkpoint_view.to_dict(),
+    )
+
+
 def _check_backups(path: Path) -> RuntimeDoctorCheck:
     """Inspect runtime backup archive inventory."""
     try:
@@ -341,6 +392,7 @@ def run_runtime_doctor(
         "llm_config": _check_llm_config(llm_config_path),
         "data_dir": _check_data_dir(data_dir),
         "runtime_files": _check_runtime_files(project_root),
+        "checkpoint_runtime": _check_checkpoint_runtime(project_root),
         "backups": _check_backups(Path(backup_dir)),
         "contract_snapshots": _check_contract_snapshots(Path(openapi_snapshot), Path(sse_snapshot)),
     }
@@ -391,6 +443,17 @@ def render_text_report(report: dict[str, Any] | RuntimeDoctorReport) -> str:
     ]
     for name, check in normalized.checks.items():
         lines.append(f"[{check.status.upper()}] {name}: {check.message}")
+        if name == "checkpoint_runtime":
+            backend = str(check.details.get("backend") or "")
+            restore_strategy = str(check.details.get("restore_strategy") or "")
+            requires_external_snapshot = bool(check.details.get("requires_external_snapshot"))
+            if backend or restore_strategy:
+                lines.append(
+                    "  "
+                    f"backend={backend or 'unknown'} "
+                    f"restore_strategy={restore_strategy or 'metadata_only'} "
+                    f"requires_external_snapshot={'yes' if requires_external_snapshot else 'no'}"
+                )
     return "\n".join(lines)
 
 

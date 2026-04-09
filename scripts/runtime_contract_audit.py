@@ -1,4 +1,4 @@
-"""Audit the typed runtime seam that decouples AgentRuntime from the legacy graph."""
+"""Audit the typed runtime seam that decouples AgentRuntime from graph execution flow."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 
 CONTRACT_PATH = ROOT / "agent" / "travel_agent" / "contracts" / "supervisor_orchestration.py"
-LEGACY_BRIDGE_PATH = ROOT / "agent" / "travel_agent" / "runtime" / "legacy_bridge.py"
-LEGACY_RUNTIME_PATH = ROOT / "agent" / "travel_agent" / "graph" / "legacy_runtime.py"
+RUNTIME_DRIVER_PATH = ROOT / "agent" / "travel_agent" / "runtime" / "runtime_driver.py"
+RUNTIME_FLOW_PATH = ROOT / "agent" / "travel_agent" / "graph" / "runtime_flow.py"
 RUNTIME_SOURCES_PATH = ROOT / "agent" / "travel_agent" / "runtime_sources.py"
 RUNTIME_EVENT_EMITTERS_PATH = ROOT / "agent" / "travel_agent" / "runtime_event_emitters.py"
 AGENT_RUNTIME_PATH = ROOT / "agent" / "travel_agent" / "runtime" / "agent_runtime.py"
@@ -171,21 +171,21 @@ def audit_contract_module(path: Path) -> list[RuntimeContractAuditFinding]:
     return findings
 
 
-def audit_legacy_bridge_module(path: Path) -> list[RuntimeContractAuditFinding]:
-    """Audit the runtime bridge annotations and shim entrypoint usage."""
+def audit_runtime_driver_module(path: Path) -> list[RuntimeContractAuditFinding]:
+    """Audit the runtime driver annotations and execution entrypoint usage."""
 
     module = _load_module_ast(path)
     source = path.read_text(encoding="utf-8")
     findings: list[RuntimeContractAuditFinding] = []
 
-    for class_name in ("LegacyRuntimeBridge", "DefaultLegacyRuntimeBridge"):
+    for class_name in ("RuntimeDriver", "DefaultRuntimeDriver"):
         stream_with_memory = _find_function(module, "stream_with_memory", class_name=class_name)
         if stream_with_memory is None:
             _add_missing_function_finding(
                 findings,
                 path,
                 symbol=f"{class_name}.stream_with_memory",
-                detail="missing bridge streaming entrypoint",
+                detail="missing runtime-driver streaming entrypoint",
             )
         else:
             request_annotation = _find_kwonly_annotation(stream_with_memory, "request")
@@ -217,7 +217,7 @@ def audit_legacy_bridge_module(path: Path) -> list[RuntimeContractAuditFinding]:
                 findings,
                 path,
                 symbol=f"{class_name}.generate_plan_preview_with_memory",
-                detail="missing bridge preview entrypoint",
+                detail="missing runtime-driver preview entrypoint",
             )
         else:
             request_annotation = _find_kwonly_annotation(preview_function, "request")
@@ -258,7 +258,7 @@ def audit_legacy_bridge_module(path: Path) -> list[RuntimeContractAuditFinding]:
                 findings,
                 path,
                 symbol=f"{class_name}.get_tool_health_diagnostics",
-                detail="missing bridge diagnostics entrypoint",
+                detail="missing runtime-driver diagnostics entrypoint",
             )
         else:
             return_annotation = _annotation_text(diagnostics_function.returns)
@@ -275,8 +275,8 @@ def audit_legacy_bridge_module(path: Path) -> list[RuntimeContractAuditFinding]:
         findings.append(
             RuntimeContractAuditFinding(
                 path=_repo_relative(path),
-                symbol="DefaultLegacyRuntimeBridge",
-                detail="legacy bridge must not import graph.builder directly",
+                symbol="DefaultRuntimeDriver",
+                detail="runtime driver must not import graph.builder directly",
             )
         )
 
@@ -291,15 +291,15 @@ def audit_legacy_bridge_module(path: Path) -> list[RuntimeContractAuditFinding]:
                 RuntimeContractAuditFinding(
                     path=_repo_relative(path),
                     symbol=shim_name,
-                    detail="missing typed legacy runtime shim reference",
+                    detail="missing typed runtime flow reference",
                 )
             )
 
     return findings
 
 
-def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]:
-    """Audit the legacy runtime shim annotations and exported entrypoints."""
+def audit_runtime_flow_module(path: Path) -> list[RuntimeContractAuditFinding]:
+    """Audit the graph execution flow annotations and exported entrypoints."""
 
     module = _load_module_ast(path)
     source = path.read_text(encoding="utf-8")
@@ -311,7 +311,7 @@ def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]
             findings,
             path,
             symbol="stream_supervisor_run",
-            detail="missing supervisor streaming shim",
+            detail="missing supervisor streaming entrypoint",
         )
     else:
         if _find_kwonly_annotation(stream_function, "request") != "SupervisorRunRequest":
@@ -337,7 +337,7 @@ def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]
             findings,
             path,
             symbol="generate_supervisor_plan_preview",
-            detail="missing supervisor preview shim",
+            detail="missing supervisor preview entrypoint",
         )
     else:
         if _find_kwonly_annotation(preview_function, "request") != "SupervisorPlanPreviewRequest":
@@ -371,7 +371,7 @@ def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]
             findings,
             path,
             symbol="collect_supervisor_tool_health_diagnostics",
-            detail="missing supervisor diagnostics shim",
+            detail="missing supervisor diagnostics entrypoint",
         )
     else:
         if _annotation_text(diagnostics_function.returns) != "SupervisorToolHealthDiagnostics":
@@ -387,8 +387,8 @@ def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]
         findings.append(
             RuntimeContractAuditFinding(
                 path=_repo_relative(path),
-                symbol="legacy_runtime",
-                detail="legacy runtime must import runtime source adapters",
+                symbol="runtime_flow",
+                detail="runtime flow must import runtime source adapters",
             )
         )
 
@@ -399,7 +399,7 @@ def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]
         "build_memory_plan_preview_source",
         "_stream_graph_source",
         "_generate_plan_preview_from_source",
-        "LegacySupervisorEventEmitter",
+        "SupervisorEventEmitter",
     )
     for token in required_adapter_tokens:
         if token not in source:
@@ -407,7 +407,7 @@ def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]
                 RuntimeContractAuditFinding(
                     path=_repo_relative(path),
                     symbol=token,
-                    detail="legacy runtime must route through runtime source adapters",
+                    detail="runtime flow must route through runtime source adapters",
                 )
             )
 
@@ -430,8 +430,8 @@ def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]
             findings.append(
                 RuntimeContractAuditFinding(
                     path=_repo_relative(path),
-                    symbol="legacy_runtime",
-                    detail=f"legacy runtime must not assemble memory state directly via `{token}`",
+                    symbol="runtime_flow",
+                    detail=f"runtime flow must not assemble memory state directly via `{token}`",
                 )
             )
 
@@ -439,8 +439,8 @@ def audit_legacy_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]
         findings.append(
             RuntimeContractAuditFinding(
                 path=_repo_relative(path),
-                symbol="legacy_runtime",
-                detail="legacy runtime must import runtime event emitters",
+                symbol="runtime_flow",
+                detail="runtime flow must import runtime event emitters",
             )
         )
 
@@ -485,29 +485,29 @@ def audit_runtime_sources_module(path: Path) -> list[RuntimeContractAuditFinding
 
 
 def audit_runtime_event_emitters_module(path: Path) -> list[RuntimeContractAuditFinding]:
-    """Audit the dedicated runtime event emitter layer used by the compatibility shim."""
+    """Audit the dedicated runtime event emitter layer used by the execution flow."""
 
     module = _load_module_ast(path)
     source = path.read_text(encoding="utf-8")
     findings: list[RuntimeContractAuditFinding] = []
 
-    emitter_class = _find_class(module, "LegacySupervisorEventEmitter")
+    emitter_class = _find_class(module, "SupervisorEventEmitter")
     if emitter_class is None:
         findings.append(
             RuntimeContractAuditFinding(
                 path=_repo_relative(path),
-                symbol="LegacySupervisorEventEmitter",
+                symbol="SupervisorEventEmitter",
                 detail="missing runtime event emitter class",
             )
         )
         return findings
 
     for method_name in REQUIRED_RUNTIME_EVENT_EMITTER_METHODS:
-        if _find_function(module, method_name, class_name="LegacySupervisorEventEmitter") is None:
+        if _find_function(module, method_name, class_name="SupervisorEventEmitter") is None:
             _add_missing_function_finding(
                 findings,
                 path,
-                symbol=f"LegacySupervisorEventEmitter.{method_name}",
+                symbol=f"SupervisorEventEmitter.{method_name}",
                 detail="missing runtime event emitter method",
             )
 
@@ -533,7 +533,7 @@ def audit_runtime_event_emitters_module(path: Path) -> list[RuntimeContractAudit
 
 
 def audit_agent_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]:
-    """Audit that AgentRuntime consumes the typed bridge seam instead of legacy entrypoints."""
+    """Audit that AgentRuntime consumes the typed execution seam instead of direct graph entrypoints."""
 
     source = path.read_text(encoding="utf-8")
     findings: list[RuntimeContractAuditFinding] = []
@@ -558,7 +558,7 @@ def audit_agent_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]:
     forbidden_legacy_references = (
         "run_travel_agent_streaming_with_memory",
         "from ..graph.builder import",
-        "from ..graph.legacy_runtime import",
+        "from ..graph.runtime_flow import",
     )
     for token in forbidden_legacy_references:
         if token in source:
@@ -570,12 +570,12 @@ def audit_agent_runtime_module(path: Path) -> list[RuntimeContractAuditFinding]:
                 )
             )
 
-    if "DefaultLegacyRuntimeBridge" not in source or "LegacyRuntimeBridge" not in source:
+    if "DefaultRuntimeDriver" not in source or "RuntimeDriver" not in source:
         findings.append(
             RuntimeContractAuditFinding(
                 path=_repo_relative(path),
                 symbol="AgentRuntime",
-                detail="agent runtime must depend on the explicit legacy bridge seam",
+                detail="agent runtime must depend on the explicit runtime driver seam",
             )
         )
 
@@ -587,8 +587,8 @@ def build_runtime_contract_audit_report(root: Path = ROOT) -> dict[str, Any]:
 
     files = {
         _repo_relative(CONTRACT_PATH): audit_contract_module(CONTRACT_PATH),
-        _repo_relative(LEGACY_BRIDGE_PATH): audit_legacy_bridge_module(LEGACY_BRIDGE_PATH),
-        _repo_relative(LEGACY_RUNTIME_PATH): audit_legacy_runtime_module(LEGACY_RUNTIME_PATH),
+        _repo_relative(RUNTIME_DRIVER_PATH): audit_runtime_driver_module(RUNTIME_DRIVER_PATH),
+        _repo_relative(RUNTIME_FLOW_PATH): audit_runtime_flow_module(RUNTIME_FLOW_PATH),
         _repo_relative(RUNTIME_SOURCES_PATH): audit_runtime_sources_module(RUNTIME_SOURCES_PATH),
         _repo_relative(RUNTIME_EVENT_EMITTERS_PATH): audit_runtime_event_emitters_module(RUNTIME_EVENT_EMITTERS_PATH),
         _repo_relative(AGENT_RUNTIME_PATH): audit_agent_runtime_module(AGENT_RUNTIME_PATH),
@@ -610,7 +610,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
         description=(
-            "Audit the typed runtime seam that isolates AgentRuntime from the legacy graph."
+            "Audit the typed runtime seam that isolates AgentRuntime from graph execution flow."
         )
     )
     parser.add_argument(

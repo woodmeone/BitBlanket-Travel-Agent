@@ -10,7 +10,7 @@ import httpx
 import pytest
 import pytest_asyncio
 
-from web.moyuan_web.bootstrap import ensure_project_paths
+from backend.moyuan_web.bootstrap import ensure_project_paths
 
 ensure_project_paths()
 

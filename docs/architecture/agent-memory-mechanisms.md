@@ -269,5 +269,7 @@ profile 更新阶段已加入“写入前归一化”：
 建议回归命令：
 
 ```bash
-.\.venv\Scripts\python.exe -m pytest tests/test_agent_memory_unit.py tests/test_session_memory_sync_unit.py -q
+python scripts/dev.py backend-test \
+  --pytest-path tests/test_agent_memory_unit.py \
+  --pytest-path tests/test_session_memory_sync_unit.py
 ```

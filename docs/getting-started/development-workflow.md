@@ -6,19 +6,18 @@
 
 1. 确保本地依赖已就绪：`python scripts/bootstrap.py`
 2. 检查配置文件：
-   - `config\llm_config.yaml`
-   - `config\server_config.yaml`
-3. 启动 Web API：
+   - `backend\config\llm_config.yaml`
+   - `backend\config\server_config.yaml`
+3. 启动 Backend API：
 
 ```bash
-.\.venv\Scripts\python.exe -m uvicorn moyuan_web.main:app --host 0.0.0.0 --port 38000 --app-dir web
+python scripts/dev.py backend-dev
 ```
 
 4. 启动前端：
 
 ```bash
-cd frontend
-npm run dev
+python scripts/dev.py frontend-dev
 ```
 
 5. 启动后先检查：
@@ -35,9 +34,11 @@ uv pip install -r requirements-dev.txt
 
 ## 2. 统一命令入口
 
-根目录的 [`scripts/dev.py`](/D:/moyuan/moyuan-travel-agent/scripts/dev.py) 是本地开发、测试和基础设施校验的统一入口，推荐优先使用。
+根目录的 [`scripts/dev.py`](../../scripts/dev.py) 是本地开发、测试和基础设施校验的统一入口，推荐优先使用。
 
 ```bash
+python scripts/dev.py backend-dev
+python scripts/dev.py frontend-dev
 python scripts/dev.py help
 ```
 
@@ -85,8 +86,8 @@ python scripts/dev.py help
 推荐命令：
 
 ```bash
-docker compose up --build
-docker compose --profile observability up --build
+docker compose --file deploy/compose/compose.yaml up --build
+docker compose --file deploy/compose/compose.yaml --profile observability up --build
 ```
 
 在真正启动前，先做一次渲染校验会更稳：
@@ -108,46 +109,54 @@ python scripts/dev.py compose-up \
 ### 4.1 后端与前端验证
 
 ```bash
-python -m pytest tests -m "unit and not local and not external_api" -q
-python -m pytest tests -m "local and not external_api" -q
-python -m ruff check --config ruff.toml scripts web/moyuan_web
-python -m mypy --config-file mypy.ini scripts/dev.py scripts/bootstrap.py scripts/export_openapi_snapshot.py scripts/export_runtime_doctor_snapshot.py scripts/export_release_manifest.py scripts/release_harness_scorecard.py scripts/runtime_contract_audit.py scripts/runtime_ops_contracts.py scripts/export_support_bundle.py scripts/export_sse_contract_snapshot.py scripts/runtime_backup.py scripts/runtime_data_utils.py scripts/runtime_doctor.py scripts/runtime_prune.py scripts/runtime_restore.py web/moyuan_web/app_meta.py web/moyuan_web/main.py web/moyuan_web/middleware/__init__.py web/moyuan_web/observability.py web/moyuan_web/routes/chat.py web/moyuan_web/routes/health.py web/moyuan_web/services/share_service.py web/moyuan_web/startup_checks.py
-python scripts/docstring_audit.py --strict
-python scripts/complexity_budget.py --strict
-python scripts/decision_record_audit.py --strict
-python scripts/skills_market_audit.py --strict
-python scripts/runtime_contract_audit.py --strict
-cd frontend
-npm run lint
-npm run test:run
-npm run build
+python scripts/dev.py backend-test --pytest-slice unit
+python scripts/dev.py backend-test --pytest-slice local
+python scripts/dev.py ruff
+python scripts/dev.py mypy
+python scripts/dev.py docstring
+python scripts/dev.py complexity
+python scripts/dev.py decision-records
+python scripts/dev.py skills-market
+python scripts/dev.py runtime-contracts
+python scripts/dev.py frontend-lint
+python scripts/dev.py frontend-test
+python scripts/dev.py frontend-build
 ```
 
 说明：
 
+- `python scripts/dev.py backend-test` 是当前推荐的后端回归入口，支持 `--pytest-slice unit|local|runtime|ops|all`
+- 如果只想回归少量后端用例，可以重复传 `--pytest-path tests/...`
 - `docstring_audit --strict` 现在同时拦截缺失 docstring 和新增低信息量模板 docstring
 - 当前存量低信息量项由 `docs/reference/docstring-audit.low-info-baseline.json` 记录，后续改动应只减不增
 - `complexity_budget --strict` 会对热点文件执行“只减不增”预算门禁，当前预算基线由 `docs/reference/complexity-budget.json` 记录
 - `decision_record_audit --strict` 会检查 `docs/governance/` 下的 ADR / RFC / Design Review 是否包含统一状态和必填章节
 - `skills_market_audit --strict` 会检查默认 skill catalog 是否补齐 `schema + tests + docs + eval` 四件套，并验证 `docs_path / test_fixture / eval_fixture / onboarding_doc`
-- `runtime_contract_audit --strict` 会检查 `AgentRuntime -> legacy_bridge -> legacy_runtime` 是否仍通过显式 supervisor contract 协作，防止 runtime seam 退化回 loose kwargs 和直接 graph import
+- `runtime_contract_audit --strict` 会检查 `AgentRuntime -> runtime_driver -> runtime_flow` 是否仍通过显式 supervisor contract 协作，防止 runtime seam 退化回 loose kwargs 和直接 graph import
 - `export_runtime_doctor_snapshot.py` 会把 `runtime_doctor` 的 typed report contract 固化到 `docs/reference/runtime-doctor.snapshot.json`，供 support bundle / release manifest / release harness scorecard / release evidence / CI 复用
-- 当前前端默认验证入口已经稳定化：`npm run test:run` 会把 `vitest` worker 上限固定为 `2`，`npm run build` 默认走 `next build --webpack`
+- 当前前端默认验证入口已经稳定化：`python scripts/dev.py frontend-test` 会触发 `npm run test:run`，`python scripts/dev.py frontend-build` 默认走 `next build --webpack`
 - `scripts/dev.py` 当前也会自动解析跨平台 npm 可执行文件，在 Windows 上优先命中 `npm.cmd`
 
 ### 4.2 运行态与契约维护
 
 ```bash
-python scripts/runtime_backup.py
-python scripts/runtime_doctor.py --json
-python scripts/runtime_doctor.py --base-url http://localhost:38000 --strict
-python scripts/runtime_prune.py --keep-latest-backups 10 --max-backup-age-days 14
-python scripts/export_openapi_snapshot.py
-python scripts/export_sse_contract_snapshot.py
-python scripts/export_runtime_doctor_snapshot.py
-uv run --offline python scripts/release_harness_scorecard.py --strict
-python scripts/export_release_manifest.py --git-sha local --git-ref refs/heads/main --owner local
-python scripts/export_support_bundle.py --base-url http://localhost:38000
+python scripts/dev.py runtime-backup
+python scripts/dev.py runtime-backup --backup-label before-upgrade
+python scripts/dev.py runtime-restore --restore-archive artifacts/runtime_backups/runtime_backup_<timestamp>.zip
+python scripts/dev.py runtime-doctor --runtime-doctor-json
+python scripts/dev.py runtime-doctor --base-url http://localhost:38000 --runtime-doctor-strict
+python scripts/dev.py runtime-prune --prune-keep-latest-backups 10 --prune-max-backup-age-days 14
+python scripts/dev.py agent-replay --replay-session-id <session_id> --replay-dry-run
+python scripts/dev.py runtime-maintenance --prune-keep-latest-backups 10 --prune-max-backup-age-days 14
+python scripts/dev.py checkpoint-maintenance --replay-session-id <session_id> --prune-checkpoint-backend postgres --prune-checkpoint-db 'postgresql://user:password@localhost:5432/moyuan'
+python scripts/dev.py snapshots
+python scripts/dev.py benchmark-report
+python scripts/dev.py golden-report
+python scripts/dev.py benchmark-trend
+python scripts/dev.py release-scorecard
+python scripts/dev.py quality-gate
+python scripts/dev.py release-manifest --git-sha local --git-ref refs/heads/main --owner local
+python scripts/dev.py support-bundle --base-url http://localhost:38000
 ```
 
 ### 4.3 对应的统一入口
@@ -156,22 +165,41 @@ python scripts/export_support_bundle.py --base-url http://localhost:38000
 python scripts/dev.py test
 python scripts/dev.py infra-check
 python scripts/dev.py snapshots
+python scripts/dev.py benchmark-report
+python scripts/dev.py golden-report
+python scripts/dev.py benchmark-trend
+python scripts/dev.py quality-gate
+python scripts/dev.py runtime-backup
+python scripts/dev.py runtime-prune --prune-vacuum-checkpoints
+python scripts/dev.py agent-replay --replay-session-id <session_id> --replay-dry-run
+python scripts/dev.py runtime-maintenance --prune-keep-latest-backups 10 --prune-max-backup-age-days 14
+python scripts/dev.py checkpoint-maintenance --replay-session-id <session_id>
+python scripts/dev.py runtime-doctor --runtime-doctor-json
+python scripts/dev.py release-manifest --git-sha local --git-ref refs/heads/main --owner local
 python scripts/dev.py support-bundle
 python scripts/dev.py container-smoke
 ```
 
+组合任务说明：
+
+- `runtime-maintenance`
+  - 适合常规运行面维护，固定执行 `backup -> doctor(json) -> prune`
+- `checkpoint-maintenance`
+  - 适合 checkpoint 清理和回放核对，固定执行 `prune(vacuum checkpoints) -> optional replay(dry-run) -> doctor(json)`
+  - 如果传 `--replay-session-id`，`dev.py` 会自动补上 dry-run 语义，避免把排障流程变成写路径
+
 ## 5. 提交前检查建议
 
-### 5.1 改 Web API / Agent / startup / observability
+### 5.1 改 Backend API / Agent / startup / observability
 
 1. `/api/health` 正常
 2. `/api/ready` 返回 `200`，或者你明确知道为什么是 `503`
 3. `/api/metrics` 可访问
 4. 跑后端 `unit/local`
 5. 跑 `ruff`、`mypy`、`docstring_audit --strict`、`complexity_budget --strict`、`decision_record_audit --strict`、`skills_market_audit --strict`、`runtime_contract_audit --strict`
-6. 跑 `runtime_doctor --strict`
+6. 跑 `python scripts/dev.py runtime-doctor --base-url http://localhost:38000 --runtime-doctor-strict`
 7. 刷新 `runtime doctor / OpenAPI / SSE` 快照
-8. 跑 `release_harness_scorecard.py --strict`
+8. 跑 `python scripts/dev.py release-scorecard`
 9. 如改契约，确认快照与 support bundle / release evidence 一致
 
 ### 5.2 改前端 / SSE / 接口契约
@@ -187,12 +215,18 @@ python scripts/dev.py container-smoke
 ### 5.3 改 Docker / compose / release / dashboard / alert
 
 1. `python scripts/dev.py compose-config`
-2. 检查 [`compose.yaml`](/D:/moyuan/moyuan-travel-agent/compose.yaml)
-3. 检查 [`.github/workflows/ci.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/ci.yml) 的 `container-validate`
-4. 检查 [`.github/workflows/release.yml`](/D:/moyuan/moyuan-travel-agent/.github/workflows/release.yml)
-5. 检查 [`ops/observability/grafana-dashboard.json`](/D:/moyuan/moyuan-travel-agent/ops/observability/grafana-dashboard.json)
-6. 检查 [`ops/observability/prometheus-alerts.yml`](/D:/moyuan/moyuan-travel-agent/ops/observability/prometheus-alerts.yml)
+2. 检查 [`deploy/compose/compose.yaml`](../../deploy/compose/compose.yaml)
+3. 检查 [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) 的 `container-validate`
+4. 检查 [`.github/workflows/release.yml`](../../.github/workflows/release.yml)
+5. 检查 [`extend/observability/grafana-dashboard.json`](../../extend/observability/grafana-dashboard.json)
+6. 检查 [`extend/observability/prometheus-alerts.yml`](../../extend/observability/prometheus-alerts.yml)
 7. 必要时用 Compose 真实拉起服务
+
+额外规则：
+
+- 正式发布镜像禁止使用 `latest`
+- 手动 release 必须显式提供 `release_tag`
+- 导出的 release manifest 应检查 `image_tag / image_ref`
 
 如果只是 Docker Hub 拉取问题，优先改用镜像站复现：
 

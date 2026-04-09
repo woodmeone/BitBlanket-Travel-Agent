@@ -9,7 +9,7 @@ Status: accepted
 `moyuan-travel-agent` 已经进入持续的 harness engineering 演进期。重构不再只是单文件调整，而是会同时影响：
 
 - Agent Runtime
-- Web API contract
+- Backend API contract
 - Frontend feature workspace
 - CI / quality gate / release governance
 

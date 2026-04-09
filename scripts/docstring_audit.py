@@ -18,7 +18,8 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 DEFAULT_ROOTS = ("agent", "web", "scripts")
-DEFAULT_EXCLUDE_DIRS = {".git", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache"}
+DEFAULT_EXCLUDE_DIRS = {".git", ".cache", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache"}
+DocumentedNode = ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
 DEFAULT_BASELINE_PATH = Path("docs/reference/docstring-audit.low-info-baseline.json")
 GENERIC_PURPOSE_SENTENCE = "Explain how this routine updates graph state, tool execution flow, and downstream decision logic."
 GENERIC_ARG_RE = re.compile(
@@ -88,7 +89,7 @@ def normalize_path(file_path: Path) -> str:
     return file_path.as_posix()
 
 
-def iter_symbol_nodes(node: ast.AST, parent_qualname: str = "") -> Iterable[tuple[str, ast.AST, str]]:
+def iter_symbol_nodes(node: ast.AST, parent_qualname: str = "") -> Iterable[tuple[str, DocumentedNode, str]]:
     """Yield class/function nodes with a qualified symbol name."""
 
     for child in getattr(node, "body", []):

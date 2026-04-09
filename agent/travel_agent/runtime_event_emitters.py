@@ -1,4 +1,4 @@
-"""Contract-first event emitters used by the legacy supervisor runtime shim."""
+"""Contract-first event emitters used by the supervisor runtime flow."""
 
 from __future__ import annotations
 
@@ -88,7 +88,7 @@ def _is_answer_complete(answer: str) -> bool:
 
 
 @dataclass(slots=True)
-class LegacySupervisorEventEmitter:
+class SupervisorEventEmitter:
     """Emit normalized supervisor runtime events while tracking stream state."""
 
     session_id: str = "default"
