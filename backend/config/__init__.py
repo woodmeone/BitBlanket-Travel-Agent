@@ -1,4 +1,4 @@
-"""Configuration module for moyuan-travel-agent."""
+"""Configuration module for BitBlanket-Travel-Agent."""
 
 from __future__ import annotations
 

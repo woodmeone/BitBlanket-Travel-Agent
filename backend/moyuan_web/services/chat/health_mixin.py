@@ -1,4 +1,20 @@
-"""Health and diagnostics helpers for chat orchestration."""
+"""聊天健康诊断 Mixin，提供运行时健康状态、SLO 监控和故障遥测。
+
+SLO（Service Level Objective）说明：
+    SLO 是服务等级目标，定义了服务可接受的性能阈值。本模块监控三个关键指标：
+    - timeout_rate: 工具调用超时率
+    - failure_rate: 请求失败率
+    - fallback_rate: 降级回退率
+    任一指标超过阈值时，健康状态从 "ok" 降级为 "degraded"。
+
+滑动窗口说明：
+    健康指标基于时间窗口（默认60分钟）计算，只统计窗口内的请求，
+    过期数据自动清理，确保指标反映近期真实状态。
+
+应用场景：
+    运维人员通过 /health 端点查看服务是否正常，通过 /tools/health
+    查看各工具的调用成功率和熔断状态，及时发现异常。
+"""
 
 from __future__ import annotations
 
@@ -12,10 +28,14 @@ logger = logging.getLogger(__name__)
 
 
 class ChatHealthMixin:
-    """Health, telemetry, and SLO snapshot helpers."""
+    """健康、遥测和 SLO 快照方法 Mixin。
+
+    被 ChatService 通过多继承混入，提供运行时健康检查、SLO 监控、
+    故障聚类分析和遥测数据写入等能力。
+    """
 
     async def health_status(self) -> dict[str, Any]:
-        """Return lightweight runtime readiness status used by health endpoints."""
+        """返回轻量级运行时就绪状态，供健康检查端点使用。"""
         return {
             "initialized": self._initialized,
             "llm_adapter": self._llm_adapter is not None,
@@ -27,7 +47,11 @@ class ChatHealthMixin:
         }
 
     async def tools_health_status(self) -> dict[str, Any]:
-        """Return detailed tool-health diagnostics with SLO counters and circuit states."""
+        """返回详细的工具健康诊断，含 SLO 计数器和熔断状态。
+
+        熔断（Circuit Breaker）说明：当某个工具连续失败时，熔断器打开，
+        后续请求直接跳过该工具，避免级联故障。
+        """
         status = await self.health_status()
         diagnostics = self._agent_runtime.get_tool_health_diagnostics() if self._agent_runtime is not None else {}
         health_metrics = self._build_health_metrics_snapshot()
@@ -43,7 +67,11 @@ class ChatHealthMixin:
         }
 
     async def tools_intents_health_status(self) -> dict[str, Any]:
-        """Return intent-level aggregate health metrics for monitoring dashboards."""
+        """返回意图级别的聚合健康指标，供监控仪表盘使用。
+
+        按意图（如 hotel_search, weather_query）分组统计各指标，
+        便于定位特定意图的性能问题。
+        """
         status = await self.health_status()
         health_metrics = self._build_health_metrics_snapshot()
         slo = health_metrics.get("slo", {})
@@ -56,7 +84,14 @@ class ChatHealthMixin:
 
     @staticmethod
     def _extract_failure_clusters(execution_stats: dict[str, Any]) -> dict[str, int]:
-        """Extract clustered failure patterns from execution metadata for telemetry."""
+        """从执行元数据中提取聚类故障模式，用于遥测分析。
+
+        将错误码归类为四类：timeout（超时）、param_error（参数错误）、
+        irrelevant_answer（无关回答）、tool_error（工具错误）。
+
+        应用场景：某次请求执行了3步，其中1步超时、1步参数错误，
+        返回 {"timeout": 1, "param_error": 1, "irrelevant_answer": 0, "tool_error": 0}
+        """
         steps = list((execution_stats or {}).get("steps", []) or [])
         clusters = {"timeout": 0, "param_error": 0, "irrelevant_answer": 0, "tool_error": 0}
         for step in steps:
@@ -78,7 +113,11 @@ class ChatHealthMixin:
         answer: str,
         hard_error: Optional[str] = None,
     ) -> None:
-        """Emit summarized failure telemetry into service health metric buffers."""
+        """将故障摘要遥测数据写入服务健康指标缓冲区和本地 JSONL 文件。
+
+        仅当存在实际故障（聚类计数>0 或硬错误）时才写入，
+        避免无意义的空记录。写入失败不影响主流程。
+        """
         clusters = self._extract_failure_clusters(execution_stats)
         if not answer.strip():
             clusters["irrelevant_answer"] += 1
@@ -91,10 +130,10 @@ class ChatHealthMixin:
             "hard_error": hard_error,
         }
         if not any(value > 0 for value in clusters.values()) and not hard_error:
-            return
+            return  # 无实际故障，跳过写入
 
         root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
-        target = os.path.join(root, "data", "runtime_failure_clusters.jsonl")
+        target = os.path.join(root, "data", "runtime_failure_clusters.jsonl")  # 故障聚类 JSONL 文件路径
         os.makedirs(os.path.dirname(target), exist_ok=True)
         try:
             with open(target, "a", encoding="utf-8") as f:
@@ -104,7 +143,7 @@ class ChatHealthMixin:
 
     @staticmethod
     def _parse_int_env(name: str, default: int, minimum: int) -> int:
-        """Parse integer environment variable with fallback and lower-bound protection."""
+        """解析整数环境变量，带回退和下限保护。"""
         raw = str(os.getenv(name, str(default))).strip()
         try:
             value = int(raw)
@@ -116,7 +155,7 @@ class ChatHealthMixin:
 
     @staticmethod
     def _parse_float_env(name: str, default: float) -> float:
-        """Parse float environment variable with fallback protection."""
+        """解析浮点环境变量，带回退保护和 [0, 1] 范围校验。"""
         raw = str(os.getenv(name, str(default))).strip()
         try:
             value = float(raw)
@@ -127,7 +166,11 @@ class ChatHealthMixin:
             return default
 
     def _record_run_metrics(self, intent: str, execution_stats: dict[str, Any], hard_error: bool) -> None:
-        """Record per-run metrics into bounded in-memory buffers for SLO snapshots."""
+        """【核心】记录单次运行指标到有界内存缓冲区，供 SLO 快照计算。
+
+        每次聊天请求完成后调用，记录是否超时、失败、降级回退，
+        并按意图分组统计。写入后自动清理窗口外的旧数据。
+        """
         steps = list((execution_stats or {}).get("steps", []) or [])
         has_timeout = any(str(step.get("error_code") or "") == "TOOL_TIMEOUT" for step in steps)
         has_failure = hard_error or any(str(step.get("status") or "") in {"failed", "blocked"} for step in steps)
@@ -144,7 +187,11 @@ class ChatHealthMixin:
             self._prune_old_metrics_locked()
 
     def _prune_old_metrics_locked(self) -> None:
-        """Prune old metrics outside configured health window under lock."""
+        """在锁保护下清理超出健康窗口的旧指标数据。
+
+        从 deque 左端弹出时间戳早于 cutoff 的记录，
+        保证缓冲区只保留窗口内的数据。
+        """
         if not self._health_metrics:
             return
         cutoff = datetime.now() - timedelta(minutes=self._health_window_minutes)
@@ -152,7 +199,13 @@ class ChatHealthMixin:
             self._health_metrics.popleft()
 
     def _build_health_metrics_snapshot(self) -> dict[str, Any]:
-        """Build current health snapshot including SLO rates and intent aggregates."""
+        """【核心】构建当前健康快照，包含 SLO 比率和意图聚合指标。
+
+        计算逻辑：
+        1. 统计窗口内总请求数、超时数、失败数、降级数
+        2. 计算各比率并与 SLO 阈值比较，确定整体状态（ok/degraded）
+        3. 按意图分组统计各意图的指标
+        """
         with self._health_metrics_lock:
             self._prune_old_metrics_locked()
             records = list(self._health_metrics)

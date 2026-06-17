@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "moyuan-travel-web"
+name = "bitblanket-travel-web"
 version = "1.0.0"
-description = "Web API module for moyuan-travel-agent"
+description = "Web API module for BitBlanket-Travel-Agent"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.109.0",

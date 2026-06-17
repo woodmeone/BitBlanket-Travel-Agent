@@ -99,3 +99,18 @@ agent/travel_agent/**/*.pb2.py
 
 # Windows special files
 nul
+
+# Personal notes and learning materials (not for public)
+words/
+
+# Internal teaching materials
+docs/teaching/
+
+# Benchmark results (internal performance data)
+docs/benchmarks/
+
+# Governance documents (internal decision records)
+docs/governance/
+
+# Golden test fixtures (may contain internal data)
+tests/golden/

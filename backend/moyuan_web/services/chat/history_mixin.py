@@ -1,4 +1,16 @@
-"""History and persistence helpers for chat orchestration."""
+"""聊天历史持久化 Mixin，负责会话管理、消息存储和记忆同步。
+
+本模块提供聊天服务的持久化能力，包括：
+- 会话的创建和查找
+- 用户/助手消息的持久化存储
+- 对话历史的构建（用于 LLM 上下文注入）
+- 记忆管理器的读写同步
+
+记忆管理器说明：
+    记忆管理器维护长期对话上下文，支持摘要压缩和查询相关记忆检索。
+    与简单的历史消息列表不同，记忆管理器会在对话过长时自动生成摘要，
+    并根据当前查询检索最相关的历史片段，减少 token 消耗。
+"""
 
 from __future__ import annotations
 
@@ -11,10 +23,16 @@ logger = logging.getLogger(__name__)
 
 
 class ChatHistoryMixin:
-    """Persistence-oriented methods for chat sessions and message history."""
+    """聊天持久化方法 Mixin，提供会话和消息历史管理能力。
+
+    被 ChatService 通过多继承混入，负责所有与持久化相关的方法。
+    """
 
     def _build_memory_context_messages(self, session_id: str) -> list[Any]:
-        """Build baseline memory context messages for graph invocation."""
+        """构建基线记忆上下文消息，用于图（Graph）调用时的上下文注入。
+
+        返回该会话的所有记忆上下文消息，不针对特定查询做筛选。
+        """
         if self._memory_manager is None:
             return []
         try:
@@ -24,7 +42,14 @@ class ChatHistoryMixin:
             return []
 
     def _build_relevant_memory_context_messages(self, session_id: str, user_message: str) -> list[Any]:
-        """Build query-relevant memory context messages to reduce token footprint."""
+        """构建查询相关的记忆上下文消息，减少 token 占用。
+
+        与 _build_memory_context_messages 不同，此方法根据用户当前查询
+        检索最相关的历史片段（最多8条），避免注入过多无关上下文。
+
+        应用场景：用户问"上次推荐的酒店还有房吗"，只检索与酒店相关的历史，
+        而不是加载全部对话记录。
+        """
         if self._memory_manager is None:
             return []
         try:
@@ -39,7 +64,17 @@ class ChatHistoryMixin:
         limit: int = 12,
         exclude_last_user_message: Optional[str] = None,
     ) -> list[Any]:
-        """Convert persisted session chat history into model message objects."""
+        """将持久化的会话聊天历史转换为模型消息对象列表。
+
+        Args:
+            session_id: 会话 ID
+            limit: 最多加载的历史消息条数，默认12条
+            exclude_last_user_message: 若指定，则排除与该内容匹配的最后一条用户消息
+                （避免在 direct 模式下重复注入当前用户消息）
+
+        Returns:
+            LangChain 消息对象列表（HumanMessage / AIMessage）
+        """
         from langchain_core.messages import AIMessage, HumanMessage
 
         session = await self._repository.get(session_id)
@@ -51,7 +86,7 @@ class ChatHistoryMixin:
             last = history[-1]
             if last.get("role") == "user" and last.get("content") == exclude_last_user_message:
                 history = history[:-1]
-        history = history[-limit:]
+        history = history[-limit:]  # 只取最近 limit 条消息，控制上下文长度
         result: list[Any] = []
         for msg in history:
             role = msg.get("role", "user")
@@ -59,13 +94,22 @@ class ChatHistoryMixin:
             if not content:
                 continue
             if role == "assistant":
-                result.append(AIMessage(content=content))
+                result.append(AIMessage(content=content))  # 助手消息
             else:
-                result.append(HumanMessage(content=content))
+                result.append(HumanMessage(content=content))  # 用户消息
         return result
 
     async def _ensure_session(self, session_id: Optional[str]) -> str:
-        """Resolve or create a session identifier before writing chat data."""
+        """【核心】解析或创建会话标识符，确保写入聊天数据前会话已存在。
+
+        逻辑：
+        1. 如果传入了 session_id 且对应会话存在，直接返回
+        2. 如果传入了 session_id 但会话不存在，用该 ID 创建新会话
+        3. 如果未传入 session_id，生成新的 UUID 作为会话 ID
+
+        应用场景：用户首次聊天时无 session_id，自动创建新会话；
+        后续请求携带 session_id，复用已有会话。
+        """
         normalized_session_id = session_id.strip() if session_id else None
 
         if normalized_session_id:
@@ -96,7 +140,19 @@ class ChatHistoryMixin:
         diagnostics: Optional[dict[str, Any]] = None,
         model_content: Optional[str] = None,
     ) -> dict[str, Any]:
-        """Persist one chat message into repository and optionally sync memory profile."""
+        """【核心】持久化一条聊天消息到仓库，并可选同步记忆档案。
+
+        Args:
+            session_id: 会话 ID
+            role: 消息角色（"user" / "assistant"）
+            content: 消息展示内容
+            reasoning: 推理过程文本（仅助手消息）
+            diagnostics: 诊断信息（仅助手消息，含工具使用、产物等）
+            model_content: 模型专用内容（与展示内容可能不同，如含原始指令）
+
+        Returns:
+            {"success": True} 或 {"success": False, "error": "..."}
+        """
         session = await self._repository.get(session_id)
         if not session:
             return {"success": False, "error": "SESSION_NOT_FOUND"}
@@ -130,7 +186,7 @@ class ChatHistoryMixin:
         *,
         model_content: Optional[str] = None,
     ) -> dict[str, Any]:
-        """Save a user message while remaining compatible with older test doubles."""
+        """保存用户消息，兼容旧版测试替身（不支持 model_content 参数的情况）。"""
         try:
             return await self.save_message(
                 session_id,
@@ -144,7 +200,11 @@ class ChatHistoryMixin:
             return await self.save_message(session_id, "user", content)
 
     async def get_messages(self, session_id: str) -> dict[str, Any]:
-        """Return persisted public messages for a session, excluding model-only prompt fields."""
+        """返回会话的公共消息列表，排除仅用于模型的字段（如 model_content）。
+
+        只返回 role/content/reasoning/timestamp/diagnostics 五个公共字段，
+        防止内部字段（如 model_content）泄露到前端。
+        """
         session = await self._repository.get(session_id)
         if not session:
             return {"success": False, "error": "SESSION_NOT_FOUND", "messages": []}
@@ -164,16 +224,19 @@ class ChatHistoryMixin:
         return {"success": True, "messages": public_messages}
 
     async def cleanup_expired_sessions(self, max_age_seconds: int = 86400) -> int:
-        """Run repository cleanup for expired sessions and stale data."""
+        """清理过期会话和陈旧数据，默认清理超过24小时的会话。"""
         return await self._repository.cleanup_expired(max_age_seconds)
 
     @staticmethod
     def _get_timestamp() -> str:
-        """Return current timestamp string used by persisted message records."""
+        """返回当前时间戳字符串，用于持久化消息记录。格式：HH:MM:SS"""
         return datetime.now().strftime("%H:%M:%S")
 
     async def _write_memory_user(self, session_id: str, message: str) -> bool:
-        """Write user message into memory manager and swallow non-fatal memory errors."""
+        """将用户消息写入记忆管理器，吞除非致命记忆错误。
+
+        记忆写入失败不影响主流程，仅记录警告日志。
+        """
         if self._memory_manager is None:
             return False
         try:
@@ -184,7 +247,10 @@ class ChatHistoryMixin:
             return False
 
     async def _write_memory_assistant(self, session_id: str, message: str) -> bool:
-        """Write assistant answer into memory manager and swallow non-fatal memory errors."""
+        """将助手回答写入记忆管理器，吞并非致命记忆错误。
+
+        记忆写入失败不影响主流程，仅记录警告日志。
+        """
         if self._memory_manager is None:
             return False
         try:

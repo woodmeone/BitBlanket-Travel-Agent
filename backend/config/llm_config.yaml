@@ -1,5 +1,5 @@
 # =============================================================================
-# moyuan-travel-agent LLM Configuration
+# BitBlanket-Travel-Agent LLM Configuration
 # =============================================================================
 # 说明: 这是配置文件模板。实际使用时：
 #   1. 复制此文件为 llm_config.yaml
@@ -17,10 +17,35 @@
 # =============================================================================
 
 # 默认使用的模型ID
-default_model: gpt-4o-mini
+default_model: deepseek-v4-pro
 
 # 模型配置列表
 models:
+  # ---------------------------------------------------------------------
+  # DeepSeek 国内模型 (当前使用)
+  # ---------------------------------------------------------------------
+  deepseek-v4-pro:
+    name: "DeepSeek V4 Pro"
+    provider: openai-compatible
+    model: "deepseek-v4-pro"
+    api_base: "https://api.deepseek.com/v1"
+    api_key: "sk-d2e048d2eed14383b81fc097cc7fe7b9"
+    temperature: 0.7
+    max_tokens: 4000
+    timeout: 60
+    max_retries: 3
+
+  deepseek-v4-flash:
+    name: "DeepSeek V4 Flash"
+    provider: openai-compatible
+    model: "deepseek-v4-flash"
+    api_base: "https://api.deepseek.com/v1"
+    api_key: "sk-d2e048d2eed14383b81fc097cc7fe7b9"
+    temperature: 0.7
+    max_tokens: 4000
+    timeout: 60
+    max_retries: 3
+
   # ---------------------------------------------------------------------
   # 示例 1: OpenAI 官方 API
   # ---------------------------------------------------------------------

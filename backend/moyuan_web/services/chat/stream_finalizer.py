@@ -1,4 +1,14 @@
-"""Finalization helpers for successful and failed chat stream runs."""
+"""流式终结器，负责成功/失败流式运行的持久化和终端事件生成。
+
+终结器（Finalizer）模式说明：
+    终结器负责在流式传输结束后执行收尾工作，包括：
+    1. 补全派生状态（如去重工具列表、计算降级步骤数）
+    2. 持久化助手消息和记忆
+    3. 发送遥测和结构化日志
+    4. 构建终端事件（metadata + done / error + done）
+
+    将终结逻辑从流式传输主流程中分离，降低复杂度，便于独立测试。
+"""
 
 from __future__ import annotations
 
@@ -9,7 +19,7 @@ from .stream_diagnostics import ChatStreamDiagnostics
 
 
 class ChatStreamFinalizer:
-    """Persist diagnostics and build terminal payloads for chat streams."""
+    """持久化诊断数据并构建流式聊天的终端事件。"""
 
     def __init__(
         self,
@@ -18,7 +28,13 @@ class ChatStreamFinalizer:
         logger: logging.Logger,
         diagnostics: ChatStreamDiagnostics,
     ) -> None:
-        """Store service hooks, logger, and diagnostics builder for finalization."""
+        """存储服务钩子、日志器和诊断构建器。
+
+        Args:
+            service: ChatService 实例，用于调用持久化和记忆方法
+            logger: 日志器实例
+            diagnostics: 诊断信息构建器
+        """
         self._service = service
         self._logger = logger
         self._diagnostics = diagnostics
@@ -30,7 +46,15 @@ class ChatStreamFinalizer:
         message: str,
         mode: str,
     ) -> list[dict[str, Any]]:
-        """Persist the successful run and build terminal metadata payloads."""
+        """【核心】持久化成功运行结果并构建终端元数据事件。
+
+        执行顺序：
+        1. 补全派生状态（去重工具列表、计算降级步骤等）
+        2. 构建成功诊断信息
+        3. 持久化助手消息和记忆
+        4. 发送成功遥测和结构化日志
+        5. 返回终端事件列表（metadata + done）
+        """
         self._finalize_stream_state(state, mode)
         assistant_diagnostics = self._diagnostics.build_success_diagnostics(state)
         await self._persist_successful_stream(state, message=message, diagnostics=assistant_diagnostics)
@@ -44,7 +68,15 @@ class ChatStreamFinalizer:
         mode: str,
         error: Exception,
     ) -> list[dict[str, Any]]:
-        """Persist failure state and build terminal error payloads."""
+        """持久化失败状态并构建终端错误事件。
+
+        执行顺序：
+        1. 记录异常日志
+        2. 记录失败运行指标
+        3. 持久化中断消息
+        4. 发送失败遥测
+        5. 返回终端事件列表（error + done）
+        """
         self._logger.exception("Chat stream failed: %s", error)
 
         self._service._record_run_metrics(
@@ -57,7 +89,12 @@ class ChatStreamFinalizer:
         return self._build_failure_terminal_payloads(state, error=error)
 
     def _finalize_stream_state(self, state: Any, mode: str) -> None:
-        """Complete derived fields before terminal metadata emission."""
+        """在终端元数据生成前补全派生字段。
+
+        - 去重工具列表（同一工具可能被多次调用）
+        - 从执行步骤中统计降级回退数和过期结果数
+        - 推断验证是否通过（direct 模式默认通过，其他模式看是否有过期结果）
+        """
         state.tools_used = list(dict.fromkeys(state.tools_used))
         stats_steps = list((state.execution_stats or {}).get("steps", []) or [])
         if state.fallback_steps <= 0:
@@ -74,7 +111,12 @@ class ChatStreamFinalizer:
         message: str,
         diagnostics: dict[str, Any],
     ) -> None:
-        """Persist assistant output and memory side effects for successful runs."""
+        """持久化成功运行的助手输出和记忆副作用。
+
+        1. 保存助手消息（含推理过程和诊断信息）
+        2. 写入助手记忆
+        3. 如果用户消息尚未写入记忆（如流式过程中失败），补写
+        """
         resolved_sid = state.resolved_session_id()
         await self._service.save_message(
             resolved_sid,
@@ -89,7 +131,7 @@ class ChatStreamFinalizer:
             await self._service._write_memory_user(resolved_sid, message)
 
     def _emit_success_stream_telemetry(self, state: Any, *, mode: str) -> None:
-        """Emit success metrics and structured logs after persistence succeeds."""
+        """持久化成功后发送成功指标和结构化日志。"""
         from ...observability import emit_structured_log, record_chat_stream
 
         resolved_sid = state.resolved_session_id()
@@ -119,7 +161,12 @@ class ChatStreamFinalizer:
         )
 
     def _build_success_terminal_payloads(self, state: Any) -> list[dict[str, Any]]:
-        """Build terminal metadata and done events for a successful stream run."""
+        """构建成功流式运行的终端元数据和 done 事件。
+
+        返回两个事件：
+        1. metadata: 包含运行统计、工具使用、验证结果、产物等完整元数据
+        2. done: 标记流式传输结束，携带产物和执行回执
+        """
         return [
             {
                 "type": "metadata",
@@ -147,7 +194,11 @@ class ChatStreamFinalizer:
         ]
 
     async def _persist_failed_stream(self, state: Any) -> None:
-        """Persist interrupted output and write failure memory breadcrumbs."""
+        """持久化中断输出并写入失败记忆痕迹。
+
+        中断的助手消息内容标记为 [INTERRUPTED]，记忆中也添加
+        [INTERRUPTED] 前缀，便于后续排查中断原因。
+        """
         resolved_sid = state.resolved_session_id()
         interrupted_answer = state.answer_content or "[INTERRUPTED]"
 
@@ -171,7 +222,7 @@ class ChatStreamFinalizer:
         mode: str,
         error: Exception,
     ) -> None:
-        """Emit error metrics and structured logs for interrupted stream runs."""
+        """发送中断流式运行的错误指标和结构化日志。"""
         from ...observability import emit_structured_log, record_chat_stream
 
         resolved_sid = state.resolved_session_id()
@@ -200,7 +251,12 @@ class ChatStreamFinalizer:
         *,
         error: Exception,
     ) -> list[dict[str, Any]]:
-        """Build terminal error and done events for interrupted runs."""
+        """构建中断运行的终端错误和 done 事件。
+
+        返回两个事件：
+        1. error: 包含错误信息和运行 ID
+        2. done: 标记流式传输结束
+        """
         return [
             {"type": "error", "content": str(error), "run_id": state.run_id},
             {"type": "done", "run_id": state.run_id},

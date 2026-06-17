@@ -13,7 +13,7 @@ class AmapHttpClient:
     def __init__(self, amap_key: str) -> None:
         """Store request configuration shared by all Amap API calls."""
         self._amap_key = amap_key
-        self._headers = {"User-Agent": "moyuan-travel-agent/1.0"}
+        self._headers = {"User-Agent": "BitBlanket-Travel-Agent/1.0"}
         self._timeout = httpx.Timeout(15.0, read=20.0)
 
     async def geocode_spots(self, *, spots: list[str], city: str | None = None) -> list[RoutePoint]:

@@ -1,8 +1,8 @@
-# moyuan-travel-agent Agent Guide
+# BitBlanket-Travel-Agent Agent Guide
 
 ## Project Overview
 
-moyuan-travel-agent is an AI travel assistant project built with:
+BitBlanket-Travel-Agent is an AI travel assistant project built with:
 
 - Frontend: Next.js 16 + React 19 + TypeScript + antd
 - Web API: FastAPI

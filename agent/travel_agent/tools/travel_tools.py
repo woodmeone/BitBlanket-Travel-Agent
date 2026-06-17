@@ -1,66 +1,54 @@
 """
 ================================================================================
-LangChain 旅游工具集
+旅行工具集 —— Agent可调用的外部能力定义
 ================================================================================
 
-__all__ = [
-    "search_cities",
-    "query_attractions",
-    "query_hotels",
-    "calculate_budget",
-    "plan_itinerary",
-    "get_travel_tips",
-    "get_weather",
-    "get_travel_tools",
-    "get_tool_by_name",
-]
+本模块使用 LangChain @tool 装饰器定义旅行相关的工具函数，是Agent与外部数据交互的桥梁。
+每个工具函数对应一个Agent可调用的能力（如搜索城市、查询景点等）。
 
-================================================================================
+LangChain @tool 装饰器说明：
+  @tool 是 LangChain 提供的装饰器，将普通 Python 函数转换为 LangChain Tool 对象。
+  转换后的 Tool 对象包含 name（函数名）、description（函数文档字符串）和 func（原函数），
+  可被 LangChain Agent 在推理时自动识别和调用。
 
-使用 LangChain @tool 装饰器定义的旅游相关工具。
+支持两种数据模式：
+  1. 真实 API 模式：通过 travel_api.py 的 TravelAPIClient 调用后端API
+  2. 模拟数据模式（默认）：使用内置的静态数据，仅用于开发和测试
 
-支持两种模式:
-1. 使用模拟数据（默认）
-2. 使用真实 API（通过 travel_api.py）
+工具列表：
+  - search_cities: 搜索旅游城市
+  - query_attractions: 查询城市景点
+  - query_hotels: 查询酒店信息
+  - calculate_budget: 计算旅行预算
+  - plan_itinerary: 规划行程路线
+  - get_travel_tips: 获取旅行建议
+  - get_weather: 获取天气预报
 
-工具列表:
-- search_cities: 搜索旅游城市
-- query_attractions: 查询城市景点
-- query_hotels: 查询酒店信息
-- calculate_budget: 计算旅行预算
-- plan_itinerary: 规划行程路线
-- get_travel_tips: 获取旅行建议
-- get_weather: 获取天气预报
+使用示例（以"成都3日游"为例）：
+  from tools.travel_tools import get_travel_tools
+  tools = get_travel_tools()  # 获取所有工具供Agent使用
 
-使用示例:
-```python
-from tools.travel_tools import get_travel_tools
-
-# 获取所有工具
-tools = get_travel_tools()
-
-# 或者单独使用
-from tools.travel_tools import search_cities, query_attractions
-result = search_cities.invoke({"query": "北京"})
-```
+  from tools.travel_tools import search_cities
+  result = search_cities.invoke({"query": "成都"})  # 单独调用搜索城市工具
 
 ================================================================================
 """
 
 import logging
 from typing import Optional, List, Dict, Any
-from langchain_core.tools import tool, Tool
+from langchain_core.tools import tool, Tool  # tool: 装饰器，将函数转为Tool; Tool: Tool基类
 import json
 
-# 配置日志
+# 配置日志，模块名为 "agent.tools"
 logger = logging.getLogger("agent.tools")
 
 # 尝试导入真实 API 客户端
+# 如果 travel_api 模块不可用（如缺少依赖），则回退到模拟数据模式
 try:
     from .travel_api import get_travel_api_client, TravelAPIClient
-    USE_REAL_API = True
+    USE_REAL_API = True  # 标记：使用真实API
 except ImportError as e:
-    USE_REAL_API = False
+    USE_REAL_API = False  # 标记：使用模拟数据
     logger.warning(f"Travel API client not available, using mock data: {e}")
 
 
@@ -68,12 +56,14 @@ except ImportError as e:
 # 工具实现
 # ============================================================================
 
-@tool
+@tool  # LangChain @tool 装饰器：将此函数注册为Agent可调用的工具
 def search_cities(query: str) -> str:
     """
     搜索旅游城市
 
     根据关键词搜索推荐旅游城市，返回城市基本信息和小贴士。
+
+    典型场景：用户说"我想去成都玩"，Agent调用此工具获取成都的城市信息。
 
     Args:
         query: 搜索关键词，可以是:
@@ -84,12 +74,13 @@ def search_cities(query: str) -> str:
     Returns:
         城市列表信息，包含城市名、简介、最佳旅行时间等
     """
-    # 使用真实 API
+    # ---- 真实API模式 ----
     if USE_REAL_API:
         import asyncio
         client = get_travel_api_client()
 
-        # 运行异步调用
+        # 在同步函数中运行异步API调用
+        # asyncio.get_event_loop() 获取当前事件循环，若无则创建新的
         try:
             try:
                 loop = asyncio.get_event_loop()
@@ -118,7 +109,8 @@ def search_cities(query: str) -> str:
         except Exception as e:
             logger.error(f"Failed to search cities with API: {e}", extra={"query": query})
 
-    # 回退到模拟数据（API 调用失败时自动降级）
+    # ---- 模拟数据模式（API调用失败时自动降级）----
+    # 仅用于开发和测试环境，生产环境应使用真实API
     city_database = {
         "北京": {
             "name": "北京",
@@ -153,6 +145,7 @@ def search_cities(query: str) -> str:
     query = query.strip()
     results = []
 
+    # 精确匹配优先，然后模糊匹配城市名和描述
     if query in city_database:
         results.append(city_database[query])
     else:
@@ -180,6 +173,8 @@ def query_attractions(city: str, category: Optional[str] = None) -> str:
 
     获取特定城市的景点信息，支持按类别筛选。
 
+    典型场景：已确定去成都，Agent调用此工具查询宽窄巷子、锦里等景点详情。
+
     Args:
         city: 城市名称（如"北京"、"三亚"）
         category: 景点类别（可选），可选值：
@@ -191,7 +186,7 @@ def query_attractions(city: str, category: Optional[str] = None) -> str:
     Returns:
         景点列表详细信息
     """
-    # 使用真实 API
+    # ---- 真实API模式 ----
     if USE_REAL_API:
         import asyncio
         client = get_travel_api_client()
@@ -224,7 +219,7 @@ def query_attractions(city: str, category: Optional[str] = None) -> str:
         except Exception as e:
             logger.error(f"Failed to query attractions with API: {e}", extra={"city": city, "category": category})
 
-    # 模拟数据
+    # ---- 模拟数据模式 ----
     attractions_db = {
         "北京": {
             "historical": [
@@ -254,6 +249,7 @@ def query_attractions(city: str, category: Optional[str] = None) -> str:
 
     attractions = attractions_db.get(city, {})
 
+    # 按类别筛选，若无类别则返回全部景点
     if category and category in attractions:
         filtered = attractions[category]
     elif category:
@@ -282,11 +278,14 @@ def query_hotels(city: str, district: Optional[str] = None, refresh: bool = Fals
     """
     查询酒店信息
 
-    获取特定城市的酒店信息。
+    获取特定城市的酒店信息，支持按区域筛选和强制刷新缓存。
+
+    典型场景：成都3日游需要住宿，Agent调用此工具查询成都酒店价格。
 
     Args:
         city: 城市名称
-        district: 商圈/区域（可选）
+        district: 商圈/区域（可选），如"市中心"、"景区"
+        refresh: 是否强制刷新缓存（绕过缓存获取最新数据），默认False
 
     Returns:
         酒店列表
@@ -334,9 +333,17 @@ def calculate_budget(
     accommodation_level: str = "medium"
 ) -> str:
     """
-    计算旅行预算
+    【核心】计算旅行预算
 
     根据目的地、天数、人数和住宿等级估算旅行费用。
+    预算包含餐饮、交通、门票、住宿四大项。
+
+    典型场景：成都3日游2人中档预算：
+      - 餐饮：200元/天/人 × 3天 × 2人 = 1200元
+      - 交通：100元/天/人 × 3天 × 2人 = 600元
+      - 门票：150元/天/人 × 3天 × 2人 = 1800元
+      - 住宿：500元/晚 × 2晚 = 1000元
+      - 合计：4600元
 
     Args:
         destination: 目的地城市
@@ -350,12 +357,14 @@ def calculate_budget(
     Returns:
         预算明细表
     """
+    # 各住宿等级下的每日人均基础费用（餐饮/交通/门票）
     base_costs = {
         "economy": {"food": 100, "transport": 50, "ticket": 80},
         "medium": {"food": 200, "transport": 100, "ticket": 150},
         "luxury": {"food": 500, "transport": 300, "ticket": 300}
     }
 
+    # 各住宿等级下的每晚房价
     hotel_costs = {
         "economy": 200,
         "medium": 500,
@@ -365,13 +374,15 @@ def calculate_budget(
     costs = base_costs.get(accommodation_level, base_costs["medium"])
     hotel_per_night = hotel_costs.get(accommodation_level, 500)
 
-    total_food = costs["food"] * days * people
-    total_transport = costs["transport"] * days * people
-    total_ticket = costs["ticket"] * days * people
-    total_hotel = hotel_per_night * (days - 1) * people
+    # 计算各项费用
+    total_food = costs["food"] * days * people          # 餐饮总费用
+    total_transport = costs["transport"] * days * people # 交通总费用
+    total_ticket = costs["ticket"] * days * people      # 门票总费用
+    total_hotel = hotel_per_night * (days - 1) * people # 住宿总费用（天数-1晚）
 
     total = total_food + total_transport + total_ticket + total_hotel
 
+    # 格式化输出预算明细表
     output = f"💰 {destination} {days}天 {people}人 {accommodation_level}级别预算\n\n"
     output += f"┌─────────────┬────────────┐\n"
     output += f"│ 项目       │ 费用(元)   │\n"
@@ -395,9 +406,14 @@ def plan_itinerary(
     interests: Optional[str] = None
 ) -> str:
     """
-    规划旅行路线
+    【核心】规划旅行路线
 
     根据目的地、天数和兴趣偏好生成详细行程安排。
+
+    典型场景：成都3日游，Agent根据模板生成每日行程：
+      Day1: 宽窄巷子→锦里→春熙路
+      Day2: 都江堰→青城山
+      Day3: 大熊猫基地→武侯祠→杜甫草堂
 
     Args:
         destination: 目的地城市
@@ -407,6 +423,7 @@ def plan_itinerary(
     Returns:
         每日行程安排
     """
+    # 预定义的行程模板，每个城市包含5天的行程安排
     itinerary_templates = {
         "北京": [
             ["天安门广场", "故宫", "王府井"],
@@ -431,6 +448,7 @@ def plan_itinerary(
         ]
     }
 
+    # 若城市无模板，则生成"自由探索"的默认行程
     template = itinerary_templates.get(destination, [[f"自由探索{destination}"]] * days)
 
     output = f"🗓️ {destination} {days}日游行程规划\n\n"
@@ -453,6 +471,8 @@ def get_travel_tips(destination: str, season: Optional[str] = None) -> str:
     获取旅行建议
 
     获取特定目的地或季节的旅行注意事项和小贴士。
+
+    典型场景：成都3日游夏季出行，Agent提醒"带伞"、"注意防暑"等。
 
     Args:
         destination: 目的地城市
@@ -486,10 +506,12 @@ def get_travel_tips(destination: str, season: Optional[str] = None) -> str:
         }
     }
 
+    # 先获取通用建议
     tips = tips_db.get(destination, {}).get("general", [])
 
+    # 再追加季节性建议
     if season:
-        season_key = season.replace("季", "").lower()
+        season_key = season.replace("季", "").lower()  # "夏季" → "summer"
         seasonal_tips = tips_db.get(destination, {}).get(season_key, [])
         tips.extend(seasonal_tips)
 
@@ -508,11 +530,14 @@ def get_weather(city: str, days: int = 7, refresh: bool = False) -> str:
     """
     获取天气预报
 
-    获取目的地未来几天的天气情况。
+    获取目的地未来几天的天气情况，用于行程规划时的天气参考。
+
+    典型场景：成都3日游出发前，Agent查询天气决定是否带伞。
 
     Args:
         city: 城市名称
         days: 查询天数，默认7天
+        refresh: 是否强制刷新缓存，默认False
 
     Returns:
         天气预报信息
@@ -537,7 +562,7 @@ def get_weather(city: str, days: int = 7, refresh: bool = False) -> str:
             output += f"📍 当前：{current.get('weather', '未知')} {current.get('temp', '--')}°C\n"
             output += f"   湿度：{current.get('humidity', '--')}%  风力：{current.get('wind', '--')}\n\n"
 
-            # 预报
+            # 未来预报
             forecast = result.get("forecast", [])
             if forecast:
                 output += "📅 预报：\n"
@@ -556,12 +581,15 @@ def get_weather(city: str, days: int = 7, refresh: bool = False) -> str:
 
 
 # ============================================================================
-# 工具注册
+# 工具注册 —— 提供统一的工具获取接口
 # ============================================================================
 
 def get_travel_tools() -> list[Tool]:
     """
     获取所有旅游相关工具
+
+    返回所有已定义的 LangChain Tool 对象列表，供 Agent 绑定使用。
+    Agent 绑定工具后，可在推理过程中自动选择合适的工具调用。
 
     Returns:
         LangChain Tool 对象列表
@@ -581,8 +609,10 @@ def get_tool_by_name(name: str) -> Optional[Tool]:
     """
     根据名称获取工具
 
+    用于按需获取特定工具，而非加载全部工具。
+
     Args:
-        name: 工具名称
+        name: 工具名称，如 "search_cities"
 
     Returns:
         Tool 对象，如果不存在返回 None

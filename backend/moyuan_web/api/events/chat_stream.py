@@ -1,4 +1,19 @@
-"""Chat streaming SSE event registry and payload validators."""
+"""
+聊天流 SSE 事件注册表与载荷校验器
+
+【基础知识】
+- SSE（Server-Sent Events）：服务端向客户端单向推送事件的 HTTP 长连接协议。
+  与 WebSocket 双向通信不同，SSE 是单向的（服务端→客户端），更适合聊天流式输出场景。
+  前端通过 EventSource API 监听事件，每个事件有 type 和 data 字段。
+
+- 事件类型体系：聊天流的生命周期由多种事件类型组成，按时间顺序大致为：
+  session_id → reasoning_start → reasoning_chunk* → reasoning_end →
+  answer_start → stage* → plan_preview* → subagent_start → tool_start →
+  tool_end → artifact_patch* → subagent_end → chunk* → metadata → done/error
+
+- Pydantic 判别联合（Discriminated Union）：通过 type 字段自动选择对应的事件模型，
+  实现类型安全的序列化/反序列化，避免手动 if-else 判断事件类型。
+"""
 
 from __future__ import annotations
 
@@ -10,16 +25,16 @@ from ..schemas import normalize_artifact_patch, normalize_execution_receipt, nor
 
 
 class _ChatStreamEventBase(BaseModel):
-    """Common metadata carried by all public SSE payloads."""
+    """所有 SSE 事件的公共基类，携带请求追踪元数据。"""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid")  # 禁止额外字段，防止未知字段静默透传
 
     request_id: Optional[str] = None
     trace_id: Optional[str] = None
 
 
 class SessionIdEvent(_ChatStreamEventBase):
-    """Announce the session and run identifiers for a new stream."""
+    """会话标识事件 —— 通知前端当前流对应的 session_id 和 run_id。"""
 
     type: Literal["session_id"]
     session_id: str
@@ -27,32 +42,36 @@ class SessionIdEvent(_ChatStreamEventBase):
 
 
 class ReasoningStartEvent(_ChatStreamEventBase):
-    """Mark the beginning of a reasoning stream segment."""
+    """推理开始事件 —— 标记 LLM 推理阶段的开始。"""
 
     type: Literal["reasoning_start"]
 
 
 class ReasoningChunkEvent(_ChatStreamEventBase):
-    """Carry one incremental reasoning text fragment."""
+    """推理增量事件 —— 携带一段推理文本片段，前端逐步拼接展示。"""
 
     type: Literal["reasoning_chunk"]
     content: str
 
 
 class ReasoningEndEvent(_ChatStreamEventBase):
-    """Mark the end of the reasoning stream segment."""
+    """推理结束事件 —— 标记 LLM 推理阶段的结束。"""
 
     type: Literal["reasoning_end"]
 
 
 class AnswerStartEvent(_ChatStreamEventBase):
-    """Mark the point where answer chunks begin streaming."""
+    """回答开始事件 —— 标记正式回答内容的开始。"""
 
     type: Literal["answer_start"]
 
 
 class StageEvent(_ChatStreamEventBase):
-    """Describe a runtime stage transition exposed to the client."""
+    """阶段转换事件 —— 通知前端当前运行阶段（如"规划中"、"搜索中"）。
+
+    应用场景：前端根据 stage 和 progress 展示进度条或步骤指示器。
+    例：stage="planning", progress=0.6, label="正在规划行程"
+    """
 
     type: Literal["stage"]
     stage: Optional[str] = None
@@ -62,7 +81,11 @@ class StageEvent(_ChatStreamEventBase):
 
 
 class PlanPreviewEvent(_ChatStreamEventBase):
-    """Expose preview plan steps and artifact fragments before final answer."""
+    """计划预览事件 —— 在最终回答前展示预览计划和产物片段。
+
+    应用场景：Agent 生成行程计划时，先通过 plan_preview 展示中间结果，
+    前端可实时展示"正在为您规划北京3日游..."的预览卡片。
+    """
 
     type: Literal["plan_preview"]
     plan_id: Optional[str] = None
@@ -79,7 +102,7 @@ class PlanPreviewEvent(_ChatStreamEventBase):
     @field_validator("artifact", mode="before")
     @classmethod
     def _normalize_artifact(cls, value: Any) -> dict[str, Any] | None:
-        """Normalize embedded artifact payloads into the public contract shape."""
+        """将内嵌产物载荷标准化为公共契约格式。"""
         if value is None:
             return None
         return normalize_trip_plan_artifact(value)
@@ -87,14 +110,18 @@ class PlanPreviewEvent(_ChatStreamEventBase):
     @field_validator("artifact_patch", mode="before")
     @classmethod
     def _normalize_artifact_patch(cls, value: Any) -> dict[str, Any] | None:
-        """Normalize preview artifact patches into the public contract shape."""
+        """将预览产物补丁标准化为公共契约格式。"""
         if value is None:
             return None
         return normalize_artifact_patch(value)
 
 
 class SubagentStartEvent(_ChatStreamEventBase):
-    """Announce the start of a delegated subagent step."""
+    """子代理开始事件 —— 通知前端一个委派子代理步骤开始执行。
+
+    应用场景：旅行规划中，主 Agent 可能委派"酒店搜索"子代理，
+    前端收到此事件后展示"正在搜索酒店..."的提示。
+    """
 
     type: Literal["subagent_start"]
     subagent: str
@@ -106,7 +133,7 @@ class SubagentStartEvent(_ChatStreamEventBase):
 
 
 class SubagentEndEvent(_ChatStreamEventBase):
-    """Announce the completion of a delegated subagent step."""
+    """子代理结束事件 —— 通知前端一个委派子代理步骤执行完毕。"""
 
     type: Literal["subagent_end"]
     subagent: str
@@ -116,7 +143,11 @@ class SubagentEndEvent(_ChatStreamEventBase):
 
 
 class ArtifactPatchEvent(_ChatStreamEventBase):
-    """Carry one incremental artifact patch emitted by a subagent."""
+    """产物增量补丁事件 —— 携带子代理输出的增量产物补丁。
+
+    应用场景：子代理逐步生成行程计划时，每次更新通过 artifact_patch 推送，
+    前端可实时合并展示，无需等待最终结果。
+    """
 
     type: Literal["artifact_patch"]
     subagent: str
@@ -125,12 +156,12 @@ class ArtifactPatchEvent(_ChatStreamEventBase):
     @field_validator("artifact_patch", mode="before")
     @classmethod
     def _normalize_artifact_patch(cls, value: Any) -> dict[str, Any]:
-        """Normalize streamed artifact patches into the public contract shape."""
+        """将流式产物补丁标准化为公共契约格式。"""
         return normalize_artifact_patch(value)
 
 
 class ToolStartEvent(_ChatStreamEventBase):
-    """Announce the start of one tool execution."""
+    """工具执行开始事件 —— 通知前端某个工具（如搜索、地图）开始执行。"""
 
     type: Literal["tool_start"]
     tool: str
@@ -138,7 +169,7 @@ class ToolStartEvent(_ChatStreamEventBase):
 
 
 class ToolEndEvent(_ChatStreamEventBase):
-    """Announce the completion of one tool execution."""
+    """工具执行结束事件 —— 通知前端某个工具执行完毕，携带结果摘要。"""
 
     type: Literal["tool_end"]
     tool: str
@@ -147,14 +178,18 @@ class ToolEndEvent(_ChatStreamEventBase):
 
 
 class ChunkEvent(_ChatStreamEventBase):
-    """Carry one incremental answer text fragment."""
+    """回答增量事件 —— 携带一段回答文本片段，前端逐步拼接展示。"""
 
     type: Literal["chunk"]
     content: str
 
 
 class MetadataEvent(_ChatStreamEventBase):
-    """Publish terminal execution metadata for the completed stream."""
+    """元数据事件 —— 流结束时发布执行统计信息。
+
+    包含运行步骤数、使用的工具列表、推理长度、产物等，
+    前端可用于展示"本次对话使用了3个工具"等统计信息。
+    """
 
     type: Literal["metadata"]
     run_id: str
@@ -175,18 +210,18 @@ class MetadataEvent(_ChatStreamEventBase):
     @field_validator("artifact", mode="before")
     @classmethod
     def _normalize_artifact(cls, value: Any) -> dict[str, Any]:
-        """Normalize terminal metadata artifacts into the public contract shape."""
+        """将元数据中的产物标准化为公共契约格式。"""
         return normalize_trip_plan_artifact(value)
 
     @field_validator("execution_receipt", mode="before")
     @classmethod
     def _normalize_execution_receipt(cls, value: Any) -> dict[str, Any]:
-        """Normalize execution receipts carried by metadata payloads."""
+        """将元数据中的执行回执标准化为公共契约格式。"""
         return normalize_execution_receipt(value)
 
 
 class ErrorEvent(_ChatStreamEventBase):
-    """Carry terminal error information for an interrupted stream."""
+    """错误事件 —— 流中断时携带错误信息。"""
 
     type: Literal["error"]
     content: str
@@ -194,7 +229,7 @@ class ErrorEvent(_ChatStreamEventBase):
 
 
 class DoneEvent(_ChatStreamEventBase):
-    """Mark the terminal done event for a completed stream."""
+    """完成事件 —— 标记流的正常终止，携带最终产物和执行回执。"""
 
     type: Literal["done"]
     run_id: str
@@ -204,13 +239,13 @@ class DoneEvent(_ChatStreamEventBase):
     @field_validator("artifact", mode="before")
     @classmethod
     def _normalize_artifact(cls, value: Any) -> dict[str, Any]:
-        """Normalize final artifacts carried by the terminal done event."""
+        """将完成事件中的最终产物标准化为公共契约格式。"""
         return normalize_trip_plan_artifact(value)
 
     @field_validator("execution_receipt", mode="before")
     @classmethod
     def _normalize_execution_receipt(cls, value: Any) -> dict[str, Any]:
-        """Normalize final execution receipts carried by the terminal done event."""
+        """将完成事件中的执行回执标准化为公共契约格式。"""
         return normalize_execution_receipt(value)
 
 
@@ -233,7 +268,7 @@ ChatStreamEvent = Annotated[
         ErrorEvent,
         DoneEvent,
     ],
-    Field(discriminator="type"),
+    Field(discriminator="type"),  # 【核心】通过 type 字段自动判别事件类型，实现类型安全的联合类型
 ]
 
 CHAT_STREAM_EVENT_TYPES = (
@@ -255,7 +290,7 @@ CHAT_STREAM_EVENT_TYPES = (
     "done",
 )
 
-_CHAT_STREAM_EVENT_ADAPTER = TypeAdapter(ChatStreamEvent)
+_CHAT_STREAM_EVENT_ADAPTER = TypeAdapter(ChatStreamEvent)  # Pydantic 类型适配器，用于运行时校验和序列化
 
 
 def validate_chat_stream_payload(
@@ -264,7 +299,13 @@ def validate_chat_stream_payload(
     request_id: Optional[str] = None,
     trace_id: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Validate and normalize one public chat-stream payload."""
+    """【核心】校验并标准化一条聊天流 SSE 载荷。
+
+    流程：
+    1. 补充 request_id / trace_id（如果载荷中未携带）
+    2. 通过 TypeAdapter 根据 type 字段自动选择对应的事件模型进行校验
+    3. 排除 None 值后返回标准化的字典
+    """
 
     normalized_payload = dict(payload)
     if request_id and "request_id" not in normalized_payload:
@@ -272,8 +313,8 @@ def validate_chat_stream_payload(
     if trace_id and "trace_id" not in normalized_payload:
         normalized_payload["trace_id"] = trace_id
 
-    event = _CHAT_STREAM_EVENT_ADAPTER.validate_python(normalized_payload)
-    return event.model_dump(exclude_none=True)
+    event = _CHAT_STREAM_EVENT_ADAPTER.validate_python(normalized_payload)  # 根据 type 字段自动选择事件模型校验
+    return event.model_dump(exclude_none=True)  # 排除 None 值，减小 SSE 载荷体积
 
 
 __all__ = [

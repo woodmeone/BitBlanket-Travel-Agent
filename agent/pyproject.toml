@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "moyuan-travel-agent"
+name = "bitblanket-travel-agent"
 version = "3.1.0"
 description = "AI Travel Agent Module - v3.1.0 with Multimodal Support"
 requires-python = ">=3.10"

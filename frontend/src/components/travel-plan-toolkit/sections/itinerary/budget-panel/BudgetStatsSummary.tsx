@@ -1,13 +1,19 @@
+// 预算统计摘要组件
+// 应用场景：在预算面板中展示预算的各类统计数据
+//   包括：总预算、住宿/餐饮/交通占比、人均预估、家庭总价、亲子轻量版、日均预算
+
+// 'use client' 是 Next.js 的标记，表示这个文件只在浏览器端（客户端）运行
 'use client';
 
 import React from 'react';
 import { Card, Statistic, Tag } from 'antd';
 import type { BudgetProjection } from '@/utils/travelPlan';
 
+// BudgetStatsSummaryProps 预算统计摘要接收的参数
 interface BudgetStatsSummaryProps {
-  budgetProjection: BudgetProjection;
-  childFriendlyBudget: number;
-  familyBudget: number;
+  budgetProjection: BudgetProjection;  // 预算预测数据
+  childFriendlyBudget: number;         // 亲子轻量版预算
+  familyBudget: number;                // 家庭总价预算
 }
 
 export const BudgetStatsSummary: React.FC<BudgetStatsSummaryProps> = ({
@@ -16,6 +22,7 @@ export const BudgetStatsSummary: React.FC<BudgetStatsSummaryProps> = ({
   familyBudget,
 }) => (
   <div style={{ display: 'grid', gap: 10 }}>
+    {/* 预算占比标签行 */}
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <Tag color="blue">总预算：¥{budgetProjection.totalBudget}</Tag>
       <Tag color="cyan">住宿：{Math.round(budgetProjection.hotelShare * 100)}%</Tag>
@@ -23,6 +30,7 @@ export const BudgetStatsSummary: React.FC<BudgetStatsSummaryProps> = ({
       <Tag color="purple">交通：{Math.round(budgetProjection.trafficShare * 100)}%</Tag>
     </div>
 
+    {/* 四个统计卡片，自适应网格布局 */}
     <div
       style={{
         display: 'grid',

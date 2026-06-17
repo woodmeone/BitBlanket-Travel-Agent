@@ -1,3 +1,3 @@
-"""Web API package for moyuan-travel-agent."""
+"""Web API package for BitBlanket-Travel-Agent."""
 
 # Web Module - FastAPI API Server

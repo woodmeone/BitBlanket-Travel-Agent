@@ -424,7 +424,7 @@ python scripts/export_sse_contract_snapshot.py
       "warnings": [],
       "subagentTrail": ["规划"],
       "shareContent": "杭州旅行方案\n目的地：杭州",
-      "htmlDocumentTitle": "杭州旅行方案 | Moyuan Travel Agent",
+      "htmlDocumentTitle": "杭州旅行方案 | BitBlanket Travel Agent",
       "htmlSections": []
     },
     "artifact": {

@@ -1,3 +1,9 @@
+// 【核心】多方案对比表格组件
+// 应用场景：用户生成了多个旅行方案后，在"多方案对比"标签页中
+//   以表格形式横向对比各方案的定位、亮点、预算、校验状态等指标
+//   例如：对比"省钱版"和"轻松版"的目的地、预算、证据条目等
+
+// 'use client' 是 Next.js 的标记，表示这个文件只在浏览器端（客户端）运行
 'use client';
 
 import React from 'react';
@@ -12,10 +18,13 @@ import {
   formatArtifactSnapshotLabel,
 } from '../../shared';
 
+// VariantComparisonTableProps 对比表格接收的参数
 interface VariantComparisonTableProps {
-  variants: PlanVariant[];
+  variants: PlanVariant[];  // 待对比的方案变体列表
 }
 
+// 基于纯文本内容构建对比行（当方案没有结构化制品数据时使用）
+// 对比项：方案定位、核心亮点、适合人群
 function buildTextCompareRows(variants: PlanVariant[]): CompareRow[] {
   return [
     {
@@ -26,6 +35,7 @@ function buildTextCompareRows(variants: PlanVariant[]): CompareRow[] {
     {
       key: 'highlights',
       metric: '核心亮点',
+      // 提取方案内容的前3行作为亮点
       values: Object.fromEntries(
         variants.map((variant) => {
           const lines = variant.content
@@ -39,6 +49,7 @@ function buildTextCompareRows(variants: PlanVariant[]): CompareRow[] {
     {
       key: 'suitable',
       metric: '适合人群',
+      // 根据方案标题中的关键词推断适合人群
       values: Object.fromEntries(
         variants.map((variant) => {
           const lower = variant.title.toLowerCase();
@@ -51,6 +62,8 @@ function buildTextCompareRows(variants: PlanVariant[]): CompareRow[] {
   ];
 }
 
+// 基于结构化制品数据构建对比行（当方案有制品数据时使用，信息更丰富）
+// 对比项：方案、目的地、预算摘要、校验状态、证据条目、结构化步骤、快照时间
 function buildArtifactCompareRows(variants: PlanVariant[]): CompareRow[] {
   return [
     {
@@ -101,12 +114,15 @@ function buildArtifactCompareRows(variants: PlanVariant[]): CompareRow[] {
   ];
 }
 
+// 根据方案是否有制品数据，选择合适的对比行构建方式
 function buildCompareRows(variants: PlanVariant[]): CompareRow[] {
   return variants.some((variant) => Boolean(variant.artifact))
-    ? buildArtifactCompareRows(variants)
-    : buildTextCompareRows(variants);
+    ? buildArtifactCompareRows(variants)   // 有制品数据 → 使用详细对比
+    : buildTextCompareRows(variants);       // 无制品数据 → 使用文本对比
 }
 
+// 构建表格列定义
+// 第一列是"对比项"，后面每个方案一列
 function buildCompareColumns(variants: PlanVariant[]): ColumnsType<CompareRow> {
   return [
     {
@@ -114,7 +130,7 @@ function buildCompareColumns(variants: PlanVariant[]): ColumnsType<CompareRow> {
       dataIndex: 'metric',
       key: 'metric',
       width: 120,
-      fixed: 'left',
+      fixed: 'left',   // 对比项列固定在左侧，横向滚动时不会消失
     },
     ...variants.map((variant) => ({
       title: variant.title,
@@ -128,10 +144,10 @@ function buildCompareColumns(variants: PlanVariant[]): ColumnsType<CompareRow> {
 export const VariantComparisonTable: React.FC<VariantComparisonTableProps> = ({ variants }) => (
   <Table
     size="small"
-    pagination={false}
+    pagination={false}     // 不分页，一次展示所有对比行
     rowKey="key"
     columns={buildCompareColumns(variants)}
     dataSource={buildCompareRows(variants)}
-    scroll={{ x: 720 }}
+    scroll={{ x: 720 }}   // 表格宽度超过720px时允许横向滚动
   />
 );
