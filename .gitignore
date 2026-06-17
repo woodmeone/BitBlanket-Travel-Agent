@@ -1,0 +1,116 @@
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+.cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*swo
+*~
+.DS_Store
+Thumbs.db
+
+# Configuration files
+# - Actual config files (llm_config.yaml) are ignored
+# - Template files (*.yaml.example) are tracked by git
+config/*.yaml
+config/*.yml
+!config/*.yaml.example
+config.json
+llm_config.json
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Project specific
+memory_*.json
+session_*.json
+*.pb
+*.pb.gz
+
+# Runtime data
+data/
+/artifacts/
+
+# Frontend / Node.js
+frontend/node_modules/
+frontend/dist/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# Next.js
+frontend/.next/
+**/.next/
+frontend/out/
+frontend/build/
+*.tsbuildinfo
+next-env.d.ts
+frontend/next-env.d.ts
+
+# gRPC generated files
+agent/travel_agent/**/*.pb.py
+agent/travel_agent/**/*.pb2.py
+
+# Windows special files
+nul
+
+# Personal notes and learning materials (not for public)
+words/
+
+# Internal teaching materials
+docs/teaching/
+
+# Benchmark results (internal performance data)
+docs/benchmarks/
+
+# Governance documents (internal decision records)
+docs/governance/
+
+# Golden test fixtures (may contain internal data)
+tests/golden/
