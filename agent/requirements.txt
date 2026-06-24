@@ -21,7 +21,7 @@ grpcio-tools>=1.59.0
 protobuf>=4.25.0
 
 # HTTP Client
-httpx>=0.25.0
+httpx>=0.28.1
 aiohttp>=3.9.0
 
 # Redis
