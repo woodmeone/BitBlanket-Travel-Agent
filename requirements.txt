@@ -20,7 +20,7 @@ httpx>=0.25.0
 prometheus-client>=0.21.0
 SQLAlchemy>=2.0.36
 psycopg[binary]>=3.2.3
-alembic>=1.14.0
+alembic>=1.18.4
 
 # 测试
 pytest>=7.4.0
